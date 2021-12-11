@@ -35,7 +35,7 @@ Resources:
     Properties:
       VpcId: !Ref MyVPC
       CidrBlock: 10.0.0.0/24
-      AvailabilityZone: "ap-northeast-1a"
+      AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
         Value: public-subnet-1a
@@ -51,7 +51,7 @@ Resources:
     Properties:
       VpcId: !Ref MyVPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: "ap-northeast-1c"
+      AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
         Value: public-subnet-1c
@@ -67,7 +67,7 @@ Resources:
     Properties:
       VpcId: !Ref MyVPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: "ap-northeast-1a"
+      AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
         Value: private-subnet-1a
@@ -83,7 +83,7 @@ Resources:
     Properties:
       VpcId: !Ref MyVPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: "ap-northeast-1c"
+      AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
         Value: private-subnet-1c
