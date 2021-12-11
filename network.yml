@@ -23,11 +23,31 @@ Parameters:
     Type: String
     Default: private-subnet-1c
 
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1aCidrBlock:
+    Type: String
+    Default: 10.0.0.0/24
+
+  PublicSubnet1cCidrBlock:
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1aCidrBlock:
+    Type: String
+    Default: 10.0.1.0/24
+
+  PrivateSubnet1cCidrBlock:
+    Type: String
+    Default: 10.0.3.0/24
+
 Resources:
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: !Ref VpcCidrBlock
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
       InstanceTenancy: default
@@ -55,7 +75,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: 10.0.0.0/24
+      CidrBlock: !Ref PublicSubnet1aCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
@@ -71,7 +91,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: !Ref PublicSubnet1cCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
@@ -87,7 +107,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: !Ref PrivateSubnet1aCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
@@ -103,7 +123,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: 10.0.3.0/24
+      CidrBlock: !Ref PrivateSubnet1cCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
