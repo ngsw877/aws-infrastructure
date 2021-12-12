@@ -3,26 +3,6 @@ Description:
   Create VPC & public/private subnet
 
 Parameters:
-  VPCName:
-    Type: String
-    Default: MyVPC
-
-  PublicSubnet1AName:
-    Type: String
-    Default: public-subnet-1a
-
-  PublicSubnet1CName:
-    Type: String
-    Default: public-subnet-1c
-
-  PrivateSubnet1AName:
-    Type: String
-    Default: private-subnet-1a
-
-  PrivateSubnet1CName:
-    Type: String
-    Default: private-subnet-1c
-
   VpcCidrBlock:
     Type: String
     Default: 10.0.0.0/16
@@ -53,7 +33,7 @@ Resources:
       InstanceTenancy: default
       Tags:
       - Key: Name
-        Value: !Ref VPCName
+        Value: MyVPC
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -79,7 +59,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
-        Value: !Ref PublicSubnet1AName
+        Value: public-subnet-1a
 
   PubSubnet1ARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -95,7 +75,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
-        Value: !Ref PublicSubnet1CName
+        Value: public-subnet-1c
 
   PubSubnet1CRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -111,7 +91,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
-        Value: !Ref PrivateSubnet1AName
+        Value: private-subnet-1a
 
   PriSubnet1ARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -127,7 +107,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
-        Value: !Ref PrivateSubnet1CName
+        Value: private-subnet-1c
 
   PriSubnet1CRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
