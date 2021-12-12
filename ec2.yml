@@ -43,19 +43,22 @@ Resources:
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', hvm]
       InstanceType: !Ref InstanceType
-      SubnetId: !ImportValue MyPublicSubnet1a
       BlockDeviceMappings:
         -
           DeviceName: /dev/xvda
           Ebs:
             VolumeType: gp2
             VolumeSize: 8
+      NetworkInterfaces:
+        - SubnetId: !ImportValue MyPublicSubnet1a
+          GroupSet:
+            - !GetAtt "SecurityGroupForWebServer.GroupId"
+          AssociatePublicIpAddress: true
+          DeviceIndex : 0
+      KeyName: !Ref KeyName
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-ec2
-      KeyName: !Ref KeyName
-      SecurityGroupIds:
-         - !GetAtt "SecurityGroupForWebServer.GroupId"
 
   SecurityGroupForWebServer:
     Type: AWS::EC2::SecurityGroup
