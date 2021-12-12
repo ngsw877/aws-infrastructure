@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Create S3 Bucket
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Type of this BucketName.
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${S3BucketName}
