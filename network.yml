@@ -33,7 +33,7 @@ Resources:
       InstanceTenancy: default
       Tags:
       - Key: Name
-        Value: MyVPC
+        Value: !Sub ${AWS::StackName}-vpc
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -41,7 +41,7 @@ Resources:
       VpcId: !Ref MyVPC
       Tags:
       - Key: Name
-        Value: MyVPC-PublicRT
+        Value: !Sub ${AWS::StackName}-rt-for-public-subnet
 
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -49,7 +49,7 @@ Resources:
       VpcId: !Ref MyVPC
       Tags:
       - Key: Name
-        Value: MyVPC-PrivateRT
+        Value: !Sub ${AWS::StackName}-rt-for-private-subnet
 
   PublicSubnet1A:
     Type: AWS::EC2::Subnet
@@ -59,7 +59,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
-        Value: public-subnet-1a
+        Value: !Sub ${AWS::StackName}-public-subnet-1a
 
   PubSubnet1ARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -75,7 +75,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
-        Value: public-subnet-1c
+        Value: !Sub ${AWS::StackName}-public-subnet-1c
 
   PubSubnet1CRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -91,7 +91,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
       - Key: Name
-        Value: private-subnet-1a
+        Value: !Sub ${AWS::StackName}-private-subnet-1a
 
   PriSubnet1ARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -107,7 +107,7 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
       - Key: Name
-        Value: private-subnet-1c
+        Value: !Sub ${AWS::StackName}-private-subnet-1c
 
   PriSubnet1CRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -120,7 +120,7 @@ Resources:
     Properties:
       Tags:
       - Key: Name
-        Value: MyING
+        Value: !Sub ${AWS::StackName}-igw
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
