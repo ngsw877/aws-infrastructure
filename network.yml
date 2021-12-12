@@ -24,7 +24,7 @@ Parameters:
     Default: 10.0.3.0/24
 
 Resources:
-  MyVPC:
+  VPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCidrBlock
@@ -38,7 +38,7 @@ Resources:
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-rt-for-public-subnet
@@ -46,7 +46,7 @@ Resources:
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-rt-for-private-subnet
@@ -54,7 +54,7 @@ Resources:
   PublicSubnet1A:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet1aCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
@@ -70,7 +70,7 @@ Resources:
   PublicSubnet1C:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet1cCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
@@ -86,7 +86,7 @@ Resources:
   PrivateSubnet1A:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnet1aCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
@@ -102,7 +102,7 @@ Resources:
   PrivateSubnet1C:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnet1cCidrBlock
       AvailabilityZone: !Sub ${AWS::Region}c
       Tags:
@@ -125,7 +125,7 @@ Resources:
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref VPC
       InternetGatewayId: !Ref MyInternetGateway
 
   MyRoute:
@@ -139,7 +139,7 @@ Resources:
 Outputs:
   StackVPC:
     Description: The ID of the VPC
-    Value: !Ref MyVPC
+    Value: !Ref VPC
     Export:
       Name: !Sub "${AWS::StackName}-VPCID"
 
