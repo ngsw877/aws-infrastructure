@@ -141,29 +141,29 @@ Outputs:
     Description: The ID of the VPC
     Value: !Ref VPC
     Export:
-      Name: !Sub "${AWS::StackName}-VPCID"
+      Name: MyVpc
 
   StackPublicSubnet1a:
     Description: The ID of the VPC Subnet
     Value: !Ref PublicSubnet1a
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnet1a"
+      Name: MyPublicSubnet1a
 
   StackPublicSubnet1c:
     Description: The ID of the VPC Subnet
     Value: !Ref PublicSubnet1c
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnet1c"
+      Name: MyPublicSubnet1c
 
   StackPrivateSubnet1a:
     Description: The ID of the VPC Subnet
     Value: !Ref PrivateSubnet1a
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnet1a"
+      Name: MyPrivateSubnet1a
 
   StackPrivateSubnet1c:
     Description: The ID of the VPC Subnet
     Value: !Ref PrivateSubnet1c
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnet1c"
+      Name: MyPrivateSubnet1c
 
