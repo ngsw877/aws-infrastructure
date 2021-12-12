@@ -56,6 +56,14 @@ Resources:
           AssociatePublicIpAddress: true
           DeviceIndex : 0
       KeyName: !Ref KeyName
+      UserData: !Base64 |
+        #!/bin/bash
+        echo -e "===== yum -y install httpd =====\n"
+        yum -y install httpd
+        echo -e "===== systemctl start httpd.service =====\n"
+        systemctl start httpd.service
+        echo -e "===== systemctl enable httpd.service =====\n"
+        systemctl enable httpd.service
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-ec2
