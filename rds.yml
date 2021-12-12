@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Create DataBase
+
+Parameters:
+  DatabaseMasterUsername:
+    Type: String
+    Default: admin
+    Description: Database master username
+
+  DatabasePassword:
+    Type: String
+    Description: Database password
+    NoEcho: "true"
+
+  DatabaseName:
+    Type: String
+    Default: MyDatabase
+    Description: Database name
+
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Target subnets
+
+Resources:
+  DB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: MySQL
+      EngineVersion: 5.7
+      DBInstanceClass: db.t2.micro
+      AllocatedStorage: 10
+      StorageType: gp2
+      MasterUsername: !Ref DatabaseMasterUsername
+      MasterUserPassword: !Ref DatabasePassword
+      DBName: !Ref DatabaseName
+      VPCSecurityGroups:
+        - !Ref SecurityGroupForDB
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MultiAZ: "false"
+      AvailabilityZone: !Sub ${AWS::Region}a
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-db
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Database Subnet Group
+      SubnetIds: !Ref Subnets
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-db-subnet-group
+
+  SecurityGroupForDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName} Database Security Group
+      VpcId: !ImportValue  MyVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !ImportValue MySecurityGroupForWebServer
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-sg-for-db
