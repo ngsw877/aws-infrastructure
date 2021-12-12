@@ -115,7 +115,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet1c
       RouteTableId: !Ref PrivateRouteTable
 
-  MyInternetGateway:
+  InternetGateway:
     Type: "AWS::EC2::InternetGateway"
     Properties:
       Tags:
@@ -126,15 +126,15 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref VPC
-      InternetGatewayId: !Ref MyInternetGateway
+      InternetGatewayId: !Ref InternetGateway
 
   MyRoute:
     Type: AWS::EC2::Route
-    DependsOn: MyInternetGateway
+    DependsOn: InternetGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref MyInternetGateway
+      GatewayId: !Ref InternetGateway
 
 Outputs:
   StackVPC:
