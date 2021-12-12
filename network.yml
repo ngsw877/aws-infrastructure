@@ -35,7 +35,7 @@ Resources:
       - Key: Name
         Value: !Sub ${AWS::StackName}-vpc
 
-  PublicRouteTable:
+  RouteTableForPublicSubnet:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -61,11 +61,11 @@ Resources:
       - Key: Name
         Value: !Sub ${AWS::StackName}-public-subnet-1a
 
-  PubSubnet1ARouteTableAssociation:
+  AssociateRouteTableForPublicSubnet1a:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnet1a
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref RouteTableForPublicSubnet
 
   PublicSubnet1c:
     Type: AWS::EC2::Subnet
@@ -77,11 +77,11 @@ Resources:
       - Key: Name
         Value: !Sub ${AWS::StackName}-public-subnet-1c
 
-  PubSubnet1CRouteTableAssociation:
+  AssociateRouteTableForPublicSubnet1c:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnet1c
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref RouteTableForPublicSubnet
 
   PrivateSubnet1a:
     Type: AWS::EC2::Subnet
@@ -93,7 +93,7 @@ Resources:
       - Key: Name
         Value: !Sub ${AWS::StackName}-private-subnet-1a
 
-  PriSubnet1ARouteTableAssociation:
+  AssociateRouteTableForPrivateSubnet1a:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1a
@@ -109,7 +109,7 @@ Resources:
       - Key: Name
         Value: !Sub ${AWS::StackName}-private-subnet-1c
 
-  PriSubnet1CRouteTableAssociation:
+  AssociateRouteTableForPrivateSubnet1c:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1c
@@ -128,11 +128,11 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  MyRoute:
+  RouteForPublicSubnet:
     Type: AWS::EC2::Route
     DependsOn: InternetGateway
     Properties:
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref RouteTableForPublicSubnet
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
