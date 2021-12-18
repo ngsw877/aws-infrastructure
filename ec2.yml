@@ -90,3 +90,10 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-sg-for-public-server
 
+Outputs:
+  StackSecurityGroupForWebServer:
+    Description: The ID of the SecurityGroupForWebServer
+    Value: !Ref SecurityGroupForWebServer
+    Export:
+      Name: MySecurityGroupForWebServer
+
