@@ -88,7 +88,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-sg-for-public-server
+          Value: !Sub ${AWS::StackName}-sg-for-web-server
 
 Outputs:
   StackSecurityGroupForWebServer:
