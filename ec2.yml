@@ -58,12 +58,22 @@ Resources:
       KeyName: !Ref KeyName
       UserData: !Base64 |
         #!/bin/bash
-        echo -e "===== yum -y install httpd =====\n"
-        yum -y install httpd
-        echo -e "===== systemctl start httpd.service =====\n"
-        systemctl start httpd.service
-        echo -e "===== systemctl enable httpd.service =====\n"
-        systemctl enable httpd.service
+
+        echo -e "===== yum update -y =====\n"
+        yum update -y
+
+        echo -e "===== amazon-linux-extras install nginx1.12 -y =====\n"
+        amazon-linux-extras install nginx1.12 -y
+
+        # 初期設定ファイルをバックアップ
+        echo -e "===== cp -a /etc/nginx/nginx.conf /etc/nginx/nginx.conf.back =====\n"
+        cp -a /etc/nginx/nginx.conf /etc/nginx/nginx.conf.back
+
+        echo -e "===== systemctl start nginx =====\n"
+        systemctl start nginx
+
+        echo -e "===== systemctl enable nginx =====\n"
+        systemctl systemctl enable nginx
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-ec2
