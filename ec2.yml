@@ -93,7 +93,7 @@ Resources:
         systemctl systemctl enable nginx
       Tags:
       - Key: Name
-        Value: !Sub ${AWS::StackName}-ec2
+        Value: !Ref AWS::StackName
 
   SecurityGroupForWebServer:
     Type: AWS::EC2::SecurityGroup
@@ -115,7 +115,7 @@ Resources:
           CidrIp: !Ref CidrIpForHTTPS
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-sg-for-web-server
+          Value: !Sub sg-for-${AWS::StackName}
 
 Outputs:
   StackSecurityGroupForWebServer:
@@ -123,4 +123,3 @@ Outputs:
     Value: !Ref SecurityGroupForWebServer
     Export:
       Name: MySecurityGroupForWebServer
-
