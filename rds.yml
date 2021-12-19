@@ -49,12 +49,12 @@ Resources:
         - !ImportValue MyPrivateSubnet1c
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-db-subnet-group
+          Value: !Sub ${AWS::StackName}-subnet-group
 
   SecurityGroupForDB:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: !Sub ${AWS::StackName} Database Security Group
+      GroupDescription: !Sub ${AWS::StackName} Security Group
       VpcId: !ImportValue  MyVpc
       SecurityGroupIngress:
         - IpProtocol: tcp
