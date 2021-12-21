@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Create MySQL DataBase and DBSubnetGroup, SecurityGroup
+Description: Create MySQL DataBase and DBSubnetGroup
 
 Parameters:
   DatabaseMasterUsername:
@@ -22,7 +22,7 @@ Resources:
   DB:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: !Sub ${AWS::StackName}
+      DBInstanceIdentifier: !Ref AWS::StackName
       Engine: MySQL
       EngineVersion: 5.7
       DBInstanceClass: db.t2.micro
@@ -32,13 +32,13 @@ Resources:
       MasterUserPassword: !Ref DatabasePassword
       DBName: !Ref DatabaseName
       VPCSecurityGroups:
-        - !Ref SecurityGroupForDB
+        - !ImportValue MySecurityGroupForDB
       DBSubnetGroupName: !Ref DBSubnetGroup
       MultiAZ: "false"
       AvailabilityZone: !Sub ${AWS::Region}a
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}
+          Value: !Ref AWS::StackName
 
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -50,17 +50,3 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-subnet-group
-
-  SecurityGroupForDB:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Sub ${AWS::StackName} Security Group
-      VpcId: !ImportValue  MyVpc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          SourceSecurityGroupId: !ImportValue MySecurityGroupForWebServer
-      Tags:
-        - Key: Name
-          Value: !Sub sg-for-${AWS::StackName}
