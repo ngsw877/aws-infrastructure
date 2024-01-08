@@ -1,10 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
+Parameters:
+  RepositoryName:
+    Type: String
+    Default: "sample-app"
+
 Resources:
   EcrRepository:
     Type: AWS::ECR::Repository
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      RepositoryName: !Ref RepositoryName
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
