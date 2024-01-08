@@ -1,0 +1,20 @@
+version: '3.7'
+services:
+  app:
+    build:
+      context: docker/php
+      dockerfile: Dockerfile
+    container_name: php_app
+    volumes:
+      - ./docker/php/src:/var/www/html
+  web:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "48080:80"
+    environment:
+      BACKEND_APP_DOMAIN: "app"
+      RESOLVER: "127.0.0.11"
+    depends_on:
+      - app
