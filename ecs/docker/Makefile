@@ -1,12 +1,12 @@
 .PHONY: get-ecr-url login logout build-push-web build-push-app
 
 PROFILE ?= default
-NGINX_TAG_NAME ?= "sample-nginx-amd64"
-APP_TAG_NAME ?= "sample-app-amd64"
-REPO_NAME ?= "sample-app"
+NGINX_TAG_NAME = "sample-nginx-amd64"
+APP_TAG_NAME = "sample-app-amd64"
+REPO_NAME = "sample-app"
 
-ACCOUNT_ID ?= $(shell aws sts get-caller-identity --profile $(PROFILE) --query "Account" --output text)
-ECR_URL ?= "$(ACCOUNT_ID).dkr.ecr.ap-northeast-1.amazonaws.com"
+ACCOUNT_ID = $(shell aws sts get-caller-identity --profile $(PROFILE) --query "Account" --output text)
+ECR_URL = "$(ACCOUNT_ID).dkr.ecr.ap-northeast-1.amazonaws.com"
 
 get-ecr-url:
 	echo $(ECR_URL)
