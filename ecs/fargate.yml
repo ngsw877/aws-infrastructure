@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EnvName:
+    Type: String
+    Default: sample-fargate
+  WebBackendEcsTaskCpu:
+    Type: Number
+    Default: 1024
+  WebBackendEcsTaskMemory:
+    Type: Number
+    Default: 2048
+  AppBackendDockerImageTag:
+    Type: String
+    Default: "app"
+  AppEnv:
+    Type: String
+  AppDebug:
+    Type: String
+  WebBackendDockerImageTag:
+    Type: String
+    Default: "web"
+  VpcStackName:
+    Type: String
+    Default: "common-vpc"
+  SecurityGroupStackName:
+    Type: String
+    Default: "common-sg"
+  EcrStackName:
+    Type: String
+    Default: "common-ecr"
+  BackendTaskDesiredCount:
+    Type: Number
+    Default: 1
+
+Resources:
+  # ECSタスクロール
+  BackendEcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+                - "events.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole
+      RoleName: !Sub "${AWS::StackName}-BackendEcsTaskRole"
+
+  # ECS タスク実行ロール
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  # ECSクラスター
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-cluster"
+
+  # ECSタスク: Web (Backend)
+  BackendEcsTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${AWS::StackName}-web-back"
+      TaskRoleArn: !Ref BackendEcsTaskRole
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      Cpu: !Ref WebBackendEcsTaskCpu
+      Memory: !Ref WebBackendEcsTaskMemory
+      ContainerDefinitions:
+        # appコンテナ
+        - Name: app
+          Image:
+            Fn::Join:
+              - ""
+              - - !Ref AWS::AccountId
+                - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+                - Fn::ImportValue:
+                    !Sub "${EcrStackName}-EcrRepository"
+                - ":"
+                - !Ref AppBackendDockerImageTag
+          PortMappings:
+            - { ContainerPort: 9000, HostPort: 9000 }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: docker
+          Environment:
+            - Name: APP_ENV
+              Value: !Ref AppEnv
+            - Name: APP_DEBUG
+              Value: !Ref AppDebug
+            - Name: TZ
+              Value: "Asia/Tokyo"
+          ReadonlyRootFilesystem: false
+
+        # webコンテナ
+        - Name: web
+          Image:
+            Fn::Join:
+              - ""
+              - - !Ref AWS::AccountId
+                - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+                - Fn::ImportValue:
+                    !Sub "${EcrStackName}-EcrRepository"
+                - ":"
+                - !Ref WebBackendDockerImageTag
+          PortMappings:
+            - { ContainerPort: 80, HostPort: 80 }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: docker
+
+  # CloudWatch Logsロググループ
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+      RetentionInDays: 7
+
+  # ECSサービス
+  BackendEcsService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - WebLoadBalancerHttpListener # TGがリスナーへ登録される前にBackendEcsServiceを作成しようとするとTBがLBに紐付けられていないエラーになる
+      - ApplicationLogGroup
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref BackendTaskDesiredCount
+      TaskDefinition: !Ref BackendEcsTask
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: web # タスク定義のContainerDefinitions.Name
+          ContainerPort: 80
+          TargetGroupArn: !Ref BackendTaskTargetGroup
+      EnableExecuteCommand: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          # change to DISABLED if you're using private subnets that have access to a NAT gateway
+          AssignPublicIp: DISABLED
+          Subnets:
+            - Fn::ImportValue:
+                !Sub "${VpcStackName}-PrivateSubnet1"
+            - Fn::ImportValue:
+                !Sub "${VpcStackName}-PrivateSubnet2"
+          SecurityGroups:
+            - Fn::ImportValue:
+                !Sub "${SecurityGroupStackName}-BackendSecurityGroup"
+
+  #======================
+  # ALB
+  #======================
+  BackendTaskTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Protocol: HTTP
+      Port: 80
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      TargetGroupAttributes:
+        - { Key: "deregistration_delay.timeout_seconds", Value: "10" }
+      TargetType: ip
+
+  WebLoadBalancerHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref WebLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - TargetGroupArn: !Ref BackendTaskTargetGroup
+          Type: forward
+
+  WebLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PublicSubnet1"
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PublicSubnet2"
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub "${SecurityGroupStackName}-LoadBalancerSecurityGroup"
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 30
+
+  # NAT Gateway
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: EIP
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - EIP
+          - AllocationId
+      SubnetId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-PublicSubnet1"
+
+  # NAT Gateway用のルーティングをプライベートサブネットのルートテーブルに追加する
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId:
+        !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # NAT Gateway用の固定IPアドレス
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # プライベートサブネット用ルートテーブル
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+          !Sub  "${VpcStackName}-VpcId"
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} Private Routes
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId:
+        Fn::ImportValue:
+          !Sub  "${VpcStackName}-PrivateSubnet1"
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId:
+        Fn::ImportValue:
+          !Sub  "${VpcStackName}-PrivateSubnet2"

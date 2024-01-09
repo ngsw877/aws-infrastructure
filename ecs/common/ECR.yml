@@ -35,4 +35,4 @@ Outputs:
   EcrRepository:
     Value: !Ref EcrRepository
     Export:
-      Name: !Sub "${AWS::StackName}-common-EcrRepository"
+      Name: !Sub "${AWS::StackName}-EcrRepository"
