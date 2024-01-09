@@ -1,4 +1,4 @@
-.PHONY: get-ecr-url login build-push-web build-push-app
+.PHONY: get-ecr-url login logout build-push-web build-push-app
 
 PROFILE ?= default
 PARAMETER_STORE_KEY ?= "/sample/ecr-name"
@@ -12,6 +12,9 @@ get-ecr-url:
 
 login:
 	aws ecr get-login-password --region ap-northeast-1 --profile $(PROFILE) | docker login --username AWS --password-stdin $(ECR_URL)
+
+logout:
+	docker logout $(ECR_URL)
 
 build-push-web:
 	docker build -t "$(NGINX_TAG_NAME):latest" \
