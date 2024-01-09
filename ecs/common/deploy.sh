@@ -2,11 +2,17 @@
 
 PROFILE="$1"
 
-STACK_NAME="common-ecr"
-TEMPLATE="ECR.yml"
+if [[ "$2" = "vpc" ]]; then
+  STACK_NAME="common-vpc"
+  TEMPLATE="VPC.yml"
+
+elif [[ "$2" = "ecr" ]]; then
+  STACK_NAME="common-ecr"
+  TEMPLATE="ECR.yml"
+fi
 
 aws cloudformation \
-  --profile ${PROFILE} \
+  --profile "${PROFILE}" \
   deploy \
   --template-file ${TEMPLATE} \
   --stack-name ${STACK_NAME}  \
