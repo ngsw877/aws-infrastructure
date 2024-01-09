@@ -9,6 +9,14 @@ if [[ "$2" = "vpc" ]]; then
 elif [[ "$2" = "ecr" ]]; then
   STACK_NAME="common-ecr"
   TEMPLATE="ECR.yml"
+
+elif [[ "$2" = "sg" ]]; then
+  STACK_NAME="common-sg"
+  TEMPLATE="SecurityGroup.yml"
+
+else
+  echo "引数に vpc, ecr, sg のいずれかを指定してください"
+  exit 1
 fi
 
 aws cloudformation \

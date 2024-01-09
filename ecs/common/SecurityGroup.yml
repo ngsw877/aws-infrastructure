@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  VpcStackName:
+    Type: String
+    Default: "common-vpc"
+
+Resources:
+  #======================
+  # Security Group
+  #======================
+  # インターネット公開のセキュリティグループ： ALB
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for ALB"
+      GroupName: !Sub "${AWS::StackName}-alb-sg"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIpv6: ::/0
+          Description: from ::/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+
+  # バックエンドコンテナアプリ用セキュリティグループ
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow Access From LoadBalancer to Backend Service"
+      GroupName: !Sub "${AWS::StackName}-bg-container-sg"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+
+  # ルール紐付け
+  ## Internet LB -> Backend Container
+  BackendSgFromLoadBalancerSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for Ingress
+      FromPort: 80
+      GroupId:
+        Fn::GetAtt:
+          - BackendSecurityGroup
+          - GroupId
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - LoadBalancerSecurityGroup
+          - GroupId
+      ToPort: 80
+
+Outputs:
+    LoadBalancerSecurityGroup:
+        Description: Common Security Group for ALB
+        Value: !Ref LoadBalancerSecurityGroup
+        Export:
+          Name: !Sub "${AWS::StackName}-LoadBalancerSecurityGroup"
+    BackendSecurityGroup:
+        Description: Common Security Group for Backend Container
+        Value: !Ref BackendSecurityGroup
+        Export:
+          Name: !Sub "${AWS::StackName}-BackendSecurityGroup"
