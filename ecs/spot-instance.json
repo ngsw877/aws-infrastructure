@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "EcsInstanceDesiredCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "EcsInstanceMinCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "EcsInstanceMaxCount",
+    "ParameterValue": "2"
+  }
+]
