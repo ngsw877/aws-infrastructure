@@ -16,6 +16,18 @@ Parameters:
   EcsInstanceMaxCount:
     Type: Number
     Default: 1
+  TaskDesiredCount:
+    Type: Number
+    Default: 1
+  TaskMinCount:
+    Type: Number
+    Default: 1
+  TaskMaxCount:
+    Type: Number
+    Default: 1
+  AutoScalingTargetValue:
+    Type: Number
+    Default: 80
 
 Resources:
   SpotEc2Role:
@@ -268,7 +280,7 @@ Resources:
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
-      DesiredCount: 0
+      DesiredCount: !Ref TaskDesiredCount
       HealthCheckGracePeriodSeconds: 30
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -289,6 +301,58 @@ Resources:
             Ref: SpotCapacityProvider
           Weight: 1
           Base: 1
+
+  ServiceScalingTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    DependsOn: Service
+    Properties:
+      MaxCapacity: !Ref TaskMaxCount
+      MinCapacity: !Ref TaskMinCount
+      ResourceId: !Join ['/', [service, !Ref ECSCluster, !GetAtt Service.Name]]
+      RoleARN: !GetAtt
+        - AutoscalingRole
+        - Arn
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ServiceNamespace: ecs
+
+  ServiceScalingPolicy:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    DependsOn: Service
+    Properties:
+      PolicyName: !Join ['', [!Ref Service, AutoScalingPolicy]]
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ServiceScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 10
+        ScaleOutCooldown: 10
+        TargetValue: !Ref AutoScalingTargetValue
+
+  AutoscalingRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: service-autoscaling
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'application-autoscaling:*'
+                  - 'cloudwatch:DescribeAlarms'
+                  - 'cloudwatch:PutMetricAlarm'
+                  - 'ecs:DescribeServices'
+                  - 'ecs:UpdateService'
+                Resource: '*'
 
   TargetGroup:
     DependsOn: InternetGatewayAttachment

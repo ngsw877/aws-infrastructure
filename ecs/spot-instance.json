@@ -10,5 +10,17 @@
   {
     "ParameterKey": "EcsInstanceMaxCount",
     "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "TaskDesiredCount",
+    "ParameterValue": "0"
+  },
+  {
+    "ParameterKey": "TaskMinCount",
+    "ParameterValue": "0"
+  },
+  {
+    "ParameterKey": "TaskMaxCount",
+    "ParameterValue": "0"
   }
 ]
