@@ -81,14 +81,14 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: EnvironmentName
+          Value: !Ref EnvironmentName
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: EnvironmentName
+          Value: !Ref EnvironmentName
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -217,7 +217,7 @@ Resources:
             - InstanceType: g4dn.8xlarge
       Tags:
         - Key: Name
-          Value: EnvironmentName
+          Value: !Ref EnvironmentName
           PropagateAtLaunch: true
 
   WebAppLaunchTemplate:
