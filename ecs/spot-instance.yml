@@ -188,7 +188,6 @@ Resources:
       # 容量の再調整を有効化：
       #「EC2 Instance Rebalance Recommendation」の通知が来たタイミングで新しいスポットインスタンスをリクエストし、起動成功したら古いインスタンスを終了する。
       CapacityRebalance: true
-      NewInstancesProtectedFromScaleIn: true
       DesiredCapacity: !Ref EcsInstanceDesiredCount
       MinSize: !Ref EcsInstanceMinCount
       MaxSize: !Ref EcsInstanceMaxCount
@@ -430,7 +429,6 @@ Resources:
         ManagedScaling:
           Status: ENABLED
           TargetCapacity: 100
-        ManagedTerminationProtection: ENABLED
 
   ECSCluster:
     Type: AWS::ECS::Cluster
