@@ -235,8 +235,11 @@ Resources:
               #!/bin/bash 
               
               # コンテナインスタンスをECSクラスタに登録
+              
               echo ECS_CLUSTER=${AWS::StackName}ECSCluster >> /etc/ecs/ecs.config
+              
               # 自動ドレインを有効化
+              
               echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
 
   ContainerSecurityGroup:
