@@ -13,14 +13,14 @@
   },
   {
     "ParameterKey": "TaskDesiredCount",
-    "ParameterValue": "0"
+    "ParameterValue": "1"
   },
   {
     "ParameterKey": "TaskMinCount",
-    "ParameterValue": "0"
+    "ParameterValue": "1"
   },
   {
     "ParameterKey": "TaskMaxCount",
-    "ParameterValue": "0"
+    "ParameterValue": "2"
   }
 ]
