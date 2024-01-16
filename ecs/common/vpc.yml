@@ -31,6 +31,11 @@ Parameters:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
     Type: String
     Default: 10.99.21.0/24
+  # プライベートサブネット3
+  PrivateSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 10.99.22.0/24
 
 Resources:
   Vpc:
@@ -109,6 +114,18 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
 
+  # プライベートサブネット3
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
+
   #======================
   # ルートテーブル
   #======================
@@ -166,3 +183,7 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnet2"
+  PrivateSubnet3:
+    Value: !Ref PrivateSubnet3
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet3"
