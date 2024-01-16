@@ -151,9 +151,9 @@ Resources:
     DependsOn: InternetGatewayAttachment
     Properties:
       NewInstancesProtectedFromScaleIn: true
-      MinSize: "0"
-      MaxSize: "0"
-      DesiredCapacity: "0"
+      MinSize: "1"
+      MaxSize: "1"
+      DesiredCapacity: "1"
       VPCZoneIdentifier:
         - Ref: PublicSubnet1
         - Ref: PublicSubnet2
@@ -239,7 +239,7 @@ Resources:
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
-      DesiredCount: 0
+      DesiredCount: 1
       HealthCheckGracePeriodSeconds: 30
       LaunchType: EC2
       NetworkConfiguration:
