@@ -22,13 +22,8 @@ Resources:
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           Description: from 0.0.0.0/0:80
-          FromPort: 80
           IpProtocol: tcp
-          ToPort: 80
-        - CidrIpv6: ::/0
-          Description: from ::/0:80
           FromPort: 80
-          IpProtocol: tcp
           ToPort: 80
       VpcId:
         Fn::ImportValue:
@@ -53,18 +48,12 @@ Resources:
   BackendSgFromLoadBalancerSg:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      IpProtocol: tcp
       Description: HTTP for Ingress
+      IpProtocol: tcp
       FromPort: 80
-      GroupId:
-        Fn::GetAtt:
-          - BackendSecurityGroup
-          - GroupId
-      SourceSecurityGroupId:
-        Fn::GetAtt:
-          - LoadBalancerSecurityGroup
-          - GroupId
       ToPort: 80
+      GroupId: !Ref BackendSecurityGroup
+      SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
 
 Outputs:
     LoadBalancerSecurityGroup:
