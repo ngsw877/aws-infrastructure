@@ -22,5 +22,21 @@
   {
     "ParameterKey": "TaskMaxCount",
     "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "InstanceType1",
+    "ParameterValue": "m5.xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType2",
+    "ParameterValue": "m5.2xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType3",
+    "ParameterValue": "m5.4xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType4",
+    "ParameterValue": "m5.8xlarge"
   }
 ]

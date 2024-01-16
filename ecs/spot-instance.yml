@@ -28,6 +28,18 @@ Parameters:
   AutoScalingTargetValue:
     Type: Number
     Default: 80
+  InstanceType1:
+    Type: String
+    Default: g4dn.xlarge
+  InstanceType2:
+    Type: String
+    Default: g4dn.2xlarge
+  InstanceType3:
+    Type: String
+    Default: g4dn.4xlarge
+  InstanceType4:
+    Type: String
+    Default: g4dn.8xlarge
 
 Resources:
   SpotEc2Role:
@@ -210,10 +222,10 @@ Resources:
                 - WebAppLaunchTemplate
                 - DefaultVersionNumber
           Overrides:
-            - InstanceType: g4dn.xlarge
-            - InstanceType: g4dn.2xlarge
-            - InstanceType: g4dn.4xlarge
-            - InstanceType: g4dn.8xlarge
+            - InstanceType: !Ref InstanceType1
+            - InstanceType: !Ref InstanceType2
+            - InstanceType: !Ref InstanceType3
+            - InstanceType: !Ref InstanceType4
       Tags:
         - Key: Name
           Value: !Ref EnvironmentName
