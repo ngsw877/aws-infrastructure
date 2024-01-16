@@ -223,6 +223,12 @@ Resources:
         Fn::ImportValue:
           !Sub "${VpcStackName}-PublicSubnet1"
 
+  # NAT Gateway用の固定IPアドレス
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
   # NAT Gateway用のルーティングをプライベートサブネットのルートテーブルに追加する
   PrivateRoute:
     Type: AWS::EC2::Route
@@ -232,12 +238,6 @@ Resources:
         !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
-
-  # NAT Gateway用の固定IPアドレス
-  EIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
 
   # プライベートサブネット用ルートテーブル
   PrivateRouteTable:
