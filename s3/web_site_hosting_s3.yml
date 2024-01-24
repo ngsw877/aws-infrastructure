@@ -7,6 +7,10 @@ Parameters:
     Default: web-site-hosting-bucket
   AllowedIpAddress:
     Type: String
+    Default: ""
+
+Conditions:
+  IsAllowedIpAddressSpecified: !Not [!Equals [!Ref AllowedIpAddress, ""]]
 
 Resources:
   WebSiteHostingBucket:
@@ -30,6 +34,7 @@ Resources:
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
+    Condition: IsAllowedIpAddressSpecified
     Properties:
       Bucket: !Ref WebSiteHostingBucket
       PolicyDocument:
