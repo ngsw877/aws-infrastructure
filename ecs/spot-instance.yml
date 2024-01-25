@@ -69,7 +69,7 @@ Resources:
       Roles:
         - Ref: SpotEc2Role
 
-  ExecutionRole:
+  WebAppExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -81,7 +81,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-  TaskRole:
+  WebAppTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -157,7 +157,7 @@ Resources:
               
               echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
 
-  Service:
+  WebAppEcsService:
     Type: AWS::ECS::Service
     DependsOn:
       - TargetGroup
@@ -167,7 +167,7 @@ Resources:
       Cluster:
         Ref: ECSCluster
       TaskDefinition:
-        Ref: TaskDefinition
+        Ref: WebAppTask
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
@@ -199,11 +199,11 @@ Resources:
 
   ServiceScalingTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
-    DependsOn: Service
+    DependsOn: WebAppEcsService
     Properties:
       MaxCapacity: !Ref TaskMaxCount
       MinCapacity: !Ref TaskMinCount
-      ResourceId: !Join ['/', [service, !Ref ECSCluster, !GetAtt Service.Name]]
+      ResourceId: !Join ['/', [service, !Ref ECSCluster, !GetAtt WebAppEcsService.Name]]
       RoleARN: !GetAtt
         - AutoscalingRole
         - Arn
@@ -212,9 +212,9 @@ Resources:
 
   ServiceScalingPolicy:
     Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
-    DependsOn: Service
+    DependsOn: WebAppEcsService
     Properties:
-      PolicyName: !Join ['', [!Ref Service, AutoScalingPolicy]]
+      PolicyName: !Join ['', [!Ref WebAppEcsService, AutoScalingPolicy]]
       PolicyType: TargetTrackingScaling
       ScalingTargetId: !Ref ServiceScalingTarget
       TargetTrackingScalingPolicyConfiguration:
@@ -295,7 +295,7 @@ Resources:
           TargetGroupArn:
             Ref: TargetGroup
 
-  TaskDefinition:
+  WebAppTask:
     Type: AWS::ECS::TaskDefinition
     Properties:
       NetworkMode: awsvpc
@@ -304,9 +304,9 @@ Resources:
       Cpu: 256
       Memory: 512
       ExecutionRoleArn:
-        Ref: ExecutionRole
+        Ref: WebAppExecutionRole
       TaskRoleArn:
-        Ref: TaskRole
+        Ref: WebAppTaskRole
       ContainerDefinitions:
         - Name:
             Ref: EnvironmentName
