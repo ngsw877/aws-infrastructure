@@ -4,9 +4,27 @@ Parameters:
   AmazonLinux2LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
-  EnvironmentName:
+  EnvName:
     Type: String
     Default: sample-ecs-spot-instance
+  AppContainerName:
+    Type: String
+    Default: "app"
+  WebContainerName:
+    Type: String
+    Default: "web"
+  AppDockerImageTag:
+    Type: String
+    Default: "app"
+  WebDockerImageTag:
+    Type: String
+    Default: "web"
+  AppEnv:
+    Type: String
+    Default: "test"
+  AppDebug:
+    Type: String
+    Default: "true"
   EcsInstanceDesiredCount:
     Type: Number
     Default: 1
@@ -30,22 +48,25 @@ Parameters:
     Default: 80
   InstanceType1:
     Type: String
-    Default: g4dn.xlarge
+    Default: "g4dn.xlarge"
   InstanceType2:
     Type: String
-    Default: g4dn.2xlarge
+    Default: "g4dn.2xlarge"
   InstanceType3:
     Type: String
-    Default: g4dn.4xlarge
+    Default: "g4dn.4xlarge"
   InstanceType4:
     Type: String
-    Default: g4dn.8xlarge
+    Default: "g4dn.8xlarge"
   VpcStackName:
     Type: String
     Default: "common-vpc"
   SecurityGroupStackName:
     Type: String
     Default: "common-sg"
+  EcrStackName:
+    Type: String
+    Default: "common-ecr"
 
 Resources:
   SpotEc2Role:
@@ -57,11 +78,11 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-                - ec2.amazonaws.com
+                - "ec2.amazonaws.com"
             Action:
-              - sts:AssumeRole
+              - "sts:AssumeRole"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 
   SpotEc2Profile:
     Type: AWS::IAM::InstanceProfile
@@ -76,10 +97,10 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
+              Service: "ecs-tasks.amazonaws.com"
+            Action: "sts:AssumeRole"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
   WebAppTaskRole:
     Type: AWS::IAM::Role
@@ -91,9 +112,10 @@ Resources:
               Service:
                 - "ecs-tasks.amazonaws.com"
             Action: "sts:AssumeRole"
-        Path: "/"
-        ManagedPolicyArns:
-          - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+      Path: "/"
+      RoleName: !Sub "${AWS::StackName}-WebAppTaskRole"
 
   WebAppAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -132,7 +154,7 @@ Resources:
             - InstanceType: !Ref InstanceType4
       Tags:
         - Key: Name
-          Value: !Ref EnvironmentName
+          Value: !Ref EnvName
           PropagateAtLaunch: true
 
   WebAppLaunchTemplate:
@@ -163,6 +185,7 @@ Resources:
       - TargetGroup
       - WebAppLoadBalancer
       - ALBListener
+      - WebAppLogGroup
     Properties:
       Cluster:
         Ref: ECSCluster
@@ -187,7 +210,7 @@ Resources:
                 !Sub "${SecurityGroupStackName}-BackendSecurityGroup"
       LoadBalancers:
         - ContainerName:
-            Ref: EnvironmentName
+            Ref: WebContainerName
           ContainerPort: 80
           TargetGroupArn:
             Ref: TargetGroup
@@ -298,6 +321,7 @@ Resources:
   WebAppTask:
     Type: AWS::ECS::TaskDefinition
     Properties:
+      Family: !Sub "${AWS::StackName}-web-app"
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - EC2
@@ -308,11 +332,59 @@ Resources:
       TaskRoleArn:
         Ref: WebAppTaskRole
       ContainerDefinitions:
-        - Name:
-            Ref: EnvironmentName
-          Image: public.ecr.aws/ecs-sample-image/amazon-ecs-sample
+        # appコンテナ
+        - Name: app
+          Image:
+            Fn::Join:
+              - ""
+              - - !Ref AWS::AccountId
+                - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+                - Fn::ImportValue:
+                    !Sub "${EcrStackName}-EcrRepository"
+                - ":"
+                - !Ref AppDockerImageTag
           PortMappings:
-            - ContainerPort: 80
+            - { ContainerPort: 9000, HostPort: 9000 }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: docker
+          Environment:
+            - Name: APP_ENV
+              Value: !Ref AppEnv
+            - Name: APP_DEBUG
+              Value: !Ref AppDebug
+            - Name: TZ
+              Value: "Asia/Tokyo"
+          ReadonlyRootFilesystem: false
+        # webコンテナ
+        - Name:
+            Ref: WebContainerName
+          Image: !Join
+            - ""
+            - - !Ref AWS::AccountId
+              - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+              - Fn::ImportValue:
+                  !Sub "${EcrStackName}-EcrRepository"
+              - ":"
+              - !Ref WebDockerImageTag
+          PortMappings:
+            - { ContainerPort: 80, HostPort: 80 }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: docker
+
+  # CloudWatch Logsロググループ
+  WebAppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+      RetentionInDays: 7
 
   SpotCapacityProvider:
     Type: AWS::ECS::CapacityProvider
