@@ -166,6 +166,9 @@ Resources:
         IamInstanceProfile:
           Name:
             Ref: SpotEc2Profile
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
         UserData:
           Fn::Base64:
             Fn::Sub: >
