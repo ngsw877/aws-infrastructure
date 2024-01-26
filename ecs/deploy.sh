@@ -7,7 +7,7 @@ if [[ "$2" = "fargate" ]]; then
   TEMPLATE="fargate.yml"
   PARAMETERS_FILE="fargate.json"
 
-elif [[ "$2" = "spot-instance" ]]; then
+elif [[ "$2" = "spot" ]]; then
   STACK_NAME="sample-spot-instance"
   TEMPLATE="spot-instance.yml"
   PARAMETERS_FILE="spot-instance.json"
