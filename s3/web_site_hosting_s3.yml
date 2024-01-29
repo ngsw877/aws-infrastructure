@@ -26,11 +26,14 @@ Resources:
               SSEAlgorithm: AES256
       WebsiteConfiguration:
         IndexDocument: index.html
+      # アクセスを許可するIPアドレスが指定されているとバケットポリシーでのIPアドレス制限がされるため、
+      # 「パブリックアクセスをすべてブロック：オン」に設定する
+      # 参考：https://techblog.ap-com.co.jp/entry/2024/01/26/215603
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
+        BlockPublicAcls: !If [ IsAllowedIpAddressSpecified, true, false ]
+        BlockPublicPolicy: !If [ IsAllowedIpAddressSpecified, true, false ]
+        IgnorePublicAcls: !If [ IsAllowedIpAddressSpecified, true, false ]
+        RestrictPublicBuckets: !If [ IsAllowedIpAddressSpecified, true, false ]
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
