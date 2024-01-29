@@ -1,5 +1,9 @@
 [
   {
+    "ParameterKey": "ManagedScalingEnabledState",
+    "ParameterValue": "ENABLED"
+  },
+  {
     "ParameterKey": "EcsInstanceDesiredCount",
     "ParameterValue": "1"
   },

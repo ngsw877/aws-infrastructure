@@ -25,6 +25,13 @@ Parameters:
   AppDebug:
     Type: String
     Default: "true"
+  ManagedScalingEnabledState:
+    Description: "Specifies the state of managed scaling for the ECS Capacity Provider (ENABLED or DISABLED)."
+    Type: String
+    Default: "ENABLED"
+    AllowedValues:
+      - "ENABLED"
+      - "DISABLED"
   EcsInstanceDesiredCount:
     Type: Number
     Default: 1
@@ -397,7 +404,7 @@ Resources:
         AutoScalingGroupArn:
           Ref: WebAppAutoScalingGroup
         ManagedScaling:
-          Status: ENABLED
+          Status: !Ref ManagedScalingEnabledState
           TargetCapacity: 100
 
   ECSCluster:
