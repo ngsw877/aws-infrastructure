@@ -1,0 +1,50 @@
+[
+  {
+    "ParameterKey": "AmazonLinux2LatestAmiId",
+    "ParameterValue": "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
+  },
+  {
+    "ParameterKey": "ManagedScalingEnabledState",
+    "ParameterValue": "ENABLED"
+  },
+  {
+    "ParameterKey": "EcsInstanceDesiredCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "EcsInstanceMinCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "EcsInstanceMaxCount",
+    "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "TaskDesiredCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "TaskMinCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "TaskMaxCount",
+    "ParameterValue": "2"
+  },
+  {
+    "ParameterKey": "InstanceType1",
+    "ParameterValue": "g4dn.xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType2",
+    "ParameterValue": "g4dn.2xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType3",
+    "ParameterValue": "g4dn.4xlarge"
+  },
+  {
+    "ParameterKey": "InstanceType4",
+    "ParameterValue": "g4dn.8xlarge"
+  }
+]

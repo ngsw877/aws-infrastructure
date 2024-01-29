@@ -10,7 +10,15 @@ if [[ "$2" = "fargate" ]]; then
 elif [[ "$2" = "spot" ]]; then
   STACK_NAME="sample-spot-instance"
   TEMPLATE="spot-instance.yml"
-  PARAMETERS_FILE="spot-instance.json"
+
+  # GPUインスタンスの使用を尋ねる
+  echo "Use GPU instance? (y/n)"
+  read -r USE_GPU
+  if [[ "$USE_GPU" = "y" ]]; then
+    PARAMETERS_FILE="spot-instance-for-gpu.json"
+  else
+    PARAMETERS_FILE="spot-instance.json"
+  fi
 
 else
   echo "ERROR: 第2引数が不正です。"
@@ -26,7 +34,7 @@ aws cloudformation \
   deploy \
   --profile "${PROFILE}" \
   --template-file ${TEMPLATE} \
-  --stack-name ${STACK_NAME}  \
+  --stack-name ${STACK_NAME} \
   --parameter-overrides "file://${PARAMETERS_FILE}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --no-execute-changeset

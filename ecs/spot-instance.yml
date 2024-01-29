@@ -40,7 +40,7 @@ Parameters:
     Default: 1
   EcsInstanceMaxCount:
     Type: Number
-    Default: 1
+    Default: 2
   TaskDesiredCount:
     Type: Number
     Default: 1
@@ -49,22 +49,22 @@ Parameters:
     Default: 1
   TaskMaxCount:
     Type: Number
-    Default: 1
+    Default: 2
   AutoScalingTargetValue:
     Type: Number
     Default: 80
   InstanceType1:
     Type: String
-    Default: "g4dn.xlarge"
+    Default: "m5.xlarge"
   InstanceType2:
     Type: String
-    Default: "g4dn.2xlarge"
+    Default: "m5.2xlarge"
   InstanceType3:
     Type: String
-    Default: "g4dn.4xlarge"
+    Default: "m5.4xlarge"
   InstanceType4:
     Type: String
-    Default: "g4dn.8xlarge"
+    Default: "m5.8xlarge"
   VpcStackName:
     Type: String
     Default: "common-vpc"
