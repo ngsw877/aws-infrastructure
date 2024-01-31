@@ -1,5 +1,9 @@
 [
   {
+    "ParameterKey": "AmazonLinux2LatestAmiId",
+    "ParameterValue": "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+  },
+  {
     "ParameterKey": "ManagedScalingEnabledState",
     "ParameterValue": "ENABLED"
   },
