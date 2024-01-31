@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  SSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /sample-key
+      # NOTE: Typeの値として、SecureStringが有効とされているもののCFnではサポートされていないので注意（2024.01.31現在）
+      # @see https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-ssm-parameter.html#cfn-ssm-parameter-type
+      Type: String
+      Value: |
+        sample-value
+      DataType: text
+      Tier: Standard
