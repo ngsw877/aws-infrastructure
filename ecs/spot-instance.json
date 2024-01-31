@@ -33,11 +33,11 @@
   },
   {
     "ParameterKey": "InstanceType1",
-    "ParameterValue": "t3.small"
+    "ParameterValue": "t3.medium"
   },
   {
     "ParameterKey": "InstanceType2",
-    "ParameterValue": "t3.medium"
+    "ParameterValue": "t3.large"
   },
   {
     "ParameterKey": "InstanceType3",
