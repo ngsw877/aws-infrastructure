@@ -7,7 +7,7 @@ VALUE="$3"
 aws ssm \
   get-parameter \
   --profile "${PROFILE}" \
-  --name "/${KEY}" \
+  --name "${KEY}" \
   1>/dev/null 2>&1
 
 # 254 = ParameterNotFound
@@ -15,7 +15,7 @@ if [ $? -eq 254 ]; then
   aws ssm \
     put-parameter \
     --profile "${PROFILE}" \
-    --name "/${KEY}" \
+    --name "${KEY}" \
     --value "${VALUE}" \
     --type SecureString
 else
@@ -24,7 +24,7 @@ else
   if [[ $overwrite == "y" ]]; then
     aws ssm put-parameter \
       --profile "${PROFILE}" \
-      --name "/${KEY}" \
+      --name "${KEY}" \
       --value "${VALUE}" \
       --type SecureString \
       --overwrite
