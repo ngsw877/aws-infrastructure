@@ -74,6 +74,12 @@ Parameters:
   EcrStackName:
     Type: String
     Default: "common-ecr"
+  ContainerInsightsState:
+    Type: String
+    Default: "disabled"
+    AllowedValues:
+      - "enabled"
+      - "disabled"
 
 Resources:
   SpotEc2Role:
@@ -417,7 +423,7 @@ Resources:
         - Ref: SpotCapacityProvider
       ClusterSettings:
         - Name: containerInsights
-          Value: enabled
+          Value: !Ref ContainerInsightsState
 
   # NAT Gateway
   NatGateway:
