@@ -229,7 +229,7 @@ Resources:
                 !Sub "${VpcStackName}-PrivateSubnet3"
           SecurityGroups:
             - Fn::ImportValue:
-                !Sub "${SecurityGroupStackName}-BackendSecurityGroup"
+                !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
       LoadBalancers:
         - ContainerName:
             Ref: WebContainerName

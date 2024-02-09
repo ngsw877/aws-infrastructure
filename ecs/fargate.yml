@@ -4,20 +4,20 @@ Parameters:
   EnvName:
     Type: String
     Default: sample-fargate
-  WebBackendEcsTaskCpu:
+  WebAppEcsTaskCpu:
     Type: Number
     Default: 1024
-  WebBackendEcsTaskMemory:
+  WebAppEcsTaskMemory:
     Type: Number
     Default: 2048
-  AppBackendDockerImageTag:
+  AppWebAppDockerImageTag:
     Type: String
     Default: "app"
   AppEnv:
     Type: String
   AppDebug:
     Type: String
-  WebBackendDockerImageTag:
+  WebAppDockerImageTag:
     Type: String
     Default: "web"
   VpcStackName:
@@ -29,13 +29,13 @@ Parameters:
   EcrStackName:
     Type: String
     Default: "common-ecr"
-  BackendTaskDesiredCount:
+  WebAppTaskDesiredCount:
     Type: Number
     Default: 1
 
 Resources:
   # ECSタスクロール
-  BackendEcsTaskRole:
+  WebAppEcsTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -51,7 +51,7 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole
-      RoleName: !Sub "${AWS::StackName}-BackendEcsTaskRole"
+      RoleName: !Sub "${AWS::StackName}-WebAppEcsTaskRole"
 
   # ECS タスク実行ロール
   ExecutionRole:
@@ -72,18 +72,18 @@ Resources:
     Properties:
       ClusterName: !Sub "${AWS::StackName}-cluster"
 
-  # ECSタスク: Web (Backend)
-  BackendEcsTask:
+  # ECSタスク: Web (WebApp)
+  WebAppEcsTask:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub "${AWS::StackName}-web-back"
-      TaskRoleArn: !Ref BackendEcsTaskRole
+      TaskRoleArn: !Ref WebAppEcsTaskRole
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !GetAtt ExecutionRole.Arn
-      Cpu: !Ref WebBackendEcsTaskCpu
-      Memory: !Ref WebBackendEcsTaskMemory
+      Cpu: !Ref WebAppEcsTaskCpu
+      Memory: !Ref WebAppEcsTaskMemory
       ContainerDefinitions:
         # appコンテナ
         - Name: app
@@ -95,7 +95,7 @@ Resources:
                 - Fn::ImportValue:
                     !Sub "${EcrStackName}-EcrRepository"
                 - ":"
-                - !Ref AppBackendDockerImageTag
+                - !Ref AppWebAppDockerImageTag
           PortMappings:
             - { ContainerPort: 9000, HostPort: 9000 }
           LogConfiguration:
@@ -123,7 +123,7 @@ Resources:
                 - Fn::ImportValue:
                     !Sub "${EcrStackName}-EcrRepository"
                 - ":"
-                - !Ref WebBackendDockerImageTag
+                - !Ref WebAppDockerImageTag
           PortMappings:
             - { ContainerPort: 80, HostPort: 80 }
           LogConfiguration:
@@ -141,20 +141,20 @@ Resources:
       RetentionInDays: 7
 
   # ECSサービス
-  BackendEcsService:
+  WebAppEcsService:
     Type: AWS::ECS::Service
     DependsOn:
-      - WebLoadBalancerHttpListener # TGがリスナーへ登録される前にBackendEcsServiceを作成しようとするとTBがLBに紐付けられていないエラーになる
+      - WebLoadBalancerHttpListener # TGがリスナーへ登録される前にWebAppEcsServiceを作成しようとするとTBがLBに紐付けられていないエラーになる
       - ApplicationLogGroup
     Properties:
       Cluster: !Ref Cluster
-      DesiredCount: !Ref BackendTaskDesiredCount
-      TaskDefinition: !Ref BackendEcsTask
+      DesiredCount: !Ref WebAppTaskDesiredCount
+      TaskDefinition: !Ref WebAppEcsTask
       LaunchType: FARGATE
       LoadBalancers:
         - ContainerName: web # タスク定義のContainerDefinitions.Name
           ContainerPort: 80
-          TargetGroupArn: !Ref BackendTaskTargetGroup
+          TargetGroupArn: !Ref WebAppTaskTargetGroup
       EnableExecuteCommand: true
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -167,12 +167,12 @@ Resources:
                 !Sub "${VpcStackName}-PrivateSubnet2"
           SecurityGroups:
             - Fn::ImportValue:
-                !Sub "${SecurityGroupStackName}-BackendSecurityGroup"
+                !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
 
   #======================
   # ALB
   #======================
-  BackendTaskTargetGroup:
+  WebAppTaskTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       Protocol: HTTP
@@ -191,7 +191,7 @@ Resources:
       Protocol: HTTP
       Port: 80
       DefaultActions:
-        - TargetGroupArn: !Ref BackendTaskTargetGroup
+        - TargetGroupArn: !Ref WebAppTaskTargetGroup
           Type: forward
 
   WebLoadBalancer:

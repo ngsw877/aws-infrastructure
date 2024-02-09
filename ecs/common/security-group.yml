@@ -29,11 +29,11 @@ Resources:
         Fn::ImportValue:
           !Sub "${VpcStackName}-VpcId"
 
-  # バックエンドコンテナアプリ用セキュリティグループ
-  BackendSecurityGroup:
+  # コンテナアプリ用セキュリティグループ
+  WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Allow Access From LoadBalancer to Backend Service"
+      GroupDescription: "Allow Access From LoadBalancer to WebApp Service"
       GroupName: !Sub "${AWS::StackName}-bg-container-sg"
       VpcId:
         Fn::ImportValue:
@@ -44,15 +44,15 @@ Resources:
           IpProtocol: "-1"
 
   # ルール紐付け
-  ## Internet LB -> Backend Container
-  BackendSgFromLoadBalancerSg:
+  ## Internet LB -> WebApp Container
+  WebAppSgFromLoadBalancerSg:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: HTTP for Ingress
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
-      GroupId: !Ref BackendSecurityGroup
+      GroupId: !Ref WebAppSecurityGroup
       SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
 
 Outputs:
@@ -61,8 +61,8 @@ Outputs:
         Value: !Ref LoadBalancerSecurityGroup
         Export:
           Name: !Sub "${AWS::StackName}-LoadBalancerSecurityGroup"
-    BackendSecurityGroup:
-        Description: Common Security Group for Backend Container
-        Value: !Ref BackendSecurityGroup
+    WebAppSecurityGroup:
+        Description: Common Security Group for WebApp Container
+        Value: !Ref WebAppSecurityGroup
         Export:
-          Name: !Sub "${AWS::StackName}-BackendSecurityGroup"
+          Name: !Sub "${AWS::StackName}-WebAppSecurityGroup"
