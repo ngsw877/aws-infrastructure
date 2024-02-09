@@ -1,10 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 誰でもアクセスできる静的Webサイトホスティング用S3バケットを作成する
+Description: IPアドレス制限付きの、静的Webサイトホスティング用S3バケットを作成する
 
 Parameters:
   BucketName:
     Type: String
-    Default: web-site-hosting-bucket
+    Default: web-site-hosting-bucket-with-ip-limit
+  AllowedIpAddress:
+    Type: String
 
 Resources:
   WebSiteHostingBucket:
@@ -20,11 +22,14 @@ Resources:
               SSEAlgorithm: AES256
       WebsiteConfiguration:
         IndexDocument: index.html
+      # アクセスを許可するIPアドレスが指定されているとバケットポリシーでのIPアドレス制限がされるため、
+      # 「パブリックアクセスをすべてブロック：オン」に設定する
+      # 参考：https://techblog.ap-com.co.jp/entry/2024/01/26/215603
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -38,3 +43,7 @@ Resources:
             Principal: '*'
             Action: 's3:GetObject'
             Resource: !Sub 'arn:aws:s3:::${WebSiteHostingBucket}/*'
+            Condition:
+              IpAddress:
+                aws:SourceIp:
+                  - !Ref AllowedIpAddress
