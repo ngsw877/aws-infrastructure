@@ -116,7 +116,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
-  WebAppTaskRole:
+  WebAppEcsTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -129,7 +129,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
       Path: "/"
-      RoleName: !Sub "${AWS::StackName}-WebAppTaskRole"
+      RoleName: !Sub "${AWS::StackName}-WebAppEcsTaskRole"
 
   WebAppAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -207,7 +207,7 @@ Resources:
       Cluster:
         Ref: ECSCluster
       TaskDefinition:
-        Ref: WebAppTask
+        Ref: WebAppEcsTask
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
@@ -335,7 +335,7 @@ Resources:
           TargetGroupArn:
             Ref: TargetGroup
 
-  WebAppTask:
+  WebAppEcsTask:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub "${AWS::StackName}-web-app"
@@ -347,7 +347,7 @@ Resources:
       ExecutionRoleArn:
         Ref: WebAppExecutionRole
       TaskRoleArn:
-        Ref: WebAppTaskRole
+        Ref: WebAppEcsTaskRole
       ContainerDefinitions:
         # appコンテナ
         - Name: app
