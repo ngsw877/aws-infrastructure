@@ -359,9 +359,9 @@ Resources:
         - CertificateArn: !Ref CertificateArn
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref WebAppLoadBalancer
+          TargetGroupArn: !Ref TargetGroup
 
-  WebRoute53RecordSet:
+  WebAppRoute53RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
