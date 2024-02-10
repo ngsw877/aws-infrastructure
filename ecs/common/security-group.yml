@@ -6,59 +6,73 @@ Parameters:
     Default: "common-vpc"
 
 Resources:
-  #======================
-  # Security Group
-  #======================
-  # インターネット公開のセキュリティグループ： ALB
+  # インターネット公開のALB用セキュリティグループ
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Security group for ALB"
       GroupName: !Sub "${AWS::StackName}-alb-sg"
-      SecurityGroupEgress:
-        - IpProtocol: "-1"
-          CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          CidrIp: 0.0.0.0/0
-          FromPort: 80
-          ToPort: 80
-          Description: Allow HTTP traffic
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-          Description: Allow HTTPS traffic
       VpcId:
         Fn::ImportValue:
           !Sub "${VpcStackName}-VpcId"
+
+  LoadBalancerSecurityGroupHttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+      Description: Allow HTTP traffic
+
+  LoadBalancerSecurityGroupHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+      Description: Allow HTTPS traffic
+
+  LoadBalancerSecurityGroupEgressAll:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: "-1"
+      CidrIp: 0.0.0.0/0
+      Description: Allow all outbound traffic
+
 
   # コンテナアプリ用セキュリティグループ
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Allow Access From LoadBalancer to WebApp Service"
-      GroupName: !Sub "${AWS::StackName}-bg-container-sg"
+      GroupName: !Sub "${AWS::StackName}-webapp-sg"
       VpcId:
         Fn::ImportValue:
           !Sub "${VpcStackName}-VpcId"
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
 
-  # ルール紐付け
-  ## Internet LB -> WebApp Container
-  WebAppSgFromLoadBalancerSg:
+  # Internet ALB -> WebApp Container
+  WebAppSecurityGroupIngressFromLoadBalancer:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      Description: HTTP for Ingress
+      GroupId: !Ref WebAppSecurityGroup
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
-      GroupId: !Ref WebAppSecurityGroup
       SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      Description: Allow HTTP traffic from LoadBalancer to WebApp
+
+  WebAppSecurityGroupEgressAllTraffic:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref WebAppSecurityGroup
+      IpProtocol: "-1"
+      CidrIp: 0.0.0.0/0
+      Description: "Allow all outbound traffic by default"
 
 Outputs:
     LoadBalancerSecurityGroup:
