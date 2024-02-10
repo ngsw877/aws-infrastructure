@@ -16,15 +16,20 @@ Resources:
       GroupDescription: "Security group for ALB"
       GroupName: !Sub "${AWS::StackName}-alb-sg"
       SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
       SecurityGroupIngress:
-        - CidrIp: 0.0.0.0/0
-          Description: from 0.0.0.0/0:80
-          IpProtocol: tcp
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
           FromPort: 80
           ToPort: 80
+          Description: Allow HTTP traffic
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS traffic
       VpcId:
         Fn::ImportValue:
           !Sub "${VpcStackName}-VpcId"
