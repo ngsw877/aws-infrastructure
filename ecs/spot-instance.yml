@@ -85,6 +85,10 @@ Parameters:
     Default: "ELBSecurityPolicy-TLS13-1-2-2021-06"
   CertificateArn:
     Type: String
+  HostedZoneId:
+    Type: String
+  DomainName:
+    Type: String
 
 Resources:
   SpotEc2Role:
@@ -356,6 +360,16 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppLoadBalancer
+
+  WebRoute53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Type: A
+      Name: !Ref DomainName
+      AliasTarget:
+        HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
+        DNSName: !GetAtt WebAppLoadBalancer.DNSName
 
   WebAppEcsTask:
     Type: AWS::ECS::TaskDefinition
