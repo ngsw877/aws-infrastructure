@@ -74,6 +74,9 @@ Parameters:
   EcrStackName:
     Type: String
     Default: "common-ecr"
+  AcmStackName:
+    Type: String
+    Default: "common-acm-for-alb"
   ContainerInsightsState:
     Type: String
     Default: "disabled"
@@ -356,7 +359,8 @@ Resources:
       Protocol: HTTPS
       SslPolicy: !Ref ElbSecurityPolicy
       Certificates:
-        - CertificateArn: !Ref CertificateArn
+        - CertificateArn: !ImportValue
+            'Fn::Sub': "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
@@ -364,9 +368,11 @@ Resources:
   WebAppRoute53RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneId: !Ref HostedZoneId
       Type: A
-      Name: !Ref DomainName
+      HostedZoneId: !ImportValue
+        'Fn::Sub': "${AcmStackName}-HostedZoneId"
+      Name: !ImportValue
+        'Fn::Sub': "${AcmStackName}-DomainName"
       AliasTarget:
         HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
         DNSName: !GetAtt WebAppLoadBalancer.DNSName

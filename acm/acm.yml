@@ -16,3 +16,17 @@ Resources:
         - DomainName: !Ref DomainName
           # Route53をドメインレジストラーとして使用している場合に利用可能で、ACMによってCNAMEがドメインレコードに追加されます
           HostedZoneId: !Ref HostedZoneId
+
+Outputs:
+  CertificateArn:
+    Value: !Ref Certificate
+    Export:
+      Name: !Sub "${AWS::StackName}-CertificateArn"
+  DomainName:
+    Value: !Ref DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-DomainName"
+  HostedZoneId:
+    Value: !Ref HostedZoneId
+    Export:
+      Name: !Sub "${AWS::StackName}-HostedZoneId"
