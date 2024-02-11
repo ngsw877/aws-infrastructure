@@ -27,6 +27,8 @@ build-push-web:
 	docker push "$(ECR_URL)/$(REPO_NAME):web"
 
 build-push-app:
-	docker build --platform linux/amd64 -t "$(APP_TAG_NAME):latest" php
+	docker build -t "$(APP_TAG_NAME):latest" \
+		--platform linux/amd64 \
+ 		php
 	docker tag "$(APP_TAG_NAME):latest" "$(ECR_URL)/$(REPO_NAME):app"
 	docker push "$(ECR_URL)/$(REPO_NAME):app"
