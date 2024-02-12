@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
-  DomainName:
+  Fqdn:
     Type: String
   HostedZoneId:
     Type: String
@@ -10,10 +10,10 @@ Resources:
   Certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
-      DomainName: !Ref DomainName
+      DomainName: !Ref Fqdn
       ValidationMethod: DNS
       DomainValidationOptions:
-        - DomainName: !Ref DomainName
+        - DomainName: !Ref Fqdn
           # Route53をドメインレジストラーとして使用している場合に利用可能で、ACMによってCNAMEがドメインレコードに追加されます
           HostedZoneId: !Ref HostedZoneId
 
@@ -23,9 +23,9 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-CertificateArn"
   DomainName:
-    Value: !Ref DomainName
+    Value: !Ref Fqdn
     Export:
-      Name: !Sub "${AWS::StackName}-DomainName"
+      Name: !Sub "${AWS::StackName}-Fqdn"
   HostedZoneId:
     Value: !Ref HostedZoneId
     Export:
