@@ -10,7 +10,7 @@ if [[ "$2" != "" ]]; then
   BASE_STACK_NAME="$2"
 fi
 
-echo "バージニアリージョンを利用しますか？ (y/n)"
+echo "バージニア北部リージョンを利用しますか？ (y/n)"
 read -r USE_VIRGINIA_REGION
 if [[ "$USE_VIRGINIA_REGION" = "y" ]]; then
   REGION="us-east-1"
