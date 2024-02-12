@@ -365,7 +365,7 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
-  WebAppRoute53RecordSet:
+  WebAppHttpsDnsRecord:
     Type: AWS::Route53::RecordSet
     Properties:
       Type: A
