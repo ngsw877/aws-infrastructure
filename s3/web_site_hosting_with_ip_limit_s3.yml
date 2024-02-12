@@ -4,9 +4,10 @@ Description: IPアドレス制限付きの、静的Webサイトホスティン�
 Parameters:
   BucketName:
     Type: String
-    Default: web-site-hosting-bucket-with-ip-limit
+    Default: "web-site-hosting-bucket-with-ip-limit"
   AllowedIpAddress:
     Type: String
+    Default: "x.x.x.x"
 
 Resources:
   WebSiteHostingBucket:

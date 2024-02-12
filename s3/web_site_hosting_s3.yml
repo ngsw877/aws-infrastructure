@@ -4,7 +4,7 @@ Description: 誰でもアクセスできる静的Webサイトホスティング�
 Parameters:
   BucketName:
     Type: String
-    Default: web-site-hosting-bucket
+    Default: "web-site-hosting-bucket"
 
 Resources:
   WebSiteHostingBucket:

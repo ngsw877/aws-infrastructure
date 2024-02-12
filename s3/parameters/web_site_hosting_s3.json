@@ -1,0 +1,6 @@
+[
+  {
+    "ParameterKey": "BucketName",
+    "ParameterValue": "web-site-hosting-bucket"
+  }
+]

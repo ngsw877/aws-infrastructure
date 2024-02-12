@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "BucketName",
+    "ParameterValue": "web-site-hosting-bucket-with-ip-limit"
+  },
+  {
+    "ParameterKey": "AllowedIpAddress",
+    "ParameterValue": "x.x.x.x"
+  }
+]
