@@ -11,6 +11,13 @@ Parameters:
   CertificateArn:
     Type: String
     Default: "arn:aws:acm:us-east-1:12345678901:certificate/xxxxxxxxxxxxxxxxxxxx"
+  403ErrorPagePath:
+    Type: String
+    Default: "/error.html"
+  404ErrorPagePath:
+    Type: String
+    Default: "/error.html"
+
 
 Resources:
   WebSiteHostingBucket:
@@ -106,6 +113,15 @@ Resources:
         Restrictions:
           GeoRestriction:
             RestrictionType: "none"
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponsePagePath: !Ref 403ErrorPagePath
+            ResponseCode: 200
+            ErrorCachingMinTTL: 300
+          - ErrorCode: 404
+            ResponsePagePath: !Ref 404ErrorPagePath
+            ResponseCode: 200
+            ErrorCachingMinTTL: 300
 
   CloudFrontDistributionDnsRecord:
     Type: AWS::Route53::RecordSetGroup
