@@ -2,20 +2,25 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: HTTPS通信を可能とした、前段にCloudFrontを配置したWebサイトホスティング用S3バケットの構成を構築する
 
 Parameters:
-  DomainName:
+  Fqdn:
     Type: String
-    Default: "example.com"
+    Default: "hoge.example.com"
   HostedZoneId:
     Type: String
+    Default: "ZXXXXXXXXXXXXXXXXXXXXX"
   CertificateArn:
     Type: String
+    Default: "arn:aws:acm:us-east-1:12345678901:certificate/xxxxxxxxxxxxxxxxxxxx"
 
 Resources:
   WebSiteHostingBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
     Properties:
-      BucketName: !Ref DomainName
+      # S3 WebサイトエンドポイントでCNAMEを利用する際は、バケット名とCNAMEを一致させる必要あり
+      # @see https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/WebsiteEndpoints.html#website-endpoint-dns-cname
+      # @see https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/VirtualHosting.html#VirtualHostingCustomURLs
+      BucketName: !Ref Fqdn
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false
         BlockPublicPolicy: false
@@ -49,23 +54,18 @@ Resources:
       DistributionConfig:
         Logging:
           IncludeCookies: false
-          Bucket:
-            Fn::GetAtt:
-              - "CloudFrontLogBucket"
-              - "DomainName"
+          Bucket: !GetAtt CloudFrontLogBucket.DomainName
           Prefix: ""
         Comment: ""
         DefaultRootObject: "index.html"
         Origins:
           - ConnectionTimeout: 10
-            OriginAccessControlId: ""
             ConnectionAttempts: 3
-            OriginCustomHeaders: [ ]
-            DomainName: !Sub "${DomainName}.s3-website-ap-northeast-1.amazonaws.com"
+            DomainName: !Sub "${WebSiteHostingBucket}.s3-website-ap-northeast-1.amazonaws.com"
             OriginShield:
               Enabled: false
             OriginPath: ""
-            Id: !Sub "${DomainName}.s3-website-ap-northeast-1.amazonaws.com"
+            Id: !Sub "${WebSiteHostingBucket}.s3-website-ap-northeast-1.amazonaws.com"
             CustomOriginConfig:
               OriginKeepaliveTimeout: 5
               OriginReadTimeout: 30
@@ -84,45 +84,35 @@ Resources:
         PriceClass: "PriceClass_All"
         DefaultCacheBehavior:
           Compress: true
-          TrustedKeyGroups: [ ]
-          FunctionAssociations: [ ]
           AllowedMethods:
             - "HEAD"
             - "GET"
           CachedMethods:
             - "HEAD"
             - "GET"
-          LambdaFunctionAssociations: [ ]
           SmoothStreaming: false
-          TargetOriginId: !Sub "${DomainName}.s3-website-ap-northeast-1.amazonaws.com"
+          TargetOriginId: !Sub "${WebSiteHostingBucket}.s3-website-ap-northeast-1.amazonaws.com"
           ViewerProtocolPolicy: "redirect-to-https"
           CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized ポリシーのID
-          TrustedSigners: [ ]
-          FieldLevelEncryptionId: ""
         Staging: false
-        CustomErrorResponses: [ ]
-        ContinuousDeploymentPolicyId: ""
         OriginGroups:
           Quantity: 0
-          Items: [ ]
         Enabled: true
         Aliases:
-          - !Ref DomainName
+          - !Ref Fqdn
         IPV6Enabled: true
         WebACLId: ""
         HttpVersion: "http2and3"
         Restrictions:
           GeoRestriction:
-            Locations: [ ]
             RestrictionType: "none"
-        CacheBehaviors: [ ]
 
   CloudFrontDistributionDnsRecord:
     Type: AWS::Route53::RecordSetGroup
     Properties:
       HostedZoneId: !Ref HostedZoneId
       RecordSets:
-        - Name: !Ref DomainName
+        - Name: !Ref Fqdn
           Type: A
           AliasTarget:
             # Z2FDTNDATAQYW2はCloudFront固有の固定HostedZoneId
