@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: HTTPS通信を可能とした、前段にCloudFrontを配置したWebサイトホスティング用S3バケットの構成を構築する（Webサイトエンドポイント）
+Description: HTTPS通信を可能とした、前段にCloudFrontを配置したWebサイトホスティング用S3バケットの構成を構築する（REST APIエンドポイント）
 
 Parameters:
   Fqdn:
@@ -18,21 +18,17 @@ Parameters:
     Type: String
     Default: "/error.html"
 
-
 Resources:
   WebSiteHostingBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
     Properties:
-      # S3 WebサイトエンドポイントでCNAMEを利用する際は、バケット名とCNAMEを一致させる必要あり
-      # @see https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/WebsiteEndpoints.html#website-endpoint-dns-cname
-      # @see https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/VirtualHosting.html#VirtualHostingCustomURLs
-      BucketName: !Ref Fqdn
+      BucketName: !Sub "${AWS::StackName}-bucket"
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -51,9 +47,22 @@ Resources:
         Statement:
           - Sid: 'PublicReadGetObject'
             Effect: 'Allow'
-            Principal: '*'
+            Principal:
+              Service: "cloudfront.amazonaws.com"
             Action: 's3:GetObject'
             Resource: !Sub 'arn:aws:s3:::${WebSiteHostingBucket}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  CloudFrontOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -68,22 +77,14 @@ Resources:
         Origins:
           - ConnectionTimeout: 10
             ConnectionAttempts: 3
-            DomainName: !Sub "${WebSiteHostingBucket}.s3-website-ap-northeast-1.amazonaws.com"
+            DomainName: !GetAtt WebSiteHostingBucket.RegionalDomainName
             OriginShield:
               Enabled: false
             OriginPath: ""
             Id: !Sub "${WebSiteHostingBucket}.s3-website-ap-northeast-1.amazonaws.com"
-            CustomOriginConfig:
-              OriginKeepaliveTimeout: 5
-              OriginReadTimeout: 30
-              OriginSSLProtocols:
-                - "SSLv3"
-                - "TLSv1"
-                - "TLSv1.1"
-                - "TLSv1.2"
-              HTTPSPort: 443
-              HTTPPort: 80
-              OriginProtocolPolicy: "http-only"
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !Ref CloudFrontOac
         ViewerCertificate:
           MinimumProtocolVersion: "TLSv1.2_2021"
           SslSupportMethod: "sni-only"

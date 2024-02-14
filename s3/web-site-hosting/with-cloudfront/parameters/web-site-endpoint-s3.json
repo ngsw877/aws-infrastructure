@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "Fqdn",
+    "ParameterValue": "hoge.example.com"
+  },
+  {
+    "ParameterKey": "HostedZoneId",
+    "ParameterValue": "ZXXXXXXXXXXXXXXXXXXXXX"
+  },
+  {
+    "ParameterKey": "CertificateArn",
+    "ParameterValue": "arn:aws:acm:us-east-1:12345678901:certificate/xxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+    "ParameterKey": "403ErrorPagePath",
+    "ParameterValue": "/error.html"
+  },
+  {
+    "ParameterKey": "404ErrorPagePath",
+    "ParameterValue": "/error.html"
+  }
+]
