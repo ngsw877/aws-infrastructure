@@ -35,6 +35,6 @@ aws cloudformation \
   --profile "${PROFILE}" \
   --template-file ${TEMPLATE} \
   --stack-name ${STACK_NAME} \
-  --parameter-overrides "file://${PARAMETERS_FILE}" \
+  --parameter-overrides "file://parameters/${PARAMETERS_FILE}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --no-execute-changeset
