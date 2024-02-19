@@ -167,8 +167,7 @@ Resources:
           SpotAllocationStrategy: price-capacity-optimized
         LaunchTemplate:
           LaunchTemplateSpecification:
-            LaunchTemplateId:
-              Ref: WebAppLaunchTemplate
+            LaunchTemplateId: !Ref WebAppLaunchTemplate
             Version:
               Fn::GetAtt:
                 - WebAppLaunchTemplate
@@ -187,11 +186,9 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId:
-          Ref: AmazonLinux2LatestAmiId
+        ImageId: !Ref AmazonLinux2LatestAmiId
         IamInstanceProfile:
-          Name:
-            Ref: SpotEc2Profile
+          Name: !Ref SpotEc2Profile
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
@@ -216,10 +213,8 @@ Resources:
       - WebAppHttpLoadBalancerListener
       - WebAppLogGroup
     Properties:
-      Cluster:
-        Ref: ECSCluster
-      TaskDefinition:
-        Ref: WebAppEcsTask
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref WebAppEcsTask
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
@@ -238,14 +233,11 @@ Resources:
             - Fn::ImportValue:
                 !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
       LoadBalancers:
-        - ContainerName:
-            Ref: WebContainerName
+        - ContainerName: !Ref WebContainerName
           ContainerPort: 80
-          TargetGroupArn:
-            Ref: TargetGroup
+          TargetGroupArn: !Ref TargetGroup
       CapacityProviderStrategy:
-        - CapacityProvider:
-            Ref: SpotCapacityProvider
+        - CapacityProvider: !Ref SpotCapacityProvider
           Weight: 1
           Base: 1
 
@@ -386,13 +378,11 @@ Resources:
         - EC2
       Cpu: 256
       Memory: 512
-      ExecutionRoleArn:
-        Ref: WebAppExecutionRole
-      TaskRoleArn:
-        Ref: WebAppEcsTaskRole
+      ExecutionRoleArn: !Ref WebAppExecutionRole
+      TaskRoleArn: !Ref WebAppEcsTaskRole
       ContainerDefinitions:
         # appコンテナ
-        - Name: app
+        - Name: !Ref AppContainerName
           Image:
             Fn::Join:
               - ""
@@ -419,8 +409,7 @@ Resources:
               Value: "Asia/Tokyo"
           ReadonlyRootFilesystem: false
         # webコンテナ
-        - Name:
-            Ref: WebContainerName
+        - Name: !Ref WebContainerName
           Image: !Join
             - ""
             - - !Ref AWS::AccountId
@@ -450,8 +439,7 @@ Resources:
     DependsOn: WebAppAutoScalingGroup
     Properties:
       AutoScalingGroupProvider:
-        AutoScalingGroupArn:
-          Ref: WebAppAutoScalingGroup
+        AutoScalingGroupArn: !Ref WebAppAutoScalingGroup
         ManagedScaling:
           Status: !Ref ManagedScalingEnabledState
           TargetCapacity: 100
