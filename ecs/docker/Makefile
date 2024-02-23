@@ -1,4 +1,14 @@
-.PHONY: get-ecr-url login logout build-push-web build-push-app
+.PHONY: get-ecr-url \
+        login \
+        logout \
+        build-web \
+        tag-web \
+        push-web \
+        deploy-web \
+        build-app \
+        tag-app \
+        push-app \
+        deploy-app
 
 PROFILE ?= default
 NGINX_TAG_NAME = "sample-nginx-amd64"
@@ -17,18 +27,36 @@ login:
 logout:
 	docker logout $(ECR_URL)
 
-build-push-web:
+build-web:
 	docker build -t "$(NGINX_TAG_NAME):latest" \
 		--platform linux/amd64 \
 		--build-arg BACKEND_APP_DOMAIN=127.0.0.1 \
 		--build-arg RESOLVER=169.254.169.253 \
 		nginx
+
+tag-web:
 	docker tag "$(NGINX_TAG_NAME):latest" "$(ECR_URL)/$(REPO_NAME):web"
+
+push-web:
 	docker push "$(ECR_URL)/$(REPO_NAME):web"
 
-build-push-app:
+deploy-web:
+	@make build-web
+	@make tag-web
+	@make push-web
+
+build-app:
 	docker build -t "$(APP_TAG_NAME):latest" \
 		--platform linux/amd64 \
  		php
+
+tag-app:
 	docker tag "$(APP_TAG_NAME):latest" "$(ECR_URL)/$(REPO_NAME):app"
+
+push-app:
 	docker push "$(ECR_URL)/$(REPO_NAME):app"
+
+deploy-app:
+	@make build-app
+	@make tag-app
+	@make push-app
