@@ -29,11 +29,14 @@ Resources:
   GitHubActionsOidcProvider:
     Type: AWS::IAM::OIDCProvider
     Properties:
-      Url: https://token.actions.githubusercontent.com
+      Url: "https://token.actions.githubusercontent.com"
       ClientIdList:
-        - sts.amazonaws.com
+        - "sts.amazonaws.com"
       ThumbprintList:
-        - ffffffffffffffffffffffffffffffffffffffff
+        # サムプリントは適当な値で良い（GitHub ActionsとAWSのOIDC連携の際、AWSで自動的に証明書の検証をしてくれるようになったため）
+        # @see https://kakakakakku.hatenablog.com/entry/2023/07/14/095049
+        # @see https://github.com/aws-actions/configure-aws-credentials?tab=readme-ov-file#configuring-iam-to-trust-github
+        - "ffffffffffffffffffffffffffffffffffffffff"
 
 Outputs:
   GitHubActionsRoleArn:
