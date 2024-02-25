@@ -11,3 +11,19 @@ jobs:
     steps:
       - name: Hello world
         run: echo "Hello world"
+      - name: Show secret
+        env:
+          TEST_SECRET: ${{ secrets.TEST }}
+        run: echo "Secret is ${{ secrets.TEST }}" && echo "Env is TEST_SECRET"
+      - name: Check secrets
+        env:
+          TEST_SECRET: ${{ secrets.TEST }}
+        run: |
+          if [ "$TEST_SECRET" = "hoge" ]; then
+            echo "hoge"
+          elif [ "$TEST_SECRET" = "fuga" ]; then
+            echo "fuga"
+          else
+            echo "Secret does not match any condition."
+          fi
+          
