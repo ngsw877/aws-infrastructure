@@ -5,6 +5,10 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   hello-world:
     runs-on: ubuntu-latest
@@ -26,4 +30,9 @@ jobs:
           else
             echo "Secret does not match any condition."
           fi
-          
+      - uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+      - run: aws sts get-caller-identity
+

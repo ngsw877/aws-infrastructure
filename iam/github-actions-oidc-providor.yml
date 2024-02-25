@@ -16,6 +16,15 @@ Resources:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
                 token.actions.githubusercontent.com:sub: repo:ngsw877/CloudFormation:*
+      Policies:
+        - PolicyName: StsGetCallerIdentity
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                Resource: '*'
 
   GitHubActionsOidcProvider:
     Type: AWS::IAM::OIDCProvider
