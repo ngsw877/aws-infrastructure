@@ -4,9 +4,6 @@ Parameters:
   AmazonLinux2LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
-  EnvName:
-    Type: String
-    Default: sample-ecs-spot-instance
   AppContainerName:
     Type: String
     Default: "app"
@@ -41,6 +38,12 @@ Parameters:
   EcsInstanceMaxCount:
     Type: Number
     Default: 2
+  EcsTaskCpu:
+    Type: Number
+    Default: 256
+  EcsTaskMemory:
+    Type: Number
+    Default: 512
   TaskDesiredCount:
     Type: Number
     Default: 1
@@ -86,12 +89,6 @@ Parameters:
   ElbSecurityPolicy:
     Type: String
     Default: "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  CertificateArn:
-    Type: String
-  HostedZoneId:
-    Type: String
-  DomainName:
-    Type: String
 
 Resources:
   SpotEc2Role:
@@ -114,7 +111,7 @@ Resources:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
-        - Ref: SpotEc2Role
+        - !Ref SpotEc2Role
 
   WebAppExecutionRole:
     Type: AWS::IAM::Role
@@ -146,9 +143,7 @@ Resources:
   WebAppAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      # 容量の再調整を有効化：
-      #「EC2 Instance Rebalance Recommendation」の通知が来たタイミングで新しいスポットインスタンスをリクエストし、起動成功したら古いインスタンスを終了する。
-      CapacityRebalance: true
+      CapacityRebalance: true # 容量の再調整を有効化：「EC2 Instance Rebalance Recommendation」の通知が来たタイミングで新しいスポットインスタンスをリクエストし、起動成功したら古いインスタンスを終了する。
       DesiredCapacity: !Ref EcsInstanceDesiredCount
       MinSize: !Ref EcsInstanceMinCount
       MaxSize: !Ref EcsInstanceMaxCount
@@ -168,10 +163,7 @@ Resources:
         LaunchTemplate:
           LaunchTemplateSpecification:
             LaunchTemplateId: !Ref WebAppLaunchTemplate
-            Version:
-              Fn::GetAtt:
-                - WebAppLaunchTemplate
-                - DefaultVersionNumber
+            Version: !GetAtt WebAppLaunchTemplate.DefaultVersionNumber
           Overrides:
             - InstanceType: !Ref InstanceType1
             - InstanceType: !Ref InstanceType2
@@ -179,7 +171,7 @@ Resources:
             - InstanceType: !Ref InstanceType4
       Tags:
         - Key: Name
-          Value: !Ref EnvName
+          Value: !Sub "${AWS::StackName}-auto-scaling-group"
           PropagateAtLaunch: true
 
   WebAppLaunchTemplate:
@@ -194,15 +186,13 @@ Resources:
           HttpPutResponseHopLimit: 2
         UserData:
           Fn::Base64:
-            Fn::Sub: >
-              #!/bin/bash 
+            Fn::Sub: |
+              #!/bin/bash -x
               
               # コンテナインスタンスをECSクラスタに登録
-              
-              echo ECS_CLUSTER=${AWS::StackName}ECSCluster >> /etc/ecs/ecs.config
+              echo ECS_CLUSTER=${AWS::StackName}-EcsCluster >> /etc/ecs/ecs.config
               
               # 自動ドレインを有効化
-              
               echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
 
   WebAppEcsService:
@@ -213,7 +203,7 @@ Resources:
       - WebAppHttpLoadBalancerListener
       - WebAppLogGroup
     Properties:
-      Cluster: !Ref ECSCluster
+      Cluster: !Ref EcsCluster
       TaskDefinition: !Ref WebAppEcsTask
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
@@ -242,20 +232,18 @@ Resources:
           Base: 1
 
   ServiceScalingTarget:
-    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
     DependsOn: WebAppEcsService
     Properties:
       MaxCapacity: !Ref TaskMaxCount
       MinCapacity: !Ref TaskMinCount
-      ResourceId: !Join ['/', [service, !Ref ECSCluster, !GetAtt WebAppEcsService.Name]]
-      RoleARN: !GetAtt
-        - AutoscalingRole
-        - Arn
+      ResourceId: !Join ['/', [service, !Ref EcsCluster, !GetAtt WebAppEcsService.Name]]
+      RoleARN: !GetAtt AutoscalingRole.Arn
       ScalableDimension: 'ecs:service:DesiredCount'
       ServiceNamespace: ecs
 
   ServiceScalingPolicy:
-    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
     DependsOn: WebAppEcsService
     Properties:
       PolicyName: !Join ['', [!Ref WebAppEcsService, AutoScalingPolicy]]
@@ -269,7 +257,7 @@ Resources:
         TargetValue: !Ref AutoScalingTargetValue
 
   AutoscalingRole:
-    Type: 'AWS::IAM::Role'
+    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -364,7 +352,7 @@ Resources:
       HostedZoneId: !ImportValue
         'Fn::Sub': "${AcmStackName}-HostedZoneId"
       Name: !ImportValue
-        'Fn::Sub': "${AcmStackName}-DomainName"
+        'Fn::Sub': "${AcmStackName}-Fqdn"
       AliasTarget:
         HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
         DNSName: !GetAtt WebAppLoadBalancer.DNSName
@@ -376,8 +364,8 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - EC2
-      Cpu: 256
-      Memory: 512
+      Cpu: !Ref EcsTaskCpu
+      Memory: !Ref EcsTaskMemory
       ExecutionRoleArn: !Ref WebAppExecutionRole
       TaskRoleArn: !Ref WebAppEcsTaskRole
       ContainerDefinitions:
@@ -397,7 +385,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-group: !Sub "/${AWS::StackName}/ecs"
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: docker
           Environment:
@@ -423,7 +411,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+              awslogs-group: !Sub "/${AWS::StackName}/ecs/"
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: docker
 
@@ -431,7 +419,7 @@ Resources:
   WebAppLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/${AWS::StackName}/ecs/${EnvName}"
+      LogGroupName: !Sub "/${AWS::StackName}/ecs/"
       RetentionInDays: 7
 
   SpotCapacityProvider:
@@ -444,13 +432,12 @@ Resources:
           Status: !Ref ManagedScalingEnabledState
           TargetCapacity: 100
 
-  ECSCluster:
+  EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName:
-        Fn::Sub: ${AWS::StackName}ECSCluster
+      ClusterName: !Sub "${AWS::StackName}-EcsCluster"
       CapacityProviders:
-        - Ref: SpotCapacityProvider
+        - !Ref SpotCapacityProvider
       ClusterSettings:
         - Name: containerInsights
           Value: !Ref ContainerInsightsState
