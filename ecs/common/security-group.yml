@@ -6,6 +6,7 @@ Parameters:
     Default: "common-vpc"
 
 Resources:
+  # 全トラフィック許可のセキュリティグループ
   AllTrafficAllowedSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -38,31 +39,30 @@ Resources:
   LoadBalancerSecurityGroupHttpIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      Description: "Allow HTTP traffic"
       GroupId: !Ref LoadBalancerSecurityGroup
-      IpProtocol: tcp
+      IpProtocol: "tcp"
       FromPort: 80
       ToPort: 80
-      CidrIp: 0.0.0.0/0
-      Description: Allow HTTP traffic
+      CidrIp: "0.0.0.0/0"
 
   LoadBalancerSecurityGroupHttpsIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      Description: "Allow HTTPS traffic"
       GroupId: !Ref LoadBalancerSecurityGroup
-      IpProtocol: tcp
+      IpProtocol: "tcp"
       FromPort: 443
       ToPort: 443
-      CidrIp: 0.0.0.0/0
-      Description: Allow HTTPS traffic
+      CidrIp: "0.0.0.0/0"
 
   LoadBalancerSecurityGroupEgressAll:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
+      Description: "Allow all outbound traffic"
       GroupId: !Ref LoadBalancerSecurityGroup
-      IpProtocol: "-1"
-      CidrIp: 0.0.0.0/0
-      Description: Allow all outbound traffic
-
+      IpProtocol: -1
+      CidrIp: "0.0.0.0/0"
 
   # コンテナアプリ用セキュリティグループ
   WebAppSecurityGroup:
@@ -78,20 +78,20 @@ Resources:
   WebAppSecurityGroupIngressFromLoadBalancer:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      Description: "Allow HTTP traffic from LoadBalancer to WebApp"
       GroupId: !Ref WebAppSecurityGroup
-      IpProtocol: tcp
+      IpProtocol: "tcp"
       FromPort: 80
       ToPort: 80
       SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-      Description: Allow HTTP traffic from LoadBalancer to WebApp
 
   WebAppSecurityGroupEgressAllTraffic:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      GroupId: !Ref WebAppSecurityGroup
-      IpProtocol: "-1"
-      CidrIp: 0.0.0.0/0
       Description: "Allow all outbound traffic by default"
+      GroupId: !Ref WebAppSecurityGroup
+      IpProtocol: -1
+      CidrIp: "0.0.0.0/0"
 
 Outputs:
     AllTrafficAllowedSecurityGroup:
