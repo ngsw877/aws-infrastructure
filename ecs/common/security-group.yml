@@ -6,6 +6,25 @@ Parameters:
     Default: "common-vpc"
 
 Resources:
+  AllTrafficAllowedSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for all traffic"
+      GroupName: !Sub "${AWS::StackName}-all-traffic-sg"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+
   # インターネット公開のALB用セキュリティグループ
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -75,6 +94,11 @@ Resources:
       Description: "Allow all outbound traffic by default"
 
 Outputs:
+    AllTrafficAllowedSecurityGroup:
+        Description: Common Security Group for All Traffic
+        Value: !Ref AllTrafficAllowedSecurityGroup
+        Export:
+          Name: !Sub "${AWS::StackName}-AllTrafficAllowedSecurityGroup"
     LoadBalancerSecurityGroup:
         Description: Common Security Group for ALB
         Value: !Ref LoadBalancerSecurityGroup
