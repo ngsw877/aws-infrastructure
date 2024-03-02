@@ -411,7 +411,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Sub "/${AWS::StackName}/ecs/"
+              awslogs-group: !Sub "/${AWS::StackName}/ecs"
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: docker
 
@@ -419,7 +419,7 @@ Resources:
   WebAppLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/${AWS::StackName}/ecs/"
+      LogGroupName: !Sub "/${AWS::StackName}/ecs"
       RetentionInDays: 7
 
   SpotCapacityProvider:
