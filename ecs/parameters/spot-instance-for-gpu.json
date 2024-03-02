@@ -20,6 +20,14 @@
     "ParameterValue": "2"
   },
   {
+    "ParameterKey": "EcsTaskCpu",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "EcsTaskMemory",
+    "ParameterValue": "2048"
+  },
+  {
     "ParameterKey": "TaskDesiredCount",
     "ParameterValue": "1"
   },

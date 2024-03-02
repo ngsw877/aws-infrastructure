@@ -144,6 +144,7 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       CapacityRebalance: true # 容量の再調整を有効化：「EC2 Instance Rebalance Recommendation」の通知が来たタイミングで新しいスポットインスタンスをリクエストし、起動成功したら古いインスタンスを終了する。
+      NewInstancesProtectedFromScaleIn: false
       DesiredCapacity: !Ref EcsInstanceDesiredCount
       MinSize: !Ref EcsInstanceMinCount
       MaxSize: !Ref EcsInstanceMaxCount
@@ -184,25 +185,31 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${SecurityGroupStackName}-AllTrafficAllowedSecurityGroup"
         UserData:
           Fn::Base64:
             Fn::Sub: |
               #!/bin/bash -x
               
               # コンテナインスタンスをECSクラスタに登録
-              echo ECS_CLUSTER=${AWS::StackName}-EcsCluster >> /etc/ecs/ecs.config
+              echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
               
               # 自動ドレインを有効化
               echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
 
+              # ECSログコレクターのスクリプトをダウンロード：https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/ecs-logs-collector.html
+              curl -O https://raw.githubusercontent.com/awslabs/ecs-logs-collector/master/ecs-logs-collector.sh
+
   WebAppEcsService:
     Type: AWS::ECS::Service
     DependsOn:
-      - TargetGroup
       - WebAppAutoScalingGroup # スタック作成の際、ECSタスクの起動に失敗することがあるのでAutoScalingGroupが先に作成されるようにする @see: https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html#gatewayattachment
       - WebAppLoadBalancer
       - WebAppHttpLoadBalancerListener
       - WebAppLogGroup
+      - ClusterCapacityProviderAssociations
     Properties:
       Cluster: !Ref EcsCluster
       TaskDefinition: !Ref WebAppEcsTask
@@ -226,7 +233,7 @@ Resources:
       LoadBalancers:
         - ContainerName: !Ref WebContainerName
           ContainerPort: 80
-          TargetGroupArn: !Ref TargetGroup
+          TargetGroupArn: !Ref WebAppTargetGroup
       CapacityProviderStrategy:
         - CapacityProvider: !Ref SpotCapacityProvider
           Weight: 1
@@ -282,7 +289,7 @@ Resources:
                   - 'ecs:UpdateService'
                 Resource: '*'
 
-  TargetGroup:
+  WebAppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 10
@@ -344,7 +351,7 @@ Resources:
             'Fn::Sub': "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+          TargetGroupArn: !Ref WebAppTargetGroup
 
   WebAppHttpsDnsRecord:
     Type: AWS::Route53::RecordSet
@@ -432,16 +439,26 @@ Resources:
         ManagedScaling:
           Status: !Ref ManagedScalingEnabledState
           TargetCapacity: 100
+        ManagedTerminationProtection: "DISABLED"
 
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Sub "${AWS::StackName}-EcsCluster"
-      CapacityProviders:
-        - !Ref SpotCapacityProvider
       ClusterSettings:
         - Name: containerInsights
           Value: !Ref ContainerInsightsState
+
+  ClusterCapacityProviderAssociations:
+    Type: AWS::ECS::ClusterCapacityProviderAssociations
+    Properties:
+      Cluster: !Ref EcsCluster
+      CapacityProviders:
+        - !Ref SpotCapacityProvider
+      DefaultCapacityProviderStrategy:
+        - Base: 1
+          Weight: 1
+          CapacityProvider: !Ref SpotCapacityProvider
 
   # NAT Gateway
   NatGateway:
