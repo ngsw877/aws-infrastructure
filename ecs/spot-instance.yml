@@ -199,6 +199,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn:
       - TargetGroup
+      - WebAppAutoScalingGroup # スタック作成の際、ECSタスクの起動に失敗することがあるのでAutoScalingGroupが先に作成されるようにする @see: https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html#gatewayattachment
       - WebAppLoadBalancer
       - WebAppHttpLoadBalancerListener
       - WebAppLogGroup
