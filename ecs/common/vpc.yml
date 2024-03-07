@@ -3,42 +3,29 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   # プロジェクト名を入力する。各リソースのNameタグの値となる。
   EnvironmentName:
-    Description: An environment name that is prefixed to resource names
+    Description: "An environment name that is prefixed to resource names"
     Type: String
     Default: sample-ecs
+
   AvailabilityZones:
     Type: CommaDelimitedList
     Default: "ap-northeast-1a, ap-northeast-1c, ap-northeast-1d"
+
   # VPCのCIDRレンジ
   VpcCIDR:
-    Description: Please enter the IP range (CIDR notation) for this VPC
+    Description: "Please enter the IP range (CIDR notation) for this VPC"
     Type: String
-    Default: 10.99.0.0/16
-  # パブリックサブネット1
-  PublicSubnet1CIDR:
-    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
-    Type: String
-    Default: 10.99.10.0/24
-  # パブリックサブネット2
-  PublicSubnet2CIDR:
-    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
-    Type: String
-    Default: 10.99.11.0/24
-  # プライベートサブネット1
-  PrivateSubnet1CIDR:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
-    Type: String
-    Default: 10.99.20.0/24
-  # プライベートサブネット2
-  PrivateSubnet2CIDR:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
-    Type: String
-    Default: 10.99.21.0/24
-  # プライベートサブネット3
-  PrivateSubnet3CIDR:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
-    Type: String
-    Default: 10.99.22.0/24
+    Default: "10.99.0.0/16"
+
+  # パブリックサブネットのCIDRレンジ
+  PublicCidrBlocks:
+    Type: CommaDelimitedList
+    Default: "10.99.10.0/24, 10.99.11.0/24"
+
+  # プライベートサブネットのCIDRレンジ
+  PrivateCidrBlocks:
+    Type: CommaDelimitedList
+    Default: "10.99.20.0/24, 10.99.21.0/24, 10.99.22.0/24"
 
 Resources:
   Vpc:
@@ -69,61 +56,56 @@ Resources:
   #======================
   # サブネット
   #======================
-  # パブリックサブネット1
-  PublicSubnet1:
+  PublicSubnetAz1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       AvailabilityZone: !Select [ 0, !Ref AvailabilityZones ]
-      CidrBlock: !Ref PublicSubnet1CIDR
+      CidrBlock: !Select [ 0, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
 
-  # パブリックサブネット2
-  PublicSubnet2:
+  PublicSubnetAz2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       AvailabilityZone: !Select [ 1, !Ref AvailabilityZones ]
-      CidrBlock: !Ref PublicSubnet2CIDR
+      CidrBlock: !Select [ 1, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
 
-  # プライベートサブネット1
-  PrivateSubnet1:
+  PrivateSubnetAz1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       AvailabilityZone: !Select [ 0, !Ref AvailabilityZones ]
-      CidrBlock: !Ref PrivateSubnet1CIDR
+      CidrBlock: !Select [ 0, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
 
-  # プライベートサブネット2
-  PrivateSubnet2:
+  PrivateSubnetAz2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       AvailabilityZone: !Select [ 1, !Ref AvailabilityZones ]
-      CidrBlock: !Ref PrivateSubnet2CIDR
+      CidrBlock: !Select [ 1, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
 
-  # プライベートサブネット3
-  PrivateSubnet3:
+  PrivateSubnetAz3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       AvailabilityZone: !Select [ 2, !Ref AvailabilityZones ]
-      CidrBlock: !Ref PrivateSubnet3CIDR
+      CidrBlock: !Select [ 2, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -149,17 +131,17 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnet1RouteTableAssociation:
+  PublicSubnetAz1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PublicSubnetAz1
 
-  PublicSubnet2RouteTableAssociation:
+  PublicSubnetAz2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet2
+      SubnetId: !Ref PublicSubnetAz2
 
 Outputs:
   VpcId:
@@ -170,23 +152,23 @@ Outputs:
     Value: !GetAtt Vpc.CidrBlock
     Export:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
-  PublicSubnet1:
-    Value: !Ref PublicSubnet1
+  PublicSubnetAz1:
+    Value: !Ref PublicSubnetAz1
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnet1"
-  PublicSubnet2:
-    Value: !Ref PublicSubnet2
+      Name: !Sub "${AWS::StackName}-PublicSubnetAz1"
+  PublicSubnetAz2:
+    Value: !Ref PublicSubnetAz2
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnet2"
-  PrivateSubnet1:
-    Value: !Ref PrivateSubnet1
+      Name: !Sub "${AWS::StackName}-PublicSubnetAz2"
+  PrivateSubnetAz1:
+    Value: !Ref PrivateSubnetAz1
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnet1"
-  PrivateSubnet2:
-    Value: !Ref PrivateSubnet2
+      Name: !Sub "${AWS::StackName}-PrivateSubnetAz1"
+  PrivateSubnetAz2:
+    Value: !Ref PrivateSubnetAz2
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnet2"
-  PrivateSubnet3:
-    Value: !Ref PrivateSubnet3
+      Name: !Sub "${AWS::StackName}-PrivateSubnetAz2"
+  PrivateSubnetAz3:
+    Value: !Ref PrivateSubnetAz3
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnet3"
+      Name: !Sub "${AWS::StackName}-PrivateSubnetAz3"
