@@ -19,6 +19,11 @@ else
   exit 1
 fi
 
+# 引数がある場合、STACK_NAMEに代入する
+if [[ "$3" != "" ]]; then
+  STACK_NAME="$3"
+fi
+
 aws cloudformation \
   --profile "${PROFILE}" \
   deploy \
