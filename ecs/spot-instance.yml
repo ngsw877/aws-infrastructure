@@ -175,6 +175,25 @@ Resources:
           Value: !Sub "${AWS::StackName}-auto-scaling-group"
           PropagateAtLaunch: true
 
+  # ECSコンテナインスタンス用のセキュリティグループ
+  ContainerInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for ecs container instance traffic"
+      GroupName: !Sub "${AWS::StackName}-container-instance-sg"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${SubnetStackName}-VpcId"
+      # コンテナインスタンスはSSM接続を許可するため、アウトバウンドルールのみを解放して以下と通信できるようにする
+      # - ssm.ap-northeast-1.amazonaws.com
+      # - ec2messages.ap-northeast-1.amazonaws.com
+      # - ssmmessages.ap-northeast -1.amazonaws.com
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -186,8 +205,7 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         SecurityGroupIds:
-          - Fn::ImportValue:
-              !Sub "${SecurityGroupStackName}-AllTrafficAllowedSecurityGroup"
+          - !Ref ContainerInstanceSecurityGroup
         UserData:
           Fn::Base64:
             Fn::Sub: |
