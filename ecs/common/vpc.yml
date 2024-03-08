@@ -7,10 +7,6 @@ Parameters:
     Type: String
     Default: sample-ecs
 
-  AvailabilityZones:
-    Type: CommaDelimitedList
-    Default: "ap-northeast-1a, ap-northeast-1c, ap-northeast-1d"
-
   # VPCのCIDRレンジ
   VpcCIDR:
     Description: "Please enter the IP range (CIDR notation) for this VPC"
@@ -26,6 +22,13 @@ Parameters:
   PrivateCidrBlocks:
     Type: CommaDelimitedList
     Default: "10.99.20.0/24, 10.99.21.0/24, 10.99.22.0/24"
+
+Mappings:
+  RegionMap:
+    ap-northeast-1:
+      Az1: "ap-northeast-1a"
+      Az2: "ap-northeast-1c"
+      Az3: "ap-northeast-1d"
 
 Resources:
   Vpc:
@@ -62,7 +65,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 0, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az1 ]
       CidrBlock: !Select [ 0, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
       Tags:
@@ -73,7 +76,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 1, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az2 ]
       CidrBlock: !Select [ 1, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
       Tags:
@@ -84,7 +87,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 2, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az3 ]
       CidrBlock: !Select [ 2, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
       Tags:
@@ -96,7 +99,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 0, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az1 ]
       CidrBlock: !Select [ 0, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
@@ -107,7 +110,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 1, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az2 ]
       CidrBlock: !Select [ 1, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
@@ -118,7 +121,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !Select [ 2, !Ref AvailabilityZones ]
+      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az3 ]
       CidrBlock: !Select [ 2, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
       Tags:
