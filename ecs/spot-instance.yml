@@ -183,7 +183,7 @@ Resources:
       GroupName: !Sub "${AWS::StackName}-container-instance-sg"
       VpcId:
         Fn::ImportValue:
-          !Sub "${SubnetStackName}-VpcId"
+          !Sub "${VpcStackName}-VpcId"
       # コンテナインスタンスはSSM接続を許可するため、アウトバウンドルールのみを解放して以下と通信できるようにする
       # - ssm.ap-northeast-1.amazonaws.com
       # - ec2messages.ap-northeast-1.amazonaws.com
