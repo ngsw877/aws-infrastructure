@@ -4,26 +4,26 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: github-actions-role
+      RoleName: "github-actions-role"
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
-            Action: sts:AssumeRoleWithWebIdentity
+            Action: "sts:AssumeRoleWithWebIdentity"
             Principal:
-              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+              Federated: !Ref GitHubActionsOidcProvider
             Condition:
               StringEquals:
-                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
               StringLike:
-                token.actions.githubusercontent.com:sub: repo:ngsw877/CloudFormation:*
+                token.actions.githubusercontent.com:sub: "repo:ngsw877/CloudFormation:*"
       Policies:
-        - PolicyName: StsGetCallerIdentity
+        - PolicyName: "StsGetCallerIdentity"
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - sts:GetCallerIdentity
+                  - "sts:GetCallerIdentity"
                 Resource: '*'
 
   GitHubActionsOidcProvider:

@@ -32,7 +32,11 @@ Resources:
           }
 
 Outputs:
-  EcrRepository:
+  EcrRepositoryName:
     Value: !Ref EcrRepository
     Export:
-      Name: !Sub "${AWS::StackName}-EcrRepository"
+      Name: !Sub "${AWS::StackName}-EcrRepositoryName"
+  EcrRepositoryArn:
+    Value: !GetAtt EcrRepository.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EcrRepositoryArn"

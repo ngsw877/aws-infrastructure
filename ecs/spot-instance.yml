@@ -403,9 +403,9 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref AWS::AccountId
-                - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+                - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
                 - Fn::ImportValue:
-                    !Sub "${EcrStackName}-EcrRepository"
+                    !Sub "${EcrStackName}-EcrRepositoryName"
                 - ":"
                 - !Ref AppDockerImageTag
           PortMappings:
@@ -429,9 +429,9 @@ Resources:
           Image: !Join
             - ""
             - - !Ref AWS::AccountId
-              - ".dkr.ecr.ap-northeast-1.amazonaws.com/"
+              - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
               - Fn::ImportValue:
-                  !Sub "${EcrStackName}-EcrRepository"
+                  !Sub "${EcrStackName}-EcrRepositoryName"
               - ":"
               - !Ref WebDockerImageTag
           PortMappings:
