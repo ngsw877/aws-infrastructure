@@ -32,6 +32,9 @@ Parameters:
   WebAppTaskDesiredCount:
     Type: Number
     Default: 1
+  GitHubRepositoryName:
+    Type: String
+    Default: "ngsw877/CloudFormation"
 
 Resources:
   # ECSタスクロール
@@ -265,3 +268,59 @@ Resources:
       SubnetId:
         Fn::ImportValue:
           !Sub  "${VpcStackName}-PrivateSubnetAz2"
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-GitHubActionsRole"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Principal:
+              Federated: !ImportValue GitHubActionsOidcProviderArn
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepositoryName}:*"
+
+  GitHubActionsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-GitHubActionsPolicy"
+      Roles:
+        - !Ref GitHubActionsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ecr:GetAuthorizationToken"
+              - "ecs:ListServices"
+              - "sts:GetCallerIdentity"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "cloudformation:DescribeStacks"
+            Resource: !Sub "arn:aws:cloudformation:*:*:stack/${AWS::StackName}/*"
+          - Effect: Allow
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:BatchGetImage"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:PutImage"
+              - "ecr:UploadLayerPart"
+            Resource:
+              - Fn::ImportValue:
+                  !Sub "${EcrStackName}-EcrRepositoryArn"
+          - Effect: Allow
+            Action:
+              - "ecs:DescribeClusters"
+            Resource:
+              - !GetAtt Cluster.Arn
+          - Effect: Allow
+            Action:
+              - "ecs:UpdateService"
+            Resource: !Ref WebAppEcsService
