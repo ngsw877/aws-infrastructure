@@ -543,3 +543,10 @@ Resources:
       SubnetId:
         Fn::ImportValue:
           !Sub  "${VpcStackName}-PrivateSubnetAz3"
+
+  # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため、これらを削除するためのLambda関数を呼び出すカスタムリソース
+  CustomResourceCleanupAutoScalingGroup:
+    Type: Custom::AutoScalingCleanup
+    Properties:
+      ServiceToken: !ImportValue CleanupAutoScalingGroupFunctionArn
+      AsgName: !Ref WebAppAutoScalingGroup
