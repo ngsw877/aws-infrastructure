@@ -89,6 +89,9 @@ Parameters:
   ElbSecurityPolicy:
     Type: String
     Default: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  FisResourceTagValue:
+    Type: String
+    Default: "interruptMe"
 
 Resources:
   SpotEc2Role:
@@ -164,7 +167,7 @@ Resources:
         LaunchTemplate:
           LaunchTemplateSpecification:
             LaunchTemplateId: !Ref WebAppLaunchTemplate
-            Version: !GetAtt WebAppLaunchTemplate.DefaultVersionNumber
+            Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
           Overrides:
             - InstanceType: !Ref InstanceType1
             - InstanceType: !Ref InstanceType2
@@ -202,10 +205,17 @@ Resources:
         IamInstanceProfile:
           Name: !Ref SpotEc2Profile
         MetadataOptions:
-          HttpTokens: required
+          # IMDSv2を有効化
+          HttpTokens: "required"
           HttpPutResponseHopLimit: 2
         SecurityGroupIds:
           - !Ref ContainerInstanceSecurityGroup
+        TagSpecifications:
+          - ResourceType: "instance"
+            Tags:
+              # KeyおよびValueは、FIS実験テンプレートで指定したResourceTagと一致するようにする
+              - Key: "Test"
+                Value: !Sub "${AWS::StackName}-${FisResourceTagValue}"
         UserData:
           Fn::Base64:
             Fn::Sub: |
@@ -543,6 +553,66 @@ Resources:
       SubnetId:
         Fn::ImportValue:
           !Sub  "${VpcStackName}-PrivateSubnetAz3"
+
+  # スポットインスタンスの中断をテストするためのFIS実験テンプレート
+  InterruptSpotInstanceFisExperimentTemplate:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: "interrupt-spot-instance-test"
+      Actions:
+        interruptSpotInstance:
+          ActionId: "aws:ec2:send-spot-instance-interruptions"
+          Targets:
+            SpotInstances: "oneSpotInstance"
+          Parameters:
+            durationBeforeInterruption: "PT2M" # PT2M = 2分...スポットインスタンスを中断する2分前に、中断の通知を送る
+      ExperimentOptions:
+        EmptyTargetResolutionMode: "fail"
+        AccountTargeting: "single-account"
+      StopConditions:
+        - Source: "none"
+      Targets:
+        oneSpotInstance:
+          Filters:
+            - Path: "State.Name"
+              Values:
+                - "running"
+          ResourceType: "aws:ec2:spot-instance"
+          ResourceTags:
+            # KeyおよびValueは、スポットインスタンスの起動テンプレートのTagSpecificationsで指定したTagと一致するようにする
+            Test: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+          SelectionMode: "COUNT(1)"
+      LogConfiguration:
+        CloudWatchLogsConfiguration:
+          LogGroupArn: !GetAtt InterruptSpotInstanceFisLogGroup.Arn
+        LogSchemaVersion: 2
+      RoleArn: !GetAtt InterruptSpotInstanceFisRole.Arn
+      Tags:
+        Name: !Sub "${AWS::StackName}-interrupt-spot-instance-test"
+
+  InterruptSpotInstanceFisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/service-role/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+      MaxSessionDuration: 3600
+      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service: "fis.amazonaws.com"
+
+  InterruptSpotInstanceFisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: "STANDARD"
+      RetentionInDays: 7
+      LogGroupName: !Sub "${AWS::StackName}/interrupt-spot-instance-fis"
 
   # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため、これらを削除するためのLambda関数を呼び出すカスタムリソース
   CustomResourceCleanupAutoScalingGroup:
