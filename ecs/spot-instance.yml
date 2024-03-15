@@ -594,18 +594,29 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Path: "/service-role/"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
-        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-      MaxSessionDuration: 3600
-      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Action: "sts:AssumeRole"
-            Effect: "Allow"
+          - Effect: "Allow"
             Principal:
               Service: "fis.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: CustomCloudWatchLogsPolicyForFIS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogDelivery"
+                  - "logs:PutResourcePolicy"
+                  - "logs:DescribeResourcePolicies"
+                  - "logs:DescribeLogGroups"
+                Resource: "*"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
+      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
+      MaxSessionDuration: 3600
 
   InterruptSpotInstanceFisLogGroup:
     Type: AWS::Logs::LogGroup
