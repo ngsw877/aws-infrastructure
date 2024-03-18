@@ -303,6 +303,7 @@ Resources:
           - Effect: Allow
             Action:
               - "cloudformation:DescribeStacks"
+              - "cloudformation:DescribeStackResources"
             Resource: !Sub "arn:aws:cloudformation:*:*:stack/${AWS::StackName}/*"
           - Effect: Allow
             Action:
