@@ -35,12 +35,11 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: true
 
-      - name: Build app image
+      - name: Build and push app image
         uses: docker/build-push-action@v4
         with:
           context: ./ecs/docker/php
@@ -70,12 +69,11 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: true
 
-      - name: Build web image
+      - name: Build add push web image
         uses: docker/build-push-action@v4
         env:
           BACKEND_APP_DOMAIN: "127.0.0.1"
@@ -90,4 +88,60 @@ jobs:
           build-args: |
             BACKEND_APP_DOMAIN
             RESOLVER
-           
+
+  delivery:
+    runs-on: ubuntu-latest
+    needs: ["build-and-push-app-image", "build-and-push-web-image"]
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          mask-aws-account-id: false
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+
+      - name: Delivery
+        run: |
+          ECR_REPO_URI="${{ env.ECR_REPO_URI }}"
+          ACCOUNT_ID="${ECR_REPO_URI%%.*}"
+          REPO_NAME="${ECR_REPO_URI##*/}"
+          ECS_CLUSTER_NAME=$( aws cloudformation describe-stack-resources --stack-name ${{ env.CFN_STACK_NAME }} --output text --query 'StackResources[?ResourceType==`AWS::ECS::Cluster`].PhysicalResourceId')
+          ECS_SERVICE_ARN=$( aws cloudformation describe-stack-resources --stack-name ${{ env.CFN_STACK_NAME }} --output text --query 'StackResources[?ResourceType==`AWS::ECS::Service`].PhysicalResourceId')
+          ECS_SERVICE_NAME="${ECS_SERVICE_ARN##*/}"
+          
+          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${ACCOUNT_ID} --repository-name ${REPO_NAME} --image-ids imageTag=${GITHUB_RUN_NUMBER}-app --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${ACCOUNT_ID} --repository-name ${REPO_NAME} --image-ids imageTag=${GITHUB_RUN_NUMBER}-web --output json | jq --raw-output --join-output '.images[0].imageManifest')
+
+          aws ecr put-image --registry-id ${ACCOUNT_ID} \
+            --repository-name ${REPO_NAME} \
+            --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
+              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
+                echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
+                true
+              else
+                cat app_log
+                false
+              fi
+            }
+
+          aws ecr put-image --registry-id ${ACCOUNT_ID} \
+            --repository-name ${REPO_NAME} \
+            --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
+              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
+                echo "Catch ImageAlreadyExistsException on web image deploy. It is OK, Ignored"
+                true
+              else
+                cat web_log
+                false
+              fi
+            }
+
+          aws ecs update-service --service ${ECS_SERVICE_NAME} --cluster ${ECS_CLUSTER_NAME} --force-new-deployment
