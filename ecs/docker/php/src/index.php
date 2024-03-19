@@ -1,5 +1,5 @@
 <?php
-$title         = 'My PHP Page v2!!!';
+$title         = 'My PHP Page';
 $tableContents = [
 	'APP_ENV'   => $_SERVER['APP_ENV'],
 	'APP_DEBUG' => $_SERVER['APP_DEBUG'],
