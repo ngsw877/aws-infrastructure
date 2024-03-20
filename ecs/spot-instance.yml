@@ -235,7 +235,7 @@ Resources:
     DependsOn:
       - WebAppAutoScalingGroup # スタック作成の際、ECSタスクの起動に失敗することがあるのでAutoScalingGroupが先に作成されるようにする @see: https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html#gatewayattachment
       - WebAppLoadBalancer
-      - WebAppHttpLoadBalancerListener
+      - WebAppHttpsLoadBalancerListener # ターゲットグループがリスナーへ登録される前にWebAppEcsServiceを作成しようとすると、ターゲットグループがALBに紐付けられていないエラーになる
       - WebAppLogGroup
       - ClusterCapacityProviderAssociations
     Properties:
@@ -261,7 +261,7 @@ Resources:
       LoadBalancers:
         - ContainerName: !Ref WebContainerName
           ContainerPort: 80
-          TargetGroupArn: !Ref WebAppTargetGroup
+          TargetGroupArn: !Ref WebAppTaskTargetGroup
       CapacityProviderStrategy:
         - CapacityProvider: !Ref SpotCapacityProvider
           Weight: 1
@@ -317,7 +317,7 @@ Resources:
                   - 'ecs:UpdateService'
                 Resource: '*'
 
-  WebAppTargetGroup:
+  WebAppTaskTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 10
@@ -381,7 +381,7 @@ Resources:
             'Fn::Sub': "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref WebAppTargetGroup
+          TargetGroupArn: !Ref WebAppTaskTargetGroup
 
   WebAppHttpsDnsRecord:
     Type: AWS::Route53::RecordSet
