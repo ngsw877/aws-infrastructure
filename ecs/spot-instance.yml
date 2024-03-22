@@ -235,7 +235,7 @@ Resources:
     DependsOn:
       - WebAppAutoScalingGroup # スタック作成の際、ECSタスクの起動に失敗することがあるのでAutoScalingGroupが先に作成されるようにする @see: https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html#gatewayattachment
       - WebAppLoadBalancer
-      - WebAppHttpsLoadBalancerListener # ターゲットグループがリスナーへ登録される前にWebAppEcsServiceを作成しようとすると、ターゲットグループがALBに紐付けられていないエラーになる
+      - WebAppHttpsListener # ターゲットグループがリスナーへ登録される前にWebAppEcsServiceを作成しようとすると、ターゲットグループがALBに紐付けられていないエラーになる
       - WebAppLogGroup
       - ClusterCapacityProviderAssociations
     Properties:
@@ -353,7 +353,7 @@ Resources:
         - Key: routing.http.drop_invalid_header_fields.enabled
           Value: "true"
 
-  WebAppHttpLoadBalancerListener:
+  WebAppHttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref WebAppLoadBalancer
@@ -369,7 +369,7 @@ Resources:
             Port: 443
             StatusCode: HTTP_301
 
-  WebAppHttpsLoadBalancerListener:
+  WebAppHttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref WebAppLoadBalancer
