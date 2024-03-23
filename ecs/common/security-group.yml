@@ -4,6 +4,9 @@ Parameters:
   VpcStackName:
     Type: String
     Default: "common-vpc"
+  TestListenerPort:
+    Type: Number
+    Default: 4430
 
 Resources:
   # 全トラフィック許可のセキュリティグループ
@@ -56,6 +59,16 @@ Resources:
       ToPort: 443
       CidrIp: "0.0.0.0/0"
 
+  LoadBalancerSecurityGroupHttpsForTestIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "Allow HTTPS traffic"
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: "tcp"
+      FromPort: !Ref TestListenerPort
+      ToPort: !Ref TestListenerPort
+      CidrIp: "0.0.0.0/0"
+
   LoadBalancerSecurityGroupEgressAll:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -104,6 +117,11 @@ Outputs:
         Value: !Ref LoadBalancerSecurityGroup
         Export:
           Name: !Sub "${AWS::StackName}-LoadBalancerSecurityGroup"
+    TestListenerPort:
+        Description: Test LoadBalancer Listener Port
+        Value: !Ref TestListenerPort
+        Export:
+          Name: !Sub "${AWS::StackName}-TestListenerPort"
     WebAppSecurityGroup:
         Description: Common Security Group for WebApp Container
         Value: !Ref WebAppSecurityGroup
