@@ -186,7 +186,7 @@ Resources:
   CodeDeployApplication:
     Type: AWS::CodeDeploy::Application
     Properties:
-      ApplicationName: !Sub "${AWS::StackName}-blue-green-service"
+      ApplicationName: !Sub "${AWS::StackName}-blue-green-application"
       ComputePlatform: "ECS"
 
   CodeDeployDeploymentGroup:
