@@ -3,14 +3,14 @@ services:
   app:
     build:
       context: docker/php
-      dockerfile: Dockerfile
+      dockerfile: docker/php/Dockerfile
     container_name: php_app
     volumes:
       - ./docker/php/src:/var/www/html
   web:
     build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
+      context: docker/nginx
+      dockerfile: docker/nginx/Dockerfile
     ports:
       - "48080:80"
     environment:
