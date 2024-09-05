@@ -1,11 +1,12 @@
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
-// ファイルを読み込むためのパッケージを import
-import { readFileSync } from "fs";
+
+// 自作コンストラクトを import
+import { WebServerInstance } from './constructs/web-server-instance';
 
 export class CdkSampleStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -16,19 +17,10 @@ export class CdkSampleStack extends Stack {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
     });
 
-    // WebServer インスタンスを作成
-    const webServer1 = new ec2.Instance(this, "WordpressServer1", {
-      vpc,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
-      machineImage: new ec2.AmazonLinuxImage({
-        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-      }),
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+    // 新しく作成したコンストラクトを使用してインスタンスを宣言
+    const webServer1 = new WebServerInstance(this, "WebServer1", {
+      vpc
     });
-
-    // user-data.sh を読み込み、変数に格納
-    const script = readFileSync('./lib/resources/user-data.sh' , "utf8");
-    webServer1.addUserData(script);
 
     // RDS インスタンスを作成
     const dbServer = new rds.DatabaseInstance(this, "WordPressDB", {
@@ -39,7 +31,7 @@ export class CdkSampleStack extends Stack {
     });
 
     // WebServer からのアクセスを許可
-    dbServer.connections.allowDefaultPortFrom(webServer1);
+    dbServer.connections.allowDefaultPortFrom(webServer1.instance);
 
     // ALB を作成
     const alb = new elbv2.ApplicationLoadBalancer(this, "LoadBalancer", {
@@ -55,13 +47,13 @@ export class CdkSampleStack extends Stack {
     // ALB のリスナーのターゲットとしてWebServerインスタンスを登録
     listener.addTargets('ApplicationFleet', {
       port: 80,
-      targets: [new targets.InstanceTarget(webServer1, 80)],
+      targets: [new targets.InstanceTarget(webServer1.instance, 80)],
       healthCheck: {
         path: '/wp-includes/images/blank.gif'
       },
     });
 
     // ALB からインスタンスへのアクセスを許可
-    webServer1.connections.allowFrom(alb, ec2.Port.tcp(80));
+    webServer1.instance.connections.allowFrom(alb, ec2.Port.tcp(80));
   }
 }
