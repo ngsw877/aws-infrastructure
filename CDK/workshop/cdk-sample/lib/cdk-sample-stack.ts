@@ -22,6 +22,10 @@ export class CdkSampleStack extends Stack {
       vpc
     });
 
+    const webServer2 = new WebServerInstance(this, "WebServer2", {
+      vpc
+    });
+
     // RDS インスタンスを作成
     const dbServer = new rds.DatabaseInstance(this, "WordPressDB", {
       vpc,
@@ -32,6 +36,7 @@ export class CdkSampleStack extends Stack {
 
     // WebServer からのアクセスを許可
     dbServer.connections.allowDefaultPortFrom(webServer1.instance);
+    dbServer.connections.allowDefaultPortFrom(webServer2.instance);
 
     // ALB を作成
     const alb = new elbv2.ApplicationLoadBalancer(this, "LoadBalancer", {
@@ -47,7 +52,10 @@ export class CdkSampleStack extends Stack {
     // ALB のリスナーのターゲットとしてWebServerインスタンスを登録
     listener.addTargets('ApplicationFleet', {
       port: 80,
-      targets: [new targets.InstanceTarget(webServer1.instance, 80)],
+      targets: [
+          new targets.InstanceTarget(webServer1.instance, 80),
+          new targets.InstanceTarget(webServer2.instance, 80),
+      ],
       healthCheck: {
         path: '/wp-includes/images/blank.gif'
       },
@@ -55,5 +63,6 @@ export class CdkSampleStack extends Stack {
 
     // ALB からインスタンスへのアクセスを許可
     webServer1.instance.connections.allowFrom(alb, ec2.Port.tcp(80));
+    webServer2.instance.connections.allowFrom(alb, ec2.Port.tcp(80));
   }
 }
