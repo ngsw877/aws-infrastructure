@@ -7,6 +7,7 @@ import {readFileSync} from 'fs';
 // Construct propsを定義
 export interface WebServerInstanceProps {
     readonly vpc: ec2.IVpc
+    readonly availabilityZone: string
 }
 
 // EC2 インスタンスを含む Construct を定義
@@ -18,7 +19,7 @@ export class WebServerInstance extends Construct {
         super(scope, id);
 
         // Construct propsからvpcを取り出す
-        const {vpc} = props;
+        const { vpc, availabilityZone } = props;
 
         const instance = new ec2.Instance(this, "Instance", {
             vpc,
@@ -26,7 +27,10 @@ export class WebServerInstance extends Construct {
             machineImage: new ec2.AmazonLinuxImage({
                 generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
             }),
-            vpcSubnets: {subnetType: ec2.SubnetType.PUBLIC},
+            vpcSubnets: {
+                subnetType: ec2.SubnetType.PUBLIC,
+                availabilityZones: [availabilityZone]
+            },
         });
 
         const script = readFileSync("./lib/resources/user-data.sh", "utf8");

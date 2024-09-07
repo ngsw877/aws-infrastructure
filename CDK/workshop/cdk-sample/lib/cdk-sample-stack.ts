@@ -15,15 +15,18 @@ export class CdkSampleStack extends Stack {
     // VPC を作成
     const vpc = new ec2.Vpc(this, "BlogVpc", {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
+      maxAzs: 2,
     });
 
     // 新しく作成したコンストラクトを使用してインスタンスを宣言
     const webServer1 = new WebServerInstance(this, "WebServer1", {
-      vpc
+      vpc,
+      availabilityZone: vpc.availabilityZones[0]
     });
 
     const webServer2 = new WebServerInstance(this, "WebServer2", {
-      vpc
+      vpc,
+      availabilityZone: vpc.availabilityZones[1]
     });
 
     // RDS インスタンスを作成
