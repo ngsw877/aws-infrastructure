@@ -33,6 +33,7 @@ export class CdkSampleStack extends Stack {
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
       databaseName: "wordpress",
       multiAz: false,
+      storageEncrypted: true,
     });
 
     // WebServer からのアクセスを許可
