@@ -1,8 +1,8 @@
 import {CfnOutput} from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import {Construct} from 'constructs';
 import {readFileSync} from 'fs';
-
 
 // Construct propsを定義
 export interface WebServerInstanceProps {
@@ -21,6 +21,14 @@ export class WebServerInstance extends Construct {
         // Construct propsからvpcを取り出す
         const { vpc, availabilityZone } = props;
 
+        // SSMセッションマネージャー用のIAMロールを作成
+        const role = new iam.Role(this, 'EC2SSMRole', {
+            assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+            ],
+        });
+
         const instance = new ec2.Instance(this, "Instance", {
             vpc,
             instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
@@ -31,6 +39,8 @@ export class WebServerInstance extends Construct {
                 subnetType: ec2.SubnetType.PUBLIC,
                 availabilityZones: [availabilityZone]
             },
+            role: role,
+            requireImdsv2: true
         });
 
         const script = readFileSync("./lib/resources/user-data.sh", "utf8");
