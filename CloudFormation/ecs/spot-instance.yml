@@ -16,7 +16,7 @@ Parameters:
   WebDockerImageTag:
     Type: String
     Default: "web"
-  AppEnv:
+  Environment:
     Type: String
     Default: "test"
   AppDebug:
@@ -176,7 +176,10 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-auto-scaling-group"
-          PropagateAtLaunch: true
+          PropagateAtLaunch: false
+        - Key: Environment
+          Value: !Ref Environment
+          PropagateAtLaunch: false
 
   # ECSコンテナインスタンス用のセキュリティグループ
   ContainerInstanceSecurityGroup:
@@ -216,6 +219,14 @@ Resources:
               # KeyおよびValueは、FIS実験テンプレートで指定したResourceTagと一致するようにする
               - Key: "Test"
                 Value: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+          - ResourceType: "instance"
+            Tags:
+              - Key: "Environment"
+                Value: !Ref Environment
+          - ResourceType: "volume"
+            Tags:
+              - Key: "Environment"
+                Value: !Ref Environment
         UserData:
           Fn::Base64:
             Fn::Sub: |
@@ -428,7 +439,7 @@ Resources:
               awslogs-stream-prefix: docker
           Environment:
             - Name: APP_ENV
-              Value: !Ref AppEnv
+              Value: !Ref Environment
             - Name: APP_DEBUG
               Value: !Ref AppDebug
             - Name: TZ
