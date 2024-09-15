@@ -3,7 +3,7 @@ import { Template, Capture } from "aws-cdk-lib/assertions";
 import { Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { HitCounter } from "../lib/hitcounter";
 
-test("DynamoDB Table Created", () => {
+test("DynamoDB Table Created With Encryption", () => {
     const stack = new Stack();
     // WHEN
     new HitCounter(stack, "MyTestConstruct", {
@@ -15,7 +15,11 @@ test("DynamoDB Table Created", () => {
     });
     // THEN
     const template = Template.fromStack(stack);
-    template.resourceCountIs("AWS::DynamoDB::Table", 1);
+    template.hasResourceProperties("AWS::DynamoDB::Table", {
+        SSESpecification: {
+            SSEEnabled: true,
+        },
+    });
 });
 
 test("Lambda Has Environment Variables", () => {
