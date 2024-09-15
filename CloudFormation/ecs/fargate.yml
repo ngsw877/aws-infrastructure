@@ -37,7 +37,7 @@ Parameters:
     Default: 1
   GitHubRepositoryName:
     Type: String
-    Default: "ngsw877/CloudFormation"
+    Default: "ngsw877/aws-infrastructur"
   ElbSecurityPolicy:
     Type: String
     Default: "ELBSecurityPolicy-TLS13-1-2-2021-06"
