@@ -22,6 +22,21 @@ test("DynamoDB Table Created With Encryption", () => {
     });
 });
 
+test("read capacity can be configured", () => {
+    const stack = new Stack();
+
+    expect(() => {
+        new HitCounter(stack, "MyTestConstruct", {
+            downstream: new Function(stack, "TestFunction", {
+                runtime: Runtime.NODEJS_18_X,
+                handler: "hello.handler",
+                code: Code.fromAsset("lambda"),
+            }),
+            readCapacity: 3,
+        });
+    }).toThrowError(/readCapacity must be greater than 5 and less than 20/);
+});
+
 test("Lambda Has Environment Variables", () => {
     const stack = new Stack();
     // WHEN
