@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  TargetInstanceId:
+    Type: String
+    Description: 'EC2インスタンスID'
+
+Resources:
+  EC2StopAutomation:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Content:
+        description: 'Stop EC2 instances'
+        schemaVersion: '0.3'
+        parameters:
+          InstanceIds:
+            type: StringList
+            description: 'List of EC2 instance IDs to stop'
+        mainSteps:
+          - name: stopEC2Instances
+            action: 'aws:changeInstanceState'
+            inputs:
+              InstanceIds: '{{InstanceIds}}'
+              DesiredState: stopped
+
+  AutomationScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Schedule for running SSM Automation to stop EC2 instances"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets: 
+        - Arn: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/${EC2StopAutomation}'
+          Id: "TargetSSMAutomation"
+          RoleArn: !GetAtt AutomationExecutionRole.Arn
+          Input: !Sub '{"InstanceIds": ["${TargetInstanceId}"]}'
+
+  AutomationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSSMAutomation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:StartAutomationExecution
+                  - ec2:StopInstances
+                  - ec2:DescribeInstances
+                Resource: '*'
