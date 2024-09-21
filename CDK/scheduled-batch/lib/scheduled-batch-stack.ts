@@ -11,14 +11,14 @@ export class ScheduledBatchStack extends cdk.Stack {
     super(scope, id, props);
 
     // Slack通知用のLambda関数を作成
-    const slackNotifier = new lambda.NodejsFunction(this, 'SlackNotifier', {
+    const slackNotifierFunction = new lambda.NodejsFunction(this, 'SlackNotifier', {
       runtime: cdk.aws_lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
       entry: path.join(__dirname, '../lambda/slack-notifier/index.ts'),
     });
 
     // Systems Manager Parameter StoreからSecureStringを取得する権限を付与
-    slackNotifier.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
+    slackNotifierFunction.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
       actions: ['ssm:GetParameter'],
       resources: [ssm.StringParameter.fromSecureStringParameterAttributes(this, 'SlackWebhookUrl', {
         parameterName: '/scheduled-batch/slack-webhook-url',
@@ -28,7 +28,7 @@ export class ScheduledBatchStack extends cdk.Stack {
     // EventBridgeルールを作成して、Lambdaを定期実行
     new events.Rule(this, 'ScheduleRule', {
       schedule: events.Schedule.cron({ minute: '0', hour: '0', weekDay: 'MON-FRI' }), // 日本時間の平日朝9時に実行（UTC 0時）
-      targets: [new targets.LambdaFunction(slackNotifier)],
+      targets: [new targets.LambdaFunction(slackNotifierFunction)],
     });
   }
 }
