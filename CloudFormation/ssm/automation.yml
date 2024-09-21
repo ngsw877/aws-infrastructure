@@ -4,6 +4,10 @@ Parameters:
   TargetInstanceId:
     Type: String
     Description: 'EC2インスタンスID'
+  SlackWebhookUrlParameterName:
+    Type: String
+    Description: "Slack Webhook URLが保存されているパラメータストアのパラメータ名"
+    Default: "/scheduled-batch/slack-webhook-url"
 
 Resources:
   EC2StopAutomation:
@@ -24,13 +28,126 @@ Resources:
               InstanceIds: '{{InstanceIds}}'
               DesiredState: stopped
 
+  SSMAutomationEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Detect SSM Automation execution status changes"
+      EventPattern:
+        source:
+          - "aws.ssm"
+        detail-type:
+          - "EC2 Automation Step Status-change Notification"
+        detail:
+          AutomationExecutionId:
+            - !Ref EC2StopAutomation
+          Status:
+            - "Success"
+            - "Failed"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SlackNotificationLambda.Arn
+          Id: "SlackNotificationTarget"
+
+  SlackNotificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import urllib.request
+          import os
+          import boto3
+
+          def format_status(status):
+              if status == "Success":
+                  return "成功 ✅"
+              elif status == "Failed":
+                  return "失敗 ❌"
+              else:
+                  return f"{status} ❓"
+
+          def handler(event, context):
+              status = event['detail']['Status']
+              execution_id = event['detail']['AutomationExecutionId']
+              resources = event['resources']
+              step_name = event['detail']['StepName']
+              action = event['detail']['Action']
+          
+              # リソース名を抽出（ARNの最後の部分を使用）
+              resource_name = resources[0].split('/')[-1] if resources else "不明"
+
+              message = (
+                  f"🔔 *SSMオートメーション実行結果*\n\n"
+                  f"*ステータス*: {format_status(status)}\n"
+                  f"*実行内容*: {step_name} ({action})\n"
+                  f"*対象リソース*: `{resource_name}`\n"
+                  f"*実行ID*: `{execution_id}`\n\n"
+                  f"詳細はAWS Systems Managerコンソールでご確認ください。"
+              )
+
+              data = {
+                  "text": message
+              }
+          
+              ssm = boto3.client('ssm')
+              parameter_name = os.environ['SLACK_WEBHOOK_URL_PARAMETER_NAME']
+              parameter = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
+              slack_webhook_url = parameter['Parameter']['Value']
+          
+              req = urllib.request.Request(slack_webhook_url, 
+              data=json.dumps(data).encode('utf-8'), 
+              headers={'Content-Type': 'application/json'})
+          
+              response = urllib.request.urlopen(req)
+              return {
+                  'statusCode': response.getcode(),
+                  'body': response.read().decode('utf-8')
+              }
+      Runtime: python3.8
+      Timeout: 10
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL_PARAMETER_NAME: !Ref SlackWebhookUrlParameterName
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SlackWebhookUrlParameterName}'
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SlackNotificationLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SSMAutomationEventRule.Arn
+
   AutomationScheduleRule:
     Type: AWS::Events::Rule
     Properties:
       Description: "Schedule for running SSM Automation to stop EC2 instances"
       ScheduleExpression: "rate(1 day)"
       State: ENABLED
-      Targets: 
+      Targets:
         - Arn: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/${EC2StopAutomation}'
           Id: "TargetSSMAutomation"
           RoleArn: !GetAtt AutomationExecutionRole.Arn
