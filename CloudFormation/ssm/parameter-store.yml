@@ -1,14 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Description: SSM Parameter Store Example
+
+Parameters:
+  ParameterStoreName:
+    Type: String
+    Description: The name of the SSM Parameter Store entry.
+    Default: "/sample-key"
+  
+  ParameterStoreValue:
+    Type: String
+    Description: The value to store in the SSM Parameter Store.
+    Default: "sample-value"
 
 Resources:
-  SSMParameter:
+  MyParameterStore:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /sample-key
-      # NOTE: Typeの値として、SecureStringが有効とされているもののCFnではサポートされていないので注意（2024.01.31現在）
+      Name: !Ref ParameterStoreName
+      # NOTE: Typeの値としてSecureStringはサポートされていないのでちゅ
       # @see https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-ssm-parameter.html#cfn-ssm-parameter-type
       Type: String
-      Value: |
-        sample-value
-      DataType: text
-      Tier: Standard
+      Value: !Ref ParameterStoreValue
