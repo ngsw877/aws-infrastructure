@@ -3,6 +3,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -24,6 +25,12 @@ export class ScheduledBatchStack extends cdk.Stack {
         parameterName: '/scheduled-batch/slack-webhook-url',
       }).parameterArn],
     }));
+
+    // CloudWatch Logsのロググループを作成
+    new logs.LogGroup(this, `${slackNotifierFunction.node.id}LogGroup`, {
+      logGroupName: `/aws/lambda/${slackNotifierFunction.functionName}`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     // EventBridgeルールを作成して、Lambdaを定期実行
     new events.Rule(this, 'ScheduleRule', {
