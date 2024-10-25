@@ -1,6 +1,6 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda'
-import { Construct } from 'constructs';
+import { Stack, type StackProps } from 'aws-cdk-lib';
+import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda'
+import type { Construct } from 'constructs';
 import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway'
 import { HitCounter } from './hitcounter';
 import { TableViewer } from "cdk-dynamo-table-viewer";
@@ -10,7 +10,7 @@ export class CdkWorkshopStack extends Stack {
     super(scope, id, props);
 
     // defines an AWS Lambda resource
-    const hello = new Function(this, "HelloHandler", {
+    const hello = new LambdaFunction(this, "HelloHandler", {
       runtime: Runtime.NODEJS_18_X, // execution environment
       code: Code.fromAsset("lambda"), // code loaded from "lambda" directory
       handler: "hello.handler", // file is "hello", function is "handler"

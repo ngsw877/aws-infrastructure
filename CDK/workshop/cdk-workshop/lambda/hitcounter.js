@@ -1,7 +1,7 @@
 const { DynamoDB } = require("@aws-sdk/client-dynamodb");
 const { Lambda, InvokeCommand } = require("@aws-sdk/client-lambda");
 
-exports.handler = async function (event) {
+exports.handler = async (event) => {
 	console.log("request:", JSON.stringify(event, undefined, 2));
 	
 	// create AWS SDK clients

@@ -1,6 +1,6 @@
 import { RemovalPolicy } from "aws-cdk-lib";
 import {AttributeType, Table, TableEncryption} from 'aws-cdk-lib/aws-dynamodb';
-import {Code, Function, IFunction, Runtime} from 'aws-cdk-lib/aws-lambda';
+import {Function as LambdaFunction, Code, type IFunction, Runtime} from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
 
 export interface HitCounterProps {
@@ -20,7 +20,7 @@ export interface HitCounterProps {
 export class HitCounter extends Construct {
 
     /** allows accessing the counter function */
-    public readonly handler: Function;
+    public readonly handler: LambdaFunction;
 
     /** allows accessing the hit counter table */
     public readonly table: Table;
@@ -43,7 +43,7 @@ export class HitCounter extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
-        this.handler = new Function(this, "HitCounterHandler", {
+        this.handler = new LambdaFunction(this, "HitCounterHandler", {
             runtime: Runtime.NODEJS_18_X,
             handler: "hitcounter.handler",
             code: Code.fromAsset("lambda"),

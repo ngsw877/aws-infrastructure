@@ -1,11 +1,11 @@
 import {Stack} from "aws-cdk-lib";
 import {Template, Capture} from "aws-cdk-lib/assertions";
-import {Code, Function, Runtime} from "aws-cdk-lib/aws-lambda";
+import {Code, Function as LambdaFunction, Runtime} from "aws-cdk-lib/aws-lambda";
 import {HitCounter} from "../lib/hitcounter";
 
 // 共通のダウンストリームLambda関数を作成する関数
-const createTestLambdaFunction = (stack: Stack): Function =>
-    new Function(stack, "TestFunction", {
+const createTestLambdaFunction = (stack: Stack): LambdaFunction =>
+    new LambdaFunction(stack, "TestFunction", {
         runtime: Runtime.NODEJS_18_X,
         handler: "hello.handler",
         code: Code.fromAsset("lambda"),
@@ -14,7 +14,7 @@ const createTestLambdaFunction = (stack: Stack): Function =>
 // 各テストケース
 describe('HitCounter', () => {
     let stack: Stack;
-    let testLambdaFunction: Function;
+    let testLambdaFunction: LambdaFunction;
 
     // 各テストケースの前に実行される
     beforeEach(() => {
