@@ -1,7 +1,8 @@
 import { RemovalPolicy } from "aws-cdk-lib";
-import {AttributeType, Table, TableEncryption} from 'aws-cdk-lib/aws-dynamodb';
-import {Function as LambdaFunction, Code, type IFunction, Runtime} from 'aws-cdk-lib/aws-lambda';
-import {Construct} from 'constructs';
+import { AttributeType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction, Code, type IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Construct } from 'constructs';
+import * as logs from 'aws-cdk-lib/aws-logs'; // ロググループ用のインポート
 
 export interface HitCounterProps {
     /** the function for which we want to count url hits **/
@@ -43,10 +44,16 @@ export class HitCounter extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
+        const logGroup = new logs.LogGroup(this, "HitCounterLogGroup", {
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: RemovalPolicy.DESTROY,
+        });
+
         this.handler = new LambdaFunction(this, "HitCounterHandler", {
             runtime: Runtime.NODEJS_18_X,
             handler: "hitcounter.handler",
             code: Code.fromAsset("lambda"),
+            logGroup: logGroup,
             environment: {
                 DOWNSTREAM_FUNCTION_NAME: props.downstream.functionName,
                 HITS_TABLE_NAME: this.table.tableName,
