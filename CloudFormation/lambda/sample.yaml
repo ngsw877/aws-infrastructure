@@ -8,12 +8,21 @@ Parameters:
     Type: String
     AllowedPattern: ^.*[^0-9]$
     ConstraintDescription: Must end with non-numeric character.
+    Default: dev
 
   LambdaHandlerPath:
     Description: Path of a Lambda Handler.
     Type: String
     AllowedPattern: ^.*[^0-9]$
     ConstraintDescription: Must end with non-numeric character.
+    Default: index.handler
+
+  RetentionDays:
+    Description: Number of days to retain logs in CloudWatch.
+    Type: Number
+    Default: 14
+    MinValue: 1
+    MaxValue: 365
 
 Resources:
   LambdaRole:
@@ -50,21 +59,43 @@ Resources:
       Code:
         ZipFile: |
           import json
+          import os
+          from datetime import datetime
 
-          def lambda_handler(event, context):
-              print(json.dumps(event))
+          def handler(event, context):
+              env = os.environ.get('ENV')
+
+              # 現在のUTC時間を取得
+              current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+              # 環境変数に基づいてメッセージを変更
+              if env == 'production':
+                  message = 'Hello from the production environment!'
+              else:
+                  message = 'Hello from a non-production environment!'
+
               return {
                   'statusCode': 200,
-                  'body': json.dumps('Hello from Lambda!')
+                  'body': json.dumps({
+                      'message': message,
+                      'current_time': current_time
+                  })
               }
-      Handler: !Sub ${LambdaHandlerPath}
+      Handler: !Ref LambdaHandlerPath
       MemorySize: 128
       Timeout: 10
       Role: !GetAtt LambdaRole.Arn
       Environment:
         Variables:
           ENV: !Ref EnvName
-          TZ: UTC
+
+  LambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunction}
+      RetentionInDays: !Ref RetentionDays
 
 Outputs:
   LambdaRoleARN:
