@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Apigw + Lambda + DynamoDB
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  MyFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Policies:
+        DynamoDBCrudPolicy:
+          TableName: !Ref MyDynamoDBTable
+      Events:
+        ApiEvent:
+          Type: Api 
+          Properties:
+            Path: /src
+            Method: get
+  MyDynamoDBTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: SampleTable
+
+Outputs:
+  Api:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/src/"
