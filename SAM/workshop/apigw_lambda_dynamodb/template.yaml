@@ -1,9 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
+
 Transform: AWS::Serverless-2016-10-31
+
 Description: Apigw + Lambda + DynamoDB
+
 Globals:
   Function:
     Timeout: 3
+    MemorySize: 128
+
+Parameters:  
+  TableName:
+    Type: String
+    Default: "SampleTable"
+    Description: "DynamoDBテーブルの名前を指定します"
 
 Resources:
   MyFunction:
@@ -16,19 +26,25 @@ Resources:
         - x86_64
       Policies:
         DynamoDBCrudPolicy:
-          TableName: !Ref MyDynamoDBTable
+          TableName: !Ref TableName
       Events:
         ApiEvent:
           Type: Api 
           Properties:
-            Path: /src
+            Path: /insert
             Method: get
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TableName
+
   MyDynamoDBTable:
     Type: AWS::Serverless::SimpleTable
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
-      TableName: SampleTable
+      TableName: !Ref TableName
 
 Outputs:
   Api:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/src/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/insert/"
