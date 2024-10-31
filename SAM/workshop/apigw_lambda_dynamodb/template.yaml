@@ -10,18 +10,23 @@ Globals:
     MemorySize: 128
 
 Parameters:  
+  Runtime:
+    Type: String
+    Default: "python3.9"
+    Description: "Lambda関数のランタイムを指定します"
+
   TableName:
     Type: String
     Default: "SampleTable"
     Description: "DynamoDBテーブルの名前を指定します"
-
+  
 Resources:
   MyFunction:
     Type: AWS::Serverless::Function 
     Properties:
       CodeUri: src/
       Handler: app.lambda_handler
-      Runtime: python3.9
+      Runtime: !Ref Runtime
       Architectures:
         - x86_64
       Policies:

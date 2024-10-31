@@ -7,4 +7,7 @@ region = "ap-northeast-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
-parameter_overrides = "TableName=MyTable"
+parameter_overrides = [
+    "Runtime=python3.9",
+    "TableName=MyTable"
+]
