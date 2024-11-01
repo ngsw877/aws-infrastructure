@@ -1,14 +1,14 @@
-import { Stack, type StackProps, RemovalPolicy } from "aws-cdk-lib";
+import { RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
 import {
 	Code,
 	Function as LambdaFunction,
 	Runtime,
 } from "aws-cdk-lib/aws-lambda";
-import type { Construct } from "constructs";
-import { LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
-import { HitCounter } from "./hitcounter";
-import { TableViewer } from "cdk-dynamo-table-viewer";
 import * as logs from "aws-cdk-lib/aws-logs";
+import { TableViewer } from "cdk-dynamo-table-viewer";
+import type { Construct } from "constructs";
+import { HitCounter } from "./hitcounter";
 
 export class CdkWorkshopStack extends Stack {
 	constructor(scope: Construct, id: string, props?: StackProps) {

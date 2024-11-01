@@ -5,13 +5,13 @@ import {
 	TableEncryption,
 } from "aws-cdk-lib/aws-dynamodb";
 import {
-	Function as LambdaFunction,
 	Code,
 	type IFunction,
+	Function as LambdaFunction,
 	Runtime,
 } from "aws-cdk-lib/aws-lambda";
-import { Construct } from "constructs";
 import * as logs from "aws-cdk-lib/aws-logs"; // ロググループ用のインポート
+import { Construct } from "constructs";
 
 export interface HitCounterProps {
 	/** the function for which we want to count url hits **/

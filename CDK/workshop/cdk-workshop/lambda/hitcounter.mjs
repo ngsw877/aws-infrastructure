@@ -1,5 +1,5 @@
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import { Lambda, InvokeCommand } from "@aws-sdk/client-lambda";
+import { InvokeCommand, Lambda } from "@aws-sdk/client-lambda";
 
 export const handler = async (event) => {
 	console.log("request:", JSON.stringify(event, undefined, 2));

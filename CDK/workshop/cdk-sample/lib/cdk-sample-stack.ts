@@ -1,9 +1,9 @@
 import { Stack, type StackProps } from "aws-cdk-lib";
-import type { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as rds from "aws-cdk-lib/aws-rds";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as targets from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
+import * as rds from "aws-cdk-lib/aws-rds";
+import type { Construct } from "constructs";
 
 // 自作コンストラクトを import
 import { WebServerInstance } from "./constructs/web-server-instance";

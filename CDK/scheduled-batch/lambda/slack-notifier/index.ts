@@ -1,5 +1,5 @@
+import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import axios from "axios";
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
 const ssmClient = new SSMClient();
 

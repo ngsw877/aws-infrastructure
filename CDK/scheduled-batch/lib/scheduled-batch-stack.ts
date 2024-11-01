@@ -1,10 +1,10 @@
+import * as path from "path";
 import * as cdk from "aws-cdk-lib";
-import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
-import * as ssm from "aws-cdk-lib/aws-ssm";
+import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as logs from "aws-cdk-lib/aws-logs";
-import * as path from "path";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 import type { Construct } from "constructs";
 
 export class ScheduledBatchStack extends cdk.Stack {

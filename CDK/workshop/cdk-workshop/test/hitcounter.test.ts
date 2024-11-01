@@ -1,5 +1,5 @@
 import { Stack } from "aws-cdk-lib";
-import { Template, Capture } from "aws-cdk-lib/assertions";
+import { Capture, Template } from "aws-cdk-lib/assertions";
 import {
 	Code,
 	Function as LambdaFunction,
