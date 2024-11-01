@@ -1,0 +1,11 @@
+{
+	"recommendations": [
+		"amazonwebservices.aws-toolkit-vscode",
+		"biomejs.biome",
+		"kddejong.vscode-cfn-lint",
+		"charliermarsh.ruff",
+		"tamasfe.even-better-toml",
+		"aws-scripting-guy.cform",
+		"oderwat.indent-rainbow"
+	]
+}
