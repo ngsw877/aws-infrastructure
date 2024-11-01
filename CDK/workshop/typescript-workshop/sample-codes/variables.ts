@@ -1,4 +1,4 @@
-let smallNumber: number = 1;
+const smallNumber = 1;
 console.log(smallNumber);
 
 const color: string = "red";

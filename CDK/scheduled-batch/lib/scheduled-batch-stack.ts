@@ -5,7 +5,7 @@ import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as path from "path";
-import { Construct } from "constructs";
+import type { Construct } from "constructs";
 
 export class ScheduledBatchStack extends cdk.Stack {
 	constructor(scope: Construct, id: string, props?: cdk.StackProps) {

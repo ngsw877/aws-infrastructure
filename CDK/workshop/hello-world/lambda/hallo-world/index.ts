@@ -1,4 +1,4 @@
-import { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
+import type { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
 
 export const handler = async (
 	event: APIGatewayEvent,
