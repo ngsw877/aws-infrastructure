@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { ScheduledBatchStack } from '../lib/scheduled-batch-stack';
+import "source-map-support/register";
+import * as cdk from "aws-cdk-lib";
+import { ScheduledBatchStack } from "../lib/scheduled-batch-stack";
 
 const app = new cdk.App();
-new ScheduledBatchStack(app, 'ScheduledBatchStack');
+new ScheduledBatchStack(app, "ScheduledBatchStack");
