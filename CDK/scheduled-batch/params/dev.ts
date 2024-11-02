@@ -12,6 +12,22 @@ const commonBatchProps: CommonBatchProps = {
 };
 
 export const devParams: ScheduledBatchStackParams = {
+  // テストバッチ用Props
+  helloWorldBatchProps: {
+    ...commonBatchProps,
+    testMessage: "hello world!",
+    scheduleOption: {
+      scheduleCron: {
+        minute: "0",
+        hour: "0",
+        weekDay: "*",
+        month: "*",
+        year: "*",
+      }, // 日本時間の9時に毎日実行（UTC 0時）
+      isScheduleEnabled: true,
+    },
+  },
+
   // ECSタスク再起動バッチ用Props
   restartEcsTasksBatchProps: {
     ...commonBatchProps,

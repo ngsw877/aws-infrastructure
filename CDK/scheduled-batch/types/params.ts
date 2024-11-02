@@ -12,6 +12,12 @@ export interface CommonBatchProps {
   batchFailureWebhookParameterStoreName: string;
 }
 
+// テストバッチ用Props
+export interface HelloWorldBatchProps extends CommonBatchProps {
+  testMessage: string;
+  scheduleOption: ScheduleOption;
+}
+
 // ECSタスク再起動バッチ用Props
 export interface RestartEcsTasksBatchProps extends CommonBatchProps {
   ecsClusterName: string;
@@ -21,5 +27,6 @@ export interface RestartEcsTasksBatchProps extends CommonBatchProps {
 
 // スタック用のパラメータ
 export interface ScheduledBatchStackParams extends cdk.StackProps {
+  helloWorldBatchProps: HelloWorldBatchProps;
   restartEcsTasksBatchProps: RestartEcsTasksBatchProps;
 }
