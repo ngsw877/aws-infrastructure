@@ -29,15 +29,18 @@ export const sendLambdaResultNotification = async (
   successWebhookParameterName: string,
   failureWebhookParameterName: string,
 ): Promise<void> => {
+  // パラメータストアからWebhook URLを取得
   const webhookUrl = await getParameterStoreValue(
     isSuccess ? successWebhookParameterName : failureWebhookParameterName,
   );
 
+  // Webhook URLが取得できない場合はエラー
   if (!webhookUrl) {
     console.error("Webhook URLが取得できませんでした");
     return;
   }
 
+  // Slackに通知するためのペイロードを作成
   const payload = {
     username: isSuccess
       ? "Scheduled Batch Success Bot"
@@ -53,6 +56,7 @@ export const sendLambdaResultNotification = async (
   };
 
   try {
+    // Slackに通知
     await axios.post(webhookUrl, payload);
     console.log("通知が送信されました");
   } catch (error) {
