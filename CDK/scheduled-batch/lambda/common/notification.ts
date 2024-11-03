@@ -1,56 +1,51 @@
 import axios from "axios";
 import { getParameterStoreValue } from "./ssm";
+import type { SendNotificationParams } from "../../types/lambda";
+
+const LAMBDA_FUNCTION_NAME = process.env.AWS_LAMBDA_FUNCTION_NAME as string;
 
 /**
  * Lambda実行結果の通知メッセージを作成する
- * @param lambdaFunctionName Lambda関数名
  * @param message 通知メッセージ
  * @returns フォーマットされた通知メッセージ
  */
 export const createLambdaResultMessage = (
-  lambdaFunctionName: string,
   message: string,
 ): string => {
-  return `Lambda関数名：\n[ ${lambdaFunctionName} ]\n\n${message}`;
+  return `Lambda関数名：\n[ ${LAMBDA_FUNCTION_NAME} ]\n\n${message}`;
 };
 
 /**
  * Lambda実行結果をSlackに通知する
- * @param isSuccess Lambda処理が成功したかどうか
- * @param title 通知のタイトル
- * @param message 通知の本文
- * @param successWebhookParameterName 成功時のWebhook URLが格納されているパラメータ名
- * @param failureWebhookParameterName 失敗時のWebhook URLが格納されているパラメータ名
+ * @params
+ * @throws Error Webhook URLが取得できない場合
  */
-export const sendLambdaResultNotification = async (
-  isSuccess: boolean,
-  title: string,
-  message: string,
-  successWebhookParameterName: string,
-  failureWebhookParameterName: string,
+export const notifyLambdaResult = async (
+  params: SendNotificationParams,
 ): Promise<void> => {
   // パラメータストアからWebhook URLを取得
-  const webhookUrl = await getParameterStoreValue(
-    isSuccess ? successWebhookParameterName : failureWebhookParameterName,
-  );
+  const webhookUrl = await getParameterStoreValue(params.webhookUrlParameterName);
 
   // Webhook URLが取得できない場合はエラー
   if (!webhookUrl) {
-    console.error("Webhook URLが取得できませんでした");
-    return;
+    throw new Error("Webhook URLが取得できませんでした");
   }
 
   // Slackに通知するためのペイロードを作成
   const payload = {
-    username: isSuccess
+    username: params.isSuccess
       ? "Scheduled Batch Success Bot"
       : "Scheduled Batch Error Bot",
-    icon_emoji: isSuccess ? ":white_check_mark:" : ":rotating_light:",
+    icon_emoji: params.isSuccess
+      ? ":white_check_mark:"
+      : ":rotating_light:",
     attachments: [
       {
-        title: title,
-        text: message,
-        color: isSuccess ? "#36a64f" : "#ff0000",
+        title: params.title,
+        text: params.message,
+        color: params.isSuccess
+          ? "#36a64f"  // 緑
+          : "#ff0000", // 赤
       },
     ],
   };
