@@ -3,6 +3,7 @@ import {
   createLambdaResultMessage,
   notifyLambdaResult,
 } from "../common/notification";
+import { throwErrorIfForceErrorEnabled } from "../common/debug";
 
 const TEST_MESSAGE = process.env.TEST_MESSAGE as string;
 const BATCH_SUCCESS_WEBHOOK_PARAMETER_STORE_NAME = process.env.BATCH_SUCCESS_WEBHOOK_PARAMETER_STORE_NAME as string;
@@ -13,6 +14,9 @@ const errorMessage = "テスト用のLambda関数が異常終了しました。"
 
 export const handler = async (event: ScheduledEvent) => {
   try {
+    // もし環境変数IS_FORCE_ERROR_ENABLEDがtrueの場合は、デバッグ用の意図的なエラーを発生させる
+    throwErrorIfForceErrorEnabled();
+
     // テスト用のメソッドを呼び出し
     helloWorld(TEST_MESSAGE);
 
