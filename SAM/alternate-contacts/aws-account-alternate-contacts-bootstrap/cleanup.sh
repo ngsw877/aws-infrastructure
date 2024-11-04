@@ -8,8 +8,8 @@ if [[ $# -lt 1 ]] ; then
 else
      REGION=$1
 fi
-FUNCTION=$(aws cloudformation describe-stack-resource --stack-name $STACK --logical-resource-id function --query 'StackResourceDetail.PhysicalResourceId' --output text --region $REGION)
-aws cloudformation delete-stack --stack-name $STACK --region $REGION
+FUNCTION=$(aws cloudformation describe-stack-resource --stack-name $STACK --logical-resource-id OrgCreateAccountContactBootstrapFunction --query 'StackResourceDetail.PhysicalResourceId' --output text --region $REGION --profile $PROFILE)
+aws cloudformation delete-stack --stack-name $STACK --region $REGION --profile $PROFILE
 echo "Deleted $STACK stack."
 
 if [ -f bucket-name.txt ]; then
@@ -20,7 +20,7 @@ if [ -f bucket-name.txt ]; then
         while true; do
             read -p "Delete deployment artifacts and bucket ($ARTIFACT_BUCKET)? (y/n)" response
             case $response in
-                [Yy]* ) aws s3 rb --force s3://$ARTIFACT_BUCKET; rm bucket-name.txt; break;;
+                [Yy]* ) aws s3 rb --force s3://$ARTIFACT_BUCKET --region $REGION --profile $PROFILE; rm bucket-name.txt; break;;
                 [Nn]* ) break;;
                 * ) echo "Response must start with y or n.";;
             esac
@@ -31,7 +31,7 @@ fi
 while true; do
     read -p "Delete function log group (/aws/lambda/$FUNCTION)? (y/n)" response
     case $response in
-        [Yy]* ) aws logs delete-log-group --log-group-name /aws/lambda/$FUNCTION; break;;
+        [Yy]* ) aws logs delete-log-group --log-group-name /aws/lambda/$FUNCTION --region $REGION --profile $PROFILE; break;;
         [Nn]* ) break;;
         * ) echo "Response must start with y or n.";;
     esac
