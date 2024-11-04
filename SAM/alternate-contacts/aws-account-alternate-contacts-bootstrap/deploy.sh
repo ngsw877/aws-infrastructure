@@ -9,8 +9,25 @@ fi
 ARTIFACT_BUCKET=$(cat bucket-name.txt)
 TEMPLATE=aws-account-contact-bootstrap-template.yaml
 PROFILE=$(cat profile.txt)
+
+SECURITY_CONTACT_NAME="Mary Major"
+SECURITY_CONTACT_TITLE="Security Contact"
+SECURITY_CONTACT_EMAIL="security-contact@example.com"
+SECURITY_CONTACT_PHONE="+1(555)555-5555"
+
 sam build -t $TEMPLATE
 cd .aws-sam/build
 
-sam package --debug  --profile $PROFILE --region $REGION --s3-bucket $ARTIFACT_BUCKET --output-template-file aws-account-contact-bootstrap-template-cf.yml
-sam deploy --debug --profile $PROFILE --region $REGION --template-file aws-account-contact-bootstrap-template-cf.yml --stack-name aws-account-contact-bootstrap --capabilities CAPABILITY_NAMED_IAM
+sam package --debug \
+    --profile $PROFILE \
+    --region $REGION \
+    --s3-bucket $ARTIFACT_BUCKET \
+    --output-template-file aws-account-contact-bootstrap-template-cf.yml
+
+sam deploy --debug \
+    --profile $PROFILE \
+    --region $REGION \
+    --template-file aws-account-contact-bootstrap-template-cf.yml \
+    --stack-name aws-account-contact-bootstrap \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides "SecurityContactName=\"$SECURITY_CONTACT_NAME\" SecurityContactTitle=\"$SECURITY_CONTACT_TITLE\" SecurityContactEmail=$SECURITY_CONTACT_EMAIL SecurityContactPhone=$SECURITY_CONTACT_PHONE"
