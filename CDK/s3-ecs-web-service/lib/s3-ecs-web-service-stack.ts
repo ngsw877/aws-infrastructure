@@ -1,10 +1,10 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+// import * as cdk from 'aws-cdk-lib';
+// import type { Construct } from 'constructs';
+// // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
-export class S3EcsWebServiceStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+// export class S3EcsWebServiceStack extends cdk.Stack {
+//   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+//     super(scope, id, props);
 
     // The code that defines your stack goes here
 
@@ -12,5 +12,5 @@ export class S3EcsWebServiceStack extends cdk.Stack {
     // const queue = new sqs.Queue(this, 'S3EcsWebServiceQueue', {
     //   visibilityTimeout: cdk.Duration.seconds(300)
     // });
-  }
-}
+//   }
+// }
