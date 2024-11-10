@@ -7,11 +7,11 @@ export class HelloWorld extends Construct {
 	constructor(scope: Construct, id: string) {
 		super(scope, id);
 
-		const helloFunction = new NodejsFunction(this, "function", {
+		const helloFunction = new NodejsFunction(this, "Lambda", {
 			entry: path.join(__dirname, "..", "lambda", "hallo-world", "index.ts"),
 		});
 
-		new LambdaRestApi(this, "apigw", {
+		new LambdaRestApi(this, "ApiGateway", {
 			handler: helloFunction,
 		});
 	}
