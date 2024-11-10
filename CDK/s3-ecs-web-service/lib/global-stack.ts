@@ -3,9 +3,9 @@ import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import type { GlobalStackProps } from "../types/params";
 
-
 export class GlobalStack extends cdk.Stack {
   public readonly cloudfrontCertificate: acm.ICertificate;
+  public readonly hostedZone: route53.IHostedZone;
 
   constructor(
     scope: cdk.App,
@@ -15,7 +15,7 @@ export class GlobalStack extends cdk.Stack {
     super(scope, id, props);
 
     // Route53ホストゾーンの定義
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
+    this.hostedZone = route53.HostedZone.fromHostedZoneAttributes(
       this,
       "HostedZone",
       {
@@ -28,7 +28,7 @@ export class GlobalStack extends cdk.Stack {
     this.cloudfrontCertificate = new acm.Certificate(this, "CloudFrontCertificate", {
       certificateName: `${this.stackName}-cloudfront-certificate`,
       domainName: props.appDomain,
-      validation: acm.CertificateValidation.fromDns(hostedZone),
+      validation: acm.CertificateValidation.fromDns(this.hostedZone),
     });
   }
 }
