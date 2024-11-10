@@ -22,7 +22,7 @@ export class RestartEcsTasksBatch extends Construct {
     // Lambda用Role
     const restartEcsTasksLambdaRole = new iam.Role(
       this,
-      "RestartEcsTasksLambdaRole",
+      "LambdaRole",
       {
         assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
         managedPolicies: [
@@ -53,7 +53,7 @@ export class RestartEcsTasksBatch extends Construct {
     // Lambda
     const restartEcsTasksLambda = new NodejsFunction(
       this,
-      "RestartEcsTasksLambda",
+      "Lambda",
       {
         entry: path.join(__dirname, "../../lambda/restart-ecs-tasks/index.ts"),
         handler: "handler",

@@ -22,7 +22,7 @@ export class HelloWorldBatch extends Construct {
     // Lambda用Role
     const helloWorldLambdaRole = new iam.Role(
       this,
-      "HelloWorldLambdaRole",
+      "LambdaRole",
       {
         assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
         managedPolicies: [
@@ -47,7 +47,7 @@ export class HelloWorldBatch extends Construct {
     // Lambda
     const helloWorldLambda = new NodejsFunction(
       this,
-      "HelloWorldLambda",
+      "Lambda",
       {
         entry: path.join(__dirname, "../../lambda/hello-world/index.ts"),
         handler: "handler",

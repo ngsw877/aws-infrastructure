@@ -7,7 +7,7 @@ import { devParams } from "../params/dev";
 const app = new cdk.App();
 
 // 開発環境用
-new ScheduledBatchStack(app, "Dev-ScheduledBatchStack", {
+new ScheduledBatchStack(app, "Dev-ScheduledBatch", {
   ...devParams,
   env: {
     region: "ap-northeast-1",
