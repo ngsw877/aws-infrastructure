@@ -1,6 +1,5 @@
-import * as cdk from "aws-cdk-lib";
+import { Duration, Stack } from "aws-cdk-lib";
 import type { Construct } from "constructs";
-import { Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
@@ -14,7 +13,7 @@ import {
 	BucketEncryption,
 } from "aws-cdk-lib/aws-s3";
 
-export class MainStack extends cdk.Stack {
+export class MainStack extends Stack {
 	constructor(scope: Construct, id: string, props: MainStackProps) {
 		super(scope, id, props);
 
@@ -94,9 +93,9 @@ export class MainStack extends cdk.Stack {
 						cachePolicyName: `${this.stackName}-FrontendCachePolicy`,
 						comment: "FrontendCachePolicy",
 						// キャッシュ期間
-						defaultTtl: cdk.Duration.days(1),
-						maxTtl: cdk.Duration.days(365),
-						minTtl: cdk.Duration.seconds(0),
+						defaultTtl: Duration.days(1),
+						maxTtl: Duration.days(365),
+						minTtl: Duration.seconds(0),
 						// 圧縮サポート
 						enableAcceptEncodingBrotli: true,
 						enableAcceptEncodingGzip: true,
