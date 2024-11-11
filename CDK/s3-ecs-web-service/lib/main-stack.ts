@@ -96,9 +96,9 @@ export class MainStack extends Stack {
 						cachePolicyName: `${this.stackName}-FrontendCachePolicy`,
 						comment: "FrontendCachePolicy",
 						// キャッシュ期間
-						defaultTtl: Duration.days(1),
-						maxTtl: Duration.days(365),
-						minTtl: Duration.seconds(0),
+						defaultTtl: props.defaultTtl,
+            maxTtl: props.maxTtl,
+            minTtl: props.minTtl,
 						// 圧縮サポート
 						enableAcceptEncodingBrotli: true,
 						enableAcceptEncodingGzip: true,

@@ -1,9 +1,9 @@
-import * as cdk from "aws-cdk-lib";
+import { Aws, Duration } from "aws-cdk-lib";
 import type { GlobalStackProps, MainStackProps, Params } from "../types/params";
 
 const globalStackProps: GlobalStackProps = {
 	env: {
-		account: cdk.Aws.ACCOUNT_ID,
+		account: Aws.ACCOUNT_ID,
 		region: "us-east-1",
 	},
 	crossRegionReferences: true,
@@ -13,12 +13,15 @@ const globalStackProps: GlobalStackProps = {
 
 const mainStackProps: MainStackProps = {
 	env: {
-		account: cdk.Aws.ACCOUNT_ID,
+		account: Aws.ACCOUNT_ID,
 		region: "ap-northeast-1",
 	},
 	crossRegionReferences: true,
 	natGatewaysCount: 0,
 	logRetentionDays: 30,
+	defaultTtl: Duration.days(1),
+	maxTtl: Duration.days(365),
+	minTtl: Duration.seconds(0),
 };
 
 export const params: Params = {

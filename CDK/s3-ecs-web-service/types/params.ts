@@ -1,4 +1,4 @@
-import type { StackProps } from "aws-cdk-lib";
+import type { StackProps, Duration } from "aws-cdk-lib";
 import type * as acm from "aws-cdk-lib/aws-certificatemanager";
 import type * as route53 from "aws-cdk-lib/aws-route53";
 
@@ -10,6 +10,9 @@ export interface GlobalStackProps extends StackProps {
 export interface MainStackProps extends StackProps {
 	natGatewaysCount: number;
 	logRetentionDays?: number;
+	defaultTtl?: Duration;
+	maxTtl?: Duration;
+	minTtl?: Duration;
 	cloudfrontCertificate?: acm.ICertificate;
 	hostedZone?: route53.IHostedZone;
 }
