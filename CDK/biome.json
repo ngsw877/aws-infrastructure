@@ -6,7 +6,6 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"ignoreUnknown": false,
 		"ignore": ["*.json"]
 	},
 	"formatter": {
@@ -24,6 +23,7 @@
 	},
 	"javascript": {
 		"formatter": {
+			"enabled": true,
 			"quoteStyle": "double"
 		}
 	}
