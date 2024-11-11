@@ -18,7 +18,9 @@ export class MainStack extends Stack {
 		super(scope, id, props);
 
 		if (!props.cloudfrontCertificate || !props.hostedZone) {
-			throw new Error("GlobalStackから取得した、cloudfrontCertificateとhostedZoneの両方が必須です。");
+			throw new Error(
+				"GlobalStackから取得した、cloudfrontCertificateとhostedZoneの両方が必須です。",
+			);
 		}
 
 		// VPCとサブネット
@@ -78,7 +80,8 @@ export class MainStack extends Stack {
 				certificate: props.cloudfrontCertificate,
 				domainNames: [props.hostedZone.zoneName],
 				defaultBehavior: {
-					viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+					viewerProtocolPolicy:
+						cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
 					// オリジンリクエストポリシー
 					originRequestPolicy: new cloudfront.OriginRequestPolicy(
 						this,
@@ -126,6 +129,5 @@ export class MainStack extends Stack {
 				),
 			),
 		});
-
 	}
 }
