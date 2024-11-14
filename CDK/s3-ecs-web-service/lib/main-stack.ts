@@ -1,17 +1,25 @@
-import { Duration, Stack } from "aws-cdk-lib";
+import { 
+    Duration, 
+    Stack,
+		PhysicalName,
+		RemovalPolicy,
+    aws_ec2 as ec2,
+    aws_cloudfront as cloudfront,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
+    aws_certificatemanager as acm,
+    aws_elasticloadbalancingv2 as elbv2,
+    aws_ecs as ecs,
+    aws_s3 as s3,
+    aws_iam as iam,
+		aws_applicationautoscaling as applicationautoscaling,
+		aws_cloudwatch as cloudwatch,
+		aws_ecr as ecr,
+		aws_logs as logs,
+} from "aws-cdk-lib";
 import type { Construct } from "constructs";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as route53 from "aws-cdk-lib/aws-route53";
 import type { MainStackProps } from "../types/params";
-import * as targets from "aws-cdk-lib/aws-route53-targets";
-import {
-	BlockPublicAccess,
-	Bucket,
-	BucketAccessControl,
-	BucketEncryption,
-} from "aws-cdk-lib/aws-s3";
 
 export class MainStack extends Stack {
 	constructor(scope: Construct, id: string, props: MainStackProps) {
@@ -23,6 +31,11 @@ export class MainStack extends Stack {
 			);
 		}
 
+		const appDomain = props.hostedZone.zoneName;
+
+		/*************************************
+		 * ネットワークリソース
+		 *************************************/
 		// VPCとサブネット
 		const vpc = new ec2.Vpc(this, "Vpc", {
 			maxAzs: 2,
@@ -41,44 +54,46 @@ export class MainStack extends Stack {
 			natGateways: props.natGatewaysCount,
 		});
 
-		// S3バケットの設定
+		/*************************************
+		 * フロントエンド用リソース
+		 *************************************/
 		// フロントエンド用S3バケット
-		const frontendBucket = new Bucket(this, "FrontendBucket", {
+		const frontendBucket = new s3.Bucket(this, "FrontendBucket", {
 			versioned: true,
-			blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-			encryption: BucketEncryption.S3_MANAGED,
+			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+			encryption: s3.BucketEncryption.S3_MANAGED,
 			enforceSSL: true,
 		});
 
 		// アップロードされたファイル用S3バケット
-		const uploadedFilesBucket = new Bucket(this, "UploadedFilesBucket", {
+		const uploadedFilesBucket = new s3.Bucket(this, "UploadedFilesBucket", {
 			versioned: true,
-			blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-			encryption: BucketEncryption.S3_MANAGED,
+			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+			encryption: s3.BucketEncryption.S3_MANAGED,
 			enforceSSL: true,
 		});
 
 		// CloudFrontログ用S3バケット
-		const cloudFrontLogsBucket = new Bucket(this, "CloudFrontLogsBucket", {
+		const cloudFrontLogsBucket = new s3.Bucket(this, "CloudFrontLogsBucket", {
 			lifecycleRules: [
 				{
 					id: "cloudfront-logs-expiration",
 					enabled: true,
-					expiration: Duration.days(props?.logRetentionDays ?? 90),
+					expiration: Duration.days(props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS),
 				},
 			],
-			blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-			encryption: BucketEncryption.S3_MANAGED,
+			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+			encryption: s3.BucketEncryption.S3_MANAGED,
 			enforceSSL: true,
-			accessControl: BucketAccessControl.LOG_DELIVERY_WRITE,
+			accessControl: s3.BucketAccessControl.LOG_DELIVERY_WRITE,
 		});
 
-		// Frontend用CloudFront
+		// フロントエンド用CloudFront
 		const frontendCloudFront = new CloudFrontToS3(this, "FrontendCloudFront", {
 			existingBucketObj: frontendBucket,
 			cloudFrontDistributionProps: {
 				certificate: props.cloudfrontCertificate,
-				domainNames: [props.hostedZone.zoneName],
+				domainNames: [appDomain],
 				defaultBehavior: {
 					viewerProtocolPolicy:
 						cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -120,14 +135,335 @@ export class MainStack extends Stack {
 			},
 		});
 
+		// フロントエンド用CloudFrontのRoute53レコード
 		new route53.ARecord(this, "FrontendCloudFrontAliasRecord", {
 			zone: props.hostedZone,
-			recordName: props.hostedZone.zoneName,
+			recordName: appDomain,
 			target: route53.RecordTarget.fromAlias(
 				new targets.CloudFrontTarget(
 					frontendCloudFront.cloudFrontWebDistribution,
 				),
 			),
 		});
+
+		/*************************************
+		 * バックエンド用リソース
+		 *************************************/
+		// ALB用ACM証明書
+		const albCertificate = new acm.Certificate(this, "AlbCertificate", {
+			certificateName: `${this.stackName}-alb-certificate`,
+			domainName: appDomain,
+			subjectAlternativeNames: [`*.${appDomain}`],
+			validation: acm.CertificateValidation.fromDns(props.hostedZone),
+    });
+
+		// ALBセキュリティグループ
+    const backendAlbSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "BackendAlbSecurityGroup",
+      {
+        vpc,
+        description: "Security group for Backend ALB",
+        allowAllOutbound: true,
+      },
+    );
+
+		// ALB
+		const backendAlb = new elbv2.ApplicationLoadBalancer(this, "BackendAlb", {
+      vpc,
+			internetFacing: true,
+			dropInvalidHeaderFields: true,
+			deletionProtection: true,
+			securityGroup: backendAlbSecurityGroup,
+			vpcSubnets: vpc.selectSubnets({
+        subnetGroupName: 'Public',
+      }),
+		});
+
+		const httpListener = backendAlb.addListener("HttpListener", {
+			port: 80,
+			protocol: elbv2.ApplicationProtocol.HTTP,
+			defaultAction: elbv2.ListenerAction.redirect({
+				protocol: elbv2.ApplicationProtocol.HTTPS,
+				port: "443",
+				permanent: true,
+			}),
+		});
+
+		const httpsListener = backendAlb.addListener("HttpsListener", {
+			port: 443,
+			protocol: elbv2.ApplicationProtocol.HTTPS,
+			certificates: [albCertificate],
+		});
+
+		/*************************************
+		 * ECSリソース（バックエンド用）
+		 *************************************/
+		// ECR
+		const backendEcrRepository = new ecr.Repository(
+      this,
+      "BackendNginxECRRepository",
+      {
+        removalPolicy: RemovalPolicy.DESTROY,
+        lifecycleRules: [
+          {
+            rulePriority: 10,
+            description: "app Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*app*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 20,
+            description: "web Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*web*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 30,
+            description: "log Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*log*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 80,
+            description: "All Tagged Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 90,
+            description: "All Untagged Delete more than 3 images",
+            tagStatus: ecr.TagStatus.UNTAGGED,
+            maxImageCount: 3,
+          },
+        ],
+      },
+    );
+
+		// ECSクラスター
+		const ecsCluster = new ecs.Cluster(this, 'EcsCluster', {
+      vpc,
+      containerInsights: true,
+      enableFargateCapacityProviders: true,
+      clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
+    });
+
+		// タスク実行ロール
+		const taskExecutionRole = new iam.Role(this, 'EcsTaskExecutionRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+      ],
+      inlinePolicies: {
+				taskExecutionPolicy: new iam.PolicyDocument({
+              statements: [
+                  new iam.PolicyStatement({
+                      effect: iam.Effect.ALLOW,
+                      actions: ["ssm:GetParameters", "secretsmanager:GetSecretValue"],
+                      resources: [
+                          `arn:${this.partition}:ssm:${this.region}:${this.account}:parameter/*`,
+                          `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret/*`,
+                      ],
+                  }),
+              ],
+          }),
+      },
+    });
+
+		// タスクロール
+		const taskRole = new iam.Role(this, 'EcsTaskRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+			// TODO: アプリケーションに合わせたポリシーを追加する
+    });
+
+		// タスク定義
+		const backendEcsTask = new ecs.FargateTaskDefinition(this, 'BackendEcsTask', {
+			family: `${this.stackName}-backend`,
+			taskRole: taskRole,
+      executionRole: taskExecutionRole,
+      cpu: props.backendEcsTaskCpu,
+      memoryLimitMiB: props.backendEcsTaskMemory,
+			runtimePlatform: {
+        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+      },
+    });
+		// webコンテナ
+		backendEcsTask.addContainer("web", {
+      image: ecs.ContainerImage.fromEcrRepository(
+        backendEcrRepository,
+        "web",
+      ),
+      portMappings: [{ containerPort: 80 }],
+      readonlyRootFilesystem: false,
+      logging: ecs.LogDrivers.firelens({}),
+    });
+
+    backendEcsTask.addContainer("app", {
+      image: ecs.ContainerImage.fromEcrRepository(
+        backendEcrRepository,
+        "app",
+      ),
+      environment: {
+				// TODO: 環境変数を追加する
+      },
+      // SecretsManagerから取得したシークレットを環境変数に渡す
+      secrets: {
+        // TODO: シークレットを追加する
+      },
+      readonlyRootFilesystem: false,
+      logging: ecs.LogDrivers.firelens({}),
+    });
+
+    backendEcsTask.addFirelensLogRouter("log", {
+      image: ecs.ContainerImage.fromEcrRepository(
+        backendEcrRepository,
+        "log",
+      ),
+      user: "0",
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: "firelens",
+        logGroup: new logs.LogGroup(
+					this,
+					"BackendLogRouterLogGroup",
+					{
+						logGroupName: "backend-logrouter-logs",
+						retention: props.logRetentionDays,
+						removalPolicy: RemovalPolicy.DESTROY,
+					},
+				),
+      }),
+      firelensConfig: {
+        type: ecs.FirelensLogRouterType.FLUENTBIT,
+        options: {
+          configFileType: ecs.FirelensConfigFileType.FILE,
+          configFileValue: "/fluent-bit.conf",
+          enableECSLogMetadata: false,
+        },
+      },
+    });
+
+		// ECSサービス用セキュリティグループ
+		const appSecurityGroup = new ec2.SecurityGroup(this, 'AppSecurityGroup', {
+      vpc,
+      description: "Security group for Backend ECS Service",
+      allowAllOutbound: true, // for AWS APIs
+    });
+
+		// ECSサービス
+		const backendEcsService = new ecs.FargateService(this, 'BackendEcsService', {
+      cluster: ecsCluster,
+      taskDefinition: backendEcsTask,
+      desiredCount: props.backendDesiredCount,
+      platformVersion: ecs.FargatePlatformVersion.LATEST,
+      // https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ecs-readme.html#fargate-capacity-providers
+      capacityProviderStrategies: [
+        {
+          capacityProvider: 'FARGATE',
+          weight: 1,
+        },
+      ],
+      securityGroups: [appSecurityGroup],
+      serviceName: PhysicalName.GENERATE_IF_NEEDED,
+    });
+		const ecsServiceName = backendEcsService.serviceName;
+
+		// ALBのターゲットグループ
+		const appTargetGroup = httpsListener.addTargets('AppTargetGroup', {
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      targets: [backendEcsService],
+      deregistrationDelay: Duration.seconds(30),
+			// TODO: ヘルスチェックパスを設定する
+			// healthCheck: {
+			// 	path: "/api/health_check",
+			// },
+    });
+
+		// スケーラブルターゲット
+    const backendScalableTarget = new applicationautoscaling.ScalableTarget(
+      this,
+      "BackendScalableTarget",
+      {
+        serviceNamespace: applicationautoscaling.ServiceNamespace.ECS,
+        maxCapacity: props.backendMaxTaskCount,
+        minCapacity: props.backendMinTaskCount,
+        resourceId: `service/${ecsCluster.clusterName}/${ecsServiceName}`,
+        scalableDimension: "ecs:service:DesiredCount",
+      },
+    );
+
+    // ステップスケーリングアウトポリシーの定義
+    const backendStepScaleOutPolicy =
+      new applicationautoscaling.StepScalingPolicy(
+        this,
+        "BackendStepScaleOutPolicy",
+        {
+          scalingTarget: backendScalableTarget,
+          adjustmentType:
+            applicationautoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
+          metricAggregationType:
+            applicationautoscaling.MetricAggregationType.MAXIMUM,
+          // クールダウン期間
+          cooldown: Duration.seconds(180),
+          // 評価ポイント数
+          evaluationPeriods: props.backendEcsScaleOutEvaluationPeriods,
+          // ステップの定義
+          scalingSteps: [
+            { lower: 0, upper: 80, change: 0 }, // CPU使用率が80%未満の場合、スケールインは行わない
+            { lower: 80, change: 50 }, // CPU使用率が80%を超えた場合、タスク数を50%増加させる
+          ],
+          metric: new cloudwatch.Metric({
+						namespace: "AWS/ECS",
+						metricName: "CPUUtilization",
+						dimensionsMap: {
+							ClusterName: ecsCluster.clusterName,
+							ServiceName: ecsServiceName,
+						},
+						statistic: "Maximum",
+						// 評価期間
+						period: props.backendEcsScaleOutPeriod,
+					}),
+        },
+      );
+
+    // ステップスケーリングインポリシーの定義
+    const stepScaleInBackendPolicy =
+      new applicationautoscaling.StepScalingPolicy(
+        this,
+        "StepScalingInBackendPolicy",
+        {
+          scalingTarget: backendScalableTarget,
+          adjustmentType:
+            applicationautoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
+          metricAggregationType:
+            applicationautoscaling.MetricAggregationType.MAXIMUM,
+          // クールダウン期間
+          cooldown: Duration.seconds(300),
+          // 評価ポイント数
+          evaluationPeriods: props.backendEcsScaleInEvaluationPeriods,
+          // ステップの定義
+          scalingSteps: [
+            { upper: 60, change: -20 }, // CPU使用率が60%未満の場合、タスク数を20%減少させる
+            { lower: 60, change: 0 }, // CPU使用率が60%以上80%未満の場合、タスク数は変更しない
+          ],
+          metric: new cloudwatch.Metric({
+						namespace: "AWS/ECS",
+						metricName: "CPUUtilization",
+						dimensionsMap: {
+							ClusterName: ecsCluster.clusterName,
+							ServiceName: ecsServiceName,
+						},
+						statistic: "Maximum",
+						// 評価期間
+						period: props.backendEcsScaleInPeriod,
+					}),
+        },
+      );
+
 	}
 }
+

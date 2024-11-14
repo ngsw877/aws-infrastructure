@@ -1,5 +1,13 @@
-import { Aws, Duration } from "aws-cdk-lib";
-import type { GlobalStackProps, MainStackProps, Params } from "../types/params";
+import { 
+    Aws, 
+    Duration,
+		aws_logs as logs,
+} from "aws-cdk-lib";
+import type { 
+    GlobalStackProps, 
+    MainStackProps, 
+    Params 
+} from "../types/params";
 
 const globalStackProps: GlobalStackProps = {
 	env: {
@@ -18,10 +26,19 @@ const mainStackProps: MainStackProps = {
 	},
 	crossRegionReferences: true,
 	natGatewaysCount: 0,
-	logRetentionDays: 30,
+	logRetentionDays: logs.RetentionDays.ONE_MONTH,
 	defaultTtl: Duration.days(1),
 	maxTtl: Duration.days(365),
 	minTtl: Duration.seconds(0),
+	backendEcsTaskCpu: 256,
+	backendEcsTaskMemory: 512,
+	backendMaxTaskCount: 1,
+	backendMinTaskCount: 1,
+	backendDesiredCount: 0,
+	backendEcsScaleOutPeriod: Duration.seconds(300),
+	backendEcsScaleOutEvaluationPeriods: 3,
+	backendEcsScaleInPeriod: Duration.seconds(300),
+	backendEcsScaleInEvaluationPeriods: 3,
 };
 
 export const params: Params = {

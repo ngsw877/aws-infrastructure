@@ -1,5 +1,10 @@
-import type { StackProps, Duration } from "aws-cdk-lib";
-import type * as acm from "aws-cdk-lib/aws-certificatemanager";
+
+import type { 
+	StackProps,
+	Duration,
+	aws_certificatemanager as acm,
+	aws_logs as logs,
+} from "aws-cdk-lib";
 import type * as route53 from "aws-cdk-lib/aws-route53";
 
 export interface GlobalStackProps extends StackProps {
@@ -9,10 +14,20 @@ export interface GlobalStackProps extends StackProps {
 
 export interface MainStackProps extends StackProps {
 	natGatewaysCount: number;
-	logRetentionDays?: number;
+	logRetentionDays?: logs.RetentionDays;
 	defaultTtl?: Duration;
 	maxTtl?: Duration;
 	minTtl?: Duration;
+	backendEcsTaskCpu: number;
+	backendEcsTaskMemory: number;
+	backendMaxTaskCount: number;
+	backendMinTaskCount: number;
+	backendDesiredCount: number;
+	backendEcsScaleOutPeriod: Duration;
+	backendEcsScaleOutEvaluationPeriods: number;
+	backendEcsScaleInPeriod: Duration;
+	backendEcsScaleInEvaluationPeriods: number;
+	// 以下は、GlobalStackのスタックからインポートする
 	cloudfrontCertificate?: acm.ICertificate;
 	hostedZone?: route53.IHostedZone;
 }
