@@ -34,7 +34,7 @@ const mainStackProps: MainStackProps = {
 	backendEcsTaskMemory: 512,
 	backendMaxTaskCount: 1,
 	backendMinTaskCount: 1,
-	backendDesiredCount: 0,
+	backendDesiredCount: 1,
 	backendEcsScaleOutPeriod: Duration.seconds(300),
 	backendEcsScaleOutEvaluationPeriods: 3,
 	backendEcsScaleInPeriod: Duration.seconds(300),

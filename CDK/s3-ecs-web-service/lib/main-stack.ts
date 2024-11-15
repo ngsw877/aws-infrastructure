@@ -16,6 +16,10 @@ import {
 		aws_cloudwatch as cloudwatch,
 		aws_ecr as ecr,
 		aws_logs as logs,
+    region_info as ri,
+    aws_kms as kms,
+    aws_kinesisfirehose as firehose,
+    aws_ssm as ssm,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
@@ -32,6 +36,21 @@ export class MainStack extends Stack {
 		}
 
 		const appDomain = props.hostedZone.zoneName;
+
+    // 集約ログ用S3バケット
+    const logsBucket = new s3.Bucket(this, "LogsBucket", {
+      lifecycleRules: [
+        {
+          id: "log-expiration",
+          enabled: true,
+          expiration: Duration.days(props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS),
+        },
+      ],
+      accessControl: s3.BucketAccessControl.PRIVATE,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      // enforceSSL: true,
+    });
 
 		/*************************************
 		 * ネットワークリソース
@@ -179,6 +198,41 @@ export class MainStack extends Stack {
         subnetGroupName: 'Public',
       }),
 		});
+    // TODO: ALBのアクセスログをS3に配信するための権限設定がうまくいかないため一旦コメントアウトし、修正後コメントアウト解除予定
+    // ALBアクセスログ用S3バケットの設定
+    // backendAlb.setAttribute('access_logs.s3.enabled', 'true');
+    // backendAlb.setAttribute('access_logs.s3.bucket', logsBucket.bucketName);
+    
+    // logsBucket.addToResourcePolicy(
+    //   new iam.PolicyStatement({
+    //     effect: iam.Effect.ALLOW,
+    //     actions: ['s3:PutObject'],
+    //     // ALB access logging needs S3 put permission from ALB service account for the region
+    //     principals: [new iam.AccountPrincipal(ri.RegionInfo.get(Stack.of(this).region).elbv2Account)],
+    //     resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+    //   }),
+    // );
+    // logsBucket.addToResourcePolicy(
+    //   new iam.PolicyStatement({
+    //     effect: iam.Effect.ALLOW,
+    //     actions: ['s3:PutObject'],
+    //     principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+    //     resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+    //     conditions: {
+    //       StringEquals: {
+    //         's3:x-amz-acl': 'bucket-owner-full-control',
+    //       },
+    //     },
+    //   }),
+    // );
+    // logsBucket.addToResourcePolicy(
+    //   new iam.PolicyStatement({
+    //     effect: iam.Effect.ALLOW,
+    //     actions: ['s3:GetBucketAcl'],
+    //     principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+    //     resources: [logsBucket.bucketArn],
+    //   }),
+    // );
 
 		const httpListener = backendAlb.addListener("HttpListener", {
 			port: 80,
@@ -280,6 +334,72 @@ export class MainStack extends Stack {
 			// TODO: アプリケーションに合わせたポリシーを追加する
     });
 
+    // Data Firehose関係
+    // ロググループ
+    const backendKinesisErrorLogGroup = new logs.LogGroup(
+      this,
+      "BackendKinesisErrorLogGroup",
+      {
+        logGroupName: "/aws/kinesisfirehose/backend-error-logs",
+        retention: props.logRetentionDays,
+        removalPolicy: RemovalPolicy.DESTROY,
+      },
+    );
+    // ログストリーム
+    const backendKinesisErrorAppLogStream = new logs.LogStream(
+      this,
+      "BackendKinesisErrorAppLogStream",
+      {
+        logStreamName: "backend_kinesis_s3_delivery_app_error",
+        logGroup: backendKinesisErrorLogGroup,
+        removalPolicy: RemovalPolicy.DESTROY,
+      },
+    );
+
+    // Firehose用のIAMロール
+    const firehoseRole = new iam.Role(this, "FirehoseRole", {
+      assumedBy: new iam.ServicePrincipal("firehose.amazonaws.com"),
+    });
+    // S3バケットへのアクセス権限を付与
+    logsBucket.grantReadWrite(firehoseRole);
+    // CloudWatch Logsへのアクセス権限を付与
+    backendKinesisErrorLogGroup.grantWrite(firehoseRole);
+    // KMSキーの使用権限を付与（AWSマネージド型キーを参照）
+    const kmsKey = kms.Key.fromLookup(this, 'S3KmsKey', {
+      aliasName: 'alias/aws/s3'
+    });   
+    kmsKey.grantDecrypt(firehoseRole);
+    kmsKey.grantEncrypt(firehoseRole);
+
+    // アプリケーションログ配信設定
+    const backendAppLogDeliveryStream = new firehose.CfnDeliveryStream(
+      this,
+      "BackendAppLogDeliveryStream",
+      {
+        deliveryStreamName: `${this.stackName}-backend-app-log`,
+        deliveryStreamType: "DirectPut",
+        deliveryStreamEncryptionConfigurationInput: {
+          keyType: "AWS_OWNED_CMK",
+        },
+        s3DestinationConfiguration: {
+          bucketArn: logsBucket.bucketArn,
+          compressionFormat: "GZIP",
+          encryptionConfiguration: {
+            kmsEncryptionConfig: {
+              awskmsKeyArn: kmsKey.keyArn,
+            },
+          },
+          prefix: "BackendEcs/app/",
+          roleArn: firehoseRole.roleArn,
+          cloudWatchLoggingOptions: {
+            enabled: true,
+            logGroupName: backendKinesisErrorLogGroup.logGroupName,
+            logStreamName: backendKinesisErrorAppLogStream.logStreamName,
+          },
+        },
+      },
+    );
+
 		// タスク定義
 		const backendEcsTask = new ecs.FargateTaskDefinition(this, 'BackendEcsTask', {
 			family: `${this.stackName}-backend`,
@@ -324,6 +444,21 @@ export class MainStack extends Stack {
         backendEcrRepository,
         "log",
       ),
+      environment: {
+				KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
+        AWS_REGION: this.region,
+      },
+      secrets: {
+        SLACK_WEBHOOK_URL_LOG: ecs.Secret.fromSsmParameter(
+          ssm.StringParameter.fromSecureStringParameterAttributes(
+            this, 
+            'SlackWebhookUrlParam', 
+            {
+              parameterName: `/${this.stackName}/slack/webhook_url`,
+            }
+          )
+        ),
+      },
       user: "0",
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "firelens",
@@ -441,7 +576,7 @@ export class MainStack extends Stack {
             applicationautoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
           metricAggregationType:
             applicationautoscaling.MetricAggregationType.MAXIMUM,
-          // クールダウン期間
+          // クールダウン��間
           cooldown: Duration.seconds(300),
           // 評価ポイント数
           evaluationPeriods: props.backendEcsScaleInEvaluationPeriods,
