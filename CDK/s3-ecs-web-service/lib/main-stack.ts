@@ -528,10 +528,15 @@ export class MainStack extends Stack {
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [backendEcsService],
       deregistrationDelay: Duration.seconds(30),
-			// TODO: ヘルスチェックパスを設定する
-			// healthCheck: {
-			// 	path: "/api/health_check",
-			// },
+    });
+    appTargetGroup.configureHealthCheck({
+      path: '/api/hc',
+      enabled: true,
+      healthyThresholdCount: 2,
+      unhealthyThresholdCount: 2,
+      timeout: Duration.seconds(2),
+      interval: Duration.seconds(10),
+      healthyHttpCodes: "200",
     });
 
 		// スケーラブルターゲット
