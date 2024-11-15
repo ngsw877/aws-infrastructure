@@ -428,22 +428,29 @@ export class MainStack extends Stack {
         backendEcrRepository,
         "web",
       ),
-      portMappings: [{ containerPort: 80 }],
+      portMappings: [{ containerPort: 80, hostPort: 80 }],
       readonlyRootFilesystem: false,
       logging: ecs.LogDrivers.firelens({}),
     });
-
+    // appコンテナ
     backendEcsTask.addContainer("app", {
       image: ecs.ContainerImage.fromEcrRepository(
         backendEcrRepository,
         "app",
       ),
       environment: {
-				// TODO: 環境変数を追加する
+				TZ: "Asia/Tokyo",
+        APP_ENV: props.envName,
+        APP_DEBUG: String(props.appDebug),
       },
-      // SecretsManagerから取得したシークレットを環境変数に渡す
       secrets: {
-        // TODO: シークレットを追加する
+        APP_KEY: ecs.Secret.fromSsmParameter(
+          ssm.StringParameter.fromSecureStringParameterAttributes(
+            this, 
+            "AppKeyParam", 
+            { parameterName: `/${this.stackName}/app_key` }
+          )
+        ),
       },
       readonlyRootFilesystem: false,
       logging: ecs.LogDrivers.firelens({}),
@@ -462,10 +469,8 @@ export class MainStack extends Stack {
         SLACK_WEBHOOK_URL_LOG: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this, 
-            'SlackWebhookUrlParam', 
-            {
-              parameterName: `/${this.stackName}/slack/webhook_url`,
-            }
+            "SlackWebhookUrlParam", 
+            { parameterName: `/${this.stackName}/slack/webhook_url` }
           )
         ),
       },
@@ -504,6 +509,7 @@ export class MainStack extends Stack {
       cluster: ecsCluster,
       taskDefinition: backendEcsTask,
       desiredCount: props.backendDesiredCount,
+      enableExecuteCommand: true,
       platformVersion: ecs.FargatePlatformVersion.LATEST,
       // https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ecs-readme.html#fargate-capacity-providers
       capacityProviderStrategies: [

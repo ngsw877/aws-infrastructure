@@ -2,6 +2,7 @@ import {
     Aws, 
     Duration,
 		aws_logs as logs,
+		Stack
 } from "aws-cdk-lib";
 import type { 
     GlobalStackProps, 
@@ -25,7 +26,8 @@ const mainStackProps: MainStackProps = {
 		region: "ap-northeast-1",
 	},
 	crossRegionReferences: true,
-	natGatewaysCount: 0,
+	envName: "dev",
+	natGatewaysCount: 1,
 	logRetentionDays: logs.RetentionDays.ONE_MONTH,
 	defaultTtl: Duration.days(1),
 	maxTtl: Duration.days(365),
@@ -34,11 +36,12 @@ const mainStackProps: MainStackProps = {
 	backendEcsTaskMemory: 512,
 	backendMaxTaskCount: 1,
 	backendMinTaskCount: 1,
-	backendDesiredCount: 1,
+	backendDesiredCount: 0,
 	backendEcsScaleOutPeriod: Duration.seconds(300),
 	backendEcsScaleOutEvaluationPeriods: 3,
 	backendEcsScaleInPeriod: Duration.seconds(300),
 	backendEcsScaleInEvaluationPeriods: 3,
+	appDebug: true,
 };
 
 export const params: Params = {

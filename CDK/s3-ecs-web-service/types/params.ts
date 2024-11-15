@@ -7,12 +7,15 @@ import type {
 } from "aws-cdk-lib";
 import type * as route53 from "aws-cdk-lib/aws-route53";
 
+export type EnvName = 'dev' | 'stg' | 'prod';
+
 export interface GlobalStackProps extends StackProps {
 	hostedZoneId: string;
 	appDomain: string;
 }
 
 export interface MainStackProps extends StackProps {
+	envName: EnvName;
 	natGatewaysCount: number;
 	logRetentionDays?: logs.RetentionDays;
 	defaultTtl?: Duration;
@@ -27,6 +30,7 @@ export interface MainStackProps extends StackProps {
 	backendEcsScaleOutEvaluationPeriods: number;
 	backendEcsScaleInPeriod: Duration;
 	backendEcsScaleInEvaluationPeriods: number;
+	appDebug: boolean;
 	// 以下は、GlobalStackのスタックからインポートする
 	cloudfrontCertificate?: acm.ICertificate;
 	hostedZone?: route53.IHostedZone;
