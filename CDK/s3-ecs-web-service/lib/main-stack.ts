@@ -36,6 +36,7 @@ export class MainStack extends Stack {
 		}
 
 		const appDomain = props.hostedZone.zoneName;
+    const apiDomain = `api.${appDomain}`;
 
     // 集約ログ用S3バケット
     const logsBucket = new s3.Bucket(this, "LogsBucket", {
@@ -154,8 +155,8 @@ export class MainStack extends Stack {
 			},
 		});
 
-		// フロントエンド用CloudFrontのRoute53レコード
-		new route53.ARecord(this, "FrontendCloudFrontAliasRecord", {
+		// フロントエンド用CloudFrontのエイリアスレコード
+		new route53.ARecord(this, "CloudFrontAliasRecord", {
 			zone: props.hostedZone,
 			recordName: appDomain,
 			target: route53.RecordTarget.fromAlias(
@@ -249,6 +250,15 @@ export class MainStack extends Stack {
 			protocol: elbv2.ApplicationProtocol.HTTPS,
 			certificates: [albCertificate],
 		});
+
+    // ALB用のエイリアスレコード
+    new route53.ARecord(this, 'AlbAliasRecord', {
+      zone: props.hostedZone,
+      recordName: apiDomain,
+      target: route53.RecordTarget.fromAlias(
+        new targets.LoadBalancerTarget(backendAlb)
+      ),
+    });
 
 		/*************************************
 		 * ECSリソース（バックエンド用）
@@ -408,7 +418,7 @@ export class MainStack extends Stack {
       cpu: props.backendEcsTaskCpu,
       memoryLimitMiB: props.backendEcsTaskMemory,
 			runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        // cpuArchitecture: ecs.CpuArchitecture.ARM64,
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
       },
     });
