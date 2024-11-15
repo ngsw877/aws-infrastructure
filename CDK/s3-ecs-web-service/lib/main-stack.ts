@@ -199,41 +199,49 @@ export class MainStack extends Stack {
         subnetGroupName: 'Public',
       }),
 		});
-    // TODO: ALBのアクセスログをS3に配信するための権限設定がうまくいかないため一旦コメントアウトし、修正後コメントアウト解除予定
-    // ALBアクセスログ用S3バケットの設定
-    // backendAlb.setAttribute('access_logs.s3.enabled', 'true');
-    // backendAlb.setAttribute('access_logs.s3.bucket', logsBucket.bucketName);
     
-    // logsBucket.addToResourcePolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ['s3:PutObject'],
-    //     // ALB access logging needs S3 put permission from ALB service account for the region
-    //     principals: [new iam.AccountPrincipal(ri.RegionInfo.get(Stack.of(this).region).elbv2Account)],
-    //     resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
-    //   }),
-    // );
-    // logsBucket.addToResourcePolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ['s3:PutObject'],
-    //     principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
-    //     resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
-    //     conditions: {
-    //       StringEquals: {
-    //         's3:x-amz-acl': 'bucket-owner-full-control',
-    //       },
-    //     },
-    //   }),
-    // );
-    // logsBucket.addToResourcePolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ['s3:GetBucketAcl'],
-    //     principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
-    //     resources: [logsBucket.bucketArn],
-    //   }),
-    // );
+    // logsBucketおよびバケットポリシーの作成が完了してからALBを作成する（でないと権限エラーになりスタックデプロイに失敗する）
+    backendAlb.node.addDependency(logsBucket);
+
+    // ALBアクセスログ用S3バケットの設定
+    backendAlb.setAttribute('access_logs.s3.enabled', 'true');
+    backendAlb.setAttribute('access_logs.s3.bucket', logsBucket.bucketName);
+    
+    // Permissions for Access Logging
+    //    Why don't use alb.logAccessLogs(albLogBucket); ?
+    //    Because logAccessLogs method adds wider permission to other account (PutObject*). S3 will become Noncompliant on Security Hub [S3.6]
+    //    See: https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp-controls.html#fsbp-s3-6
+    //    See: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#access-logging-bucket-permissions
+    logsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['s3:PutObject'],
+        // ALB access logging needs S3 put permission from ALB service account for the region
+        principals: [new iam.AccountPrincipal(ri.RegionInfo.get(Stack.of(this).region).elbv2Account)],
+        resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+      }),
+    );
+    logsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['s3:PutObject'],
+        principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+        resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+        conditions: {
+          StringEquals: {
+            's3:x-amz-acl': 'bucket-owner-full-control',
+          },
+        },
+      }),
+    );
+    logsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['s3:GetBucketAcl'],
+        principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+        resources: [logsBucket.bucketArn],
+      }),
+    );
 
 		const httpListener = backendAlb.addListener("HttpListener", {
 			port: 80,
@@ -418,7 +426,7 @@ export class MainStack extends Stack {
       cpu: props.backendEcsTaskCpu,
       memoryLimitMiB: props.backendEcsTaskMemory,
 			runtimePlatform: {
-        // cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        cpuArchitecture: ecs.CpuArchitecture.ARM64,
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
       },
     });
