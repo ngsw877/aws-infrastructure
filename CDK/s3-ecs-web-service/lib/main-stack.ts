@@ -525,7 +525,7 @@ export class MainStack extends Stack {
 
 		// ALBのターゲットグループ
 		const appTargetGroup = httpsListener.addTargets('AppTargetGroup', {
-      protocol: elbv2.ApplicationProtocol.HTTPS,
+      protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [backendEcsService],
       deregistrationDelay: Duration.seconds(30),
 			// TODO: ヘルスチェックパスを設定する
@@ -592,7 +592,7 @@ export class MainStack extends Stack {
             applicationautoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
           metricAggregationType:
             applicationautoscaling.MetricAggregationType.MAXIMUM,
-          // クールダウン��間
+          // クールダウン期間
           cooldown: Duration.seconds(300),
           // 評価ポイント数
           evaluationPeriods: props.backendEcsScaleInEvaluationPeriods,
