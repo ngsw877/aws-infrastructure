@@ -10,7 +10,7 @@
     "test": "jest",
     "cdk": "cdk",
     "diff:dev": "cdk diff -c env=dev --all",
-    "deploy:dev": "cdk deploy -c env=dev --all --require-approval never"
+    "dev": "cdk deploy -c env=dev --all --require-approval never"
   },
   "devDependencies": {
     "@aws-solutions-constructs/aws-cloudfront-s3": "^2.74.0",
