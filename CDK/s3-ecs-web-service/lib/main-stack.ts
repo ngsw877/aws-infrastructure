@@ -20,6 +20,8 @@ import {
     aws_kms as kms,
     aws_kinesisfirehose as firehose,
     aws_ssm as ssm,
+    aws_cloudformation as cfn,
+    CfnOutput
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
@@ -38,6 +40,13 @@ export class MainStack extends Stack {
 		const appDomain = props.hostedZone.zoneName;
     const apiDomain = `api.${appDomain}`;
 
+		new CfnOutput(this, "FrontendAppUrl", {
+			value: `https://${appDomain}`,
+		});
+		new CfnOutput(this, "BackendApiUrl", {
+			value: `https://${apiDomain}`,
+		});
+
     // 集約ログ用S3バケット
     const logsBucket = new s3.Bucket(this, "LogsBucket", {
       lifecycleRules: [
@@ -50,7 +59,7 @@ export class MainStack extends Stack {
       accessControl: s3.BucketAccessControl.PRIVATE,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
-      // enforceSSL: true,
+      enforceSSL: true,
     });
 
 		/*************************************
