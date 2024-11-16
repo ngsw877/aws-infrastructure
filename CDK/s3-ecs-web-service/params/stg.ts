@@ -1,27 +1,8 @@
 import * as cdk from "aws-cdk-lib";
 import type { GlobalStackProps, MainStackProps, Params } from "../types/params";
 
-const globalStackProps: GlobalStackProps = {
-	env: {
-		account: cdk.Aws.ACCOUNT_ID,
-		region: "us-east-1",
-	},
-	crossRegionReferences: true,
-	hostedZoneId: "Z03555611YEKDMTHN9OGE",
-	appDomain: "stg.s3-ecs-web-service.kk-study.click",
-};
+// TODO: ステージング環境のパラメータを定義する
 
-const mainStackProps: MainStackProps = {
-	env: {
-		account: cdk.Aws.ACCOUNT_ID,
-		region: "ap-northeast-1",
-	},
-	crossRegionReferences: true,
-	natGatewaysCount: 0,
-	logRetentionDays: 30,
-};
-
-export const params: Params = {
-	globalStackProps: globalStackProps,
-	mainStackProps: mainStackProps,
-};
+// 開発段階では、dev環境のパラメータをコピーして本番環境のパラメータを定義する
+import { params as devParams } from "./dev";
+export const params = devParams;

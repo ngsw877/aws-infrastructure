@@ -3,6 +3,7 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { GlobalStack } from "../lib/global-stack";
 import { MainStack } from "../lib/main-stack";
+import type { EnvName } from "../types/params";
 import { params as devParams } from "../params/dev";
 import { params as stgParams } from "../params/stg";
 import { params as prodParams } from "../params/prod";
@@ -17,21 +18,24 @@ if (!["dev", "stg", "prod"].includes(envName)) {
 	);
 }
 
+// パラメータを取得
 const params = getParams(envName);
 
+// バージニアリージョン用のスタック
 const globalStack = new GlobalStack(
 	app,
 	`${envName}-S3EcsWebServiceGlobal`,
 	params.globalStackProps,
 );
 
+// 東京リージョン用のスタック
 new MainStack(app, `${envName}-S3EcsWebServiceMain`, {
 	...params.mainStackProps,
 	cloudfrontCertificate: globalStack.cloudfrontCertificate,
 	hostedZone: globalStack.hostedZone,
 });
 
-function getParams(envName: "dev" | "stg" | "prod") {
+function getParams(envName: EnvName) {
 	switch (envName) {
 		case "dev":
 			return devParams;
