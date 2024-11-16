@@ -2,7 +2,6 @@ import {
     Aws, 
     Duration,
 		aws_logs as logs,
-		Stack
 } from "aws-cdk-lib";
 import type { 
     GlobalStackProps, 
@@ -32,16 +31,18 @@ const mainStackProps: MainStackProps = {
 	defaultTtl: Duration.days(1),
 	maxTtl: Duration.days(365),
 	minTtl: Duration.seconds(0),
-	backendEcsTaskCpu: 256,
-	backendEcsTaskMemory: 512,
+	backendEcsTaskCpu: 1024,
+	backendEcsTaskMemory: 2048,
 	backendMaxTaskCount: 1,
 	backendMinTaskCount: 1,
-	backendDesiredCount: 0,
+	backendDesiredCount: 1,
 	backendEcsScaleOutPeriod: Duration.seconds(300),
 	backendEcsScaleOutEvaluationPeriods: 3,
 	backendEcsScaleInPeriod: Duration.seconds(300),
 	backendEcsScaleInEvaluationPeriods: 3,
 	appDebug: true,
+	ecsStartSchedulerState: "ENABLED",
+	ecsStopSchedulerState: "ENABLED",
 };
 
 export const params: Params = {

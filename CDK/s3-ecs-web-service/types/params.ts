@@ -7,7 +7,8 @@ import type {
 } from "aws-cdk-lib";
 import type * as route53 from "aws-cdk-lib/aws-route53";
 
-export type EnvName = 'dev' | 'stg' | 'prod';
+export type EnvName = "dev" | "stg" | "prod";
+export type SchedulerState = "ENABLED" | "DISABLED";
 
 export interface GlobalStackProps extends StackProps {
 	hostedZoneId: string;
@@ -31,6 +32,8 @@ export interface MainStackProps extends StackProps {
 	backendEcsScaleInPeriod: Duration;
 	backendEcsScaleInEvaluationPeriods: number;
 	appDebug: boolean;
+	ecsStartSchedulerState: SchedulerState;
+	ecsStopSchedulerState: SchedulerState;
 	// 以下は、GlobalStackのスタックからインポートする
 	cloudfrontCertificate?: acm.ICertificate;
 	hostedZone?: route53.IHostedZone;

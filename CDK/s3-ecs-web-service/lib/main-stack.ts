@@ -21,6 +21,7 @@ import {
     aws_kinesisfirehose as firehose,
     aws_ssm as ssm,
     aws_cloudformation as cfn,
+    aws_scheduler as scheduler,
     CfnOutput
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
@@ -676,6 +677,65 @@ export class MainStack extends Stack {
         },
       );
 
+    // ECSタスク自動開始・停止設定 //
+    const ecsSchedulerExecutionRole = new iam.Role(
+      this,
+      "EcsSchedulerExecutionRole",
+      {
+        assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
+      },
+    );
+    ecsSchedulerExecutionRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ecs:UpdateService"],
+        resources: [backendEcsService.serviceArn],
+      }),
+    );
+    // タスク開始スケジュール
+    new scheduler.CfnSchedule(
+      this,
+      "EcsStartSchedule",
+      {
+        state: props.ecsStartSchedulerState,
+        scheduleExpression: "cron(0 8 ? * MON-FRI *)",
+        scheduleExpressionTimezone: "Asia/Tokyo",
+        flexibleTimeWindow: {
+          mode: "OFF",
+        },
+        target: {
+          arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
+          roleArn: ecsSchedulerExecutionRole.roleArn,
+          input: JSON.stringify({
+            Cluster: ecsCluster.clusterName,
+            Service: backendEcsService.serviceName,
+            DesiredCount: props.backendDesiredCount,
+          }),
+        },
+      },
+    );
+    // タスク停止スケジュール
+    new scheduler.CfnSchedule(
+      this,
+      "EcsStopSchedule",
+      {
+        state: props.ecsStopSchedulerState,
+        scheduleExpression: "cron(0 21 ? * MON-FRI *)",
+        scheduleExpressionTimezone: "Asia/Tokyo",
+        flexibleTimeWindow: {
+          mode: "OFF",
+        },
+        target: {
+          arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
+          roleArn: ecsSchedulerExecutionRole.roleArn,
+          input: JSON.stringify({
+            Cluster: ecsCluster.clusterName,
+            Service: backendEcsService.serviceName,
+            DesiredCount: 0,
+          }),
+        },
+      },
+    );
 	}
 }
 
