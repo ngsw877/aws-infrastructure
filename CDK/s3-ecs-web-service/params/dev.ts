@@ -11,7 +11,7 @@ import type {
 
 const globalStackProps: GlobalStackProps = {
 	env: {
-		account: Aws.ACCOUNT_ID,
+		account: process.env.CDK_DEFAULT_ACCOUNT, 
 		region: "us-east-1",
 	},
 	crossRegionReferences: true,
@@ -21,7 +21,7 @@ const globalStackProps: GlobalStackProps = {
 
 const mainStackProps: MainStackProps = {
 	env: {
-		account: Aws.ACCOUNT_ID,
+		account: process.env.CDK_DEFAULT_ACCOUNT, 
 		region: "ap-northeast-1",
 	},
 	crossRegionReferences: true,
