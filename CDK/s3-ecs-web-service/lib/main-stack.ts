@@ -373,6 +373,15 @@ export class MainStack extends Stack {
         removalPolicy: RemovalPolicy.DESTROY,
       },
     );
+    const backendKinesisErrorWebLogStream = new logs.LogStream(
+      this,
+      "BackendKinesisErrorWebLogStream",
+      {
+        logStreamName: "backend_kinesis_s3_delivery_web_error",
+        logGroup: backendKinesisErrorLogGroup,
+        removalPolicy: RemovalPolicy.DESTROY,
+      },
+    );
 
     // Firehose用のIAMロール
     const firehoseRole = new iam.Role(this, "FirehoseRole", {
@@ -389,7 +398,7 @@ export class MainStack extends Stack {
     kmsKey.grantDecrypt(firehoseRole);
     kmsKey.grantEncrypt(firehoseRole);
 
-    // アプリケーションログ配信設定
+    // appコンテナログ配信設定
     const backendAppLogDeliveryStream = new firehose.CfnDeliveryStream(
       this,
       "BackendAppLogDeliveryStream",
@@ -407,12 +416,41 @@ export class MainStack extends Stack {
               awskmsKeyArn: kmsKey.keyArn,
             },
           },
-          prefix: "BackendEcs/app/",
+          prefix: "backend/app/",
           roleArn: firehoseRole.roleArn,
           cloudWatchLoggingOptions: {
             enabled: true,
             logGroupName: backendKinesisErrorLogGroup.logGroupName,
             logStreamName: backendKinesisErrorAppLogStream.logStreamName,
+          },
+        },
+      },
+    );
+
+    // webコンテナログ配信設定
+    const backendWebLogDeliveryStream = new firehose.CfnDeliveryStream(
+      this,
+      "BackendWebLogDeliveryStream",
+      {
+        deliveryStreamName: `${this.stackName}-backend-web-log`,
+        deliveryStreamType: "DirectPut",
+        deliveryStreamEncryptionConfigurationInput: {
+          keyType: "AWS_OWNED_CMK",
+        },
+        s3DestinationConfiguration: {
+          bucketArn: logsBucket.bucketArn,
+          compressionFormat: "GZIP",
+          encryptionConfiguration: {
+            kmsEncryptionConfig: {
+              awskmsKeyArn: kmsKey.keyArn,
+            },
+          },
+          prefix: "backend/web/",
+          roleArn: firehoseRole.roleArn,
+          cloudWatchLoggingOptions: {
+            enabled: true,
+            logGroupName: backendKinesisErrorLogGroup.logGroupName,
+            logStreamName: backendKinesisErrorWebLogStream.logStreamName,
           },
         },
       },
@@ -471,6 +509,7 @@ export class MainStack extends Stack {
       ),
       environment: {
 				KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
+				KINESIS_WEB_DELIVERY_STREAM: backendWebLogDeliveryStream.ref,
         AWS_REGION: this.region,
       },
       secrets: {
