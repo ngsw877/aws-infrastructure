@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# 環境変数の読み込み
+# 設定ファイルから変数の読み込み
 source ./security_contact_config.sh
 
 management_account=$(

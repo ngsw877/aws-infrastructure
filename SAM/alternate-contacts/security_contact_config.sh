@@ -3,6 +3,8 @@
 # マスターアカウントのプロファイル設定
 export MASTER_ACCOUNT_PROFILE="default"
 
+export REGION="ap-northeast-1"
+
 ### セキュリティ代替連絡先の設定（全AWSアカウント共通） #################
 # 氏名
 export SECURITY_CONTACT_NAME="Mary Major" 
