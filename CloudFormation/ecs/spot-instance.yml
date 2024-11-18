@@ -388,8 +388,9 @@ Resources:
       Protocol: HTTPS
       SslPolicy: !Ref ElbSecurityPolicy
       Certificates:
-        - CertificateArn: !ImportValue
-            'Fn::Sub': "${AcmStackName}-CertificateArn"
+        - CertificateArn:
+            Fn::ImportValue:
+              !Sub "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppTaskTargetGroup
@@ -398,10 +399,12 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       Type: A
-      HostedZoneId: !ImportValue
-        'Fn::Sub': "${AcmStackName}-HostedZoneId"
-      Name: !ImportValue
-        'Fn::Sub': "${AcmStackName}-Fqdn"
+      HostedZoneId:
+        Fn::ImportValue:
+          !Sub "${AcmStackName}-HostedZoneId"
+      Name:
+        Fn::ImportValue:
+          !Sub "${AcmStackName}-Fqdn"
       AliasTarget:
         HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
         DNSName: !GetAtt WebAppLoadBalancer.DNSName
@@ -636,7 +639,7 @@ Resources:
       RetentionInDays: 7
       LogGroupName: !Sub "${AWS::StackName}/interrupt-spot-instance-fis"
 
-  # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため、これらを削除するためのLambda関数を呼び出すカスタムリソース
+  # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため��これらを削除するためのLambda関数を呼び出すカスタムリソース
   CustomResourceCleanupAutoScalingGroup:
     Type: Custom::AutoScalingCleanup
     Properties:

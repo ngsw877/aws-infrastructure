@@ -314,8 +314,9 @@ Resources:
       Protocol: HTTPS
       SslPolicy: !Ref ElbSecurityPolicy
       Certificates:
-        - CertificateArn: !ImportValue
-            'Fn::Sub': "${AcmStackName}-CertificateArn"
+        - CertificateArn:
+            Fn::ImportValue:
+              !Sub "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppTaskBlueTargetGroup
@@ -324,13 +325,15 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref WebAppLoadBalancer
-      Port: !ImportValue
-        'Fn::Sub': "${SecurityGroupStackName}-TestListenerPort"
+      Port:
+        Fn::ImportValue:
+          !Sub "${SecurityGroupStackName}-TestListenerPort"
       Protocol: HTTPS
       SslPolicy: !Ref ElbSecurityPolicy
       Certificates:
-        - CertificateArn: !ImportValue
-            'Fn::Sub': "${AcmStackName}-CertificateArn"
+        - CertificateArn:
+            Fn::ImportValue:
+              !Sub "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppTaskGreenTargetGroup
@@ -339,10 +342,12 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       Type: A
-      HostedZoneId: !ImportValue
-        'Fn::Sub': "${AcmStackName}-HostedZoneId"
-      Name: !ImportValue
-        'Fn::Sub': "${AcmStackName}-Fqdn"
+      HostedZoneId:
+        Fn::ImportValue:
+          !Sub "${AcmStackName}-HostedZoneId"
+      Name:
+        Fn::ImportValue:
+          !Sub "${AcmStackName}-Fqdn"
       AliasTarget:
         HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
         DNSName: !GetAtt WebAppLoadBalancer.DNSName
