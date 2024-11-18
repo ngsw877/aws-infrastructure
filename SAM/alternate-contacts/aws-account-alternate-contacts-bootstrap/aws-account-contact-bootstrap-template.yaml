@@ -106,14 +106,7 @@ Resources:
   OrgAccountCreateEventBridgeRule:
     Type: AWS::Events::Rule
     Properties:
-      EventBusName:
-        Fn::Join:
-            - ''
-            - - 'arn:'
-              - Ref: AWS::Partition
-              - ':events:us-east-1:'
-              - Ref: AWS::AccountId
-              - :event-bus/default
+      EventBusName: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
       EventPattern:   
         source:
           - aws.organizations
@@ -153,14 +146,7 @@ Resources:
   ControlTowerAccountCreateEventBridgeRule:
     Type: AWS::Events::Rule
     Properties:
-      EventBusName:
-        Fn::Join:
-            - ''
-            - - 'arn:'
-              - Ref: AWS::Partition
-              - ':events:us-east-1:'
-              - Ref: AWS::AccountId
-              - :event-bus/default
+      EventBusName: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
       EventPattern:   
         source:
           - aws.controltower
