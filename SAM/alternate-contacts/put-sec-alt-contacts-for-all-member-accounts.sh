@@ -19,11 +19,11 @@ for account in $(
     # 管理アカウントはスキップ 
     # NOTE: 管理アカウントの代替連絡先の登録に、aws account put-alternate-contactコマンドを使用するとエラーが発生するため、管理アカウントでログインしマネジメントコンソールから登録する等他の方法を使用する
     if [ "${management_account}" -eq "${account}" ]; then
-        echo '管理アカウントをスキップします。'
+        echo "管理アカウント：${account}をスキップします。"
         continue
     fi
 
-    echo "アカウント${account}の代替連絡先を設定します..."
+    echo "アカウント：${account}の代替連絡先を設定します..."
 
     aws account put-alternate-contact \
         --profile "${MASTER_ACCOUNT_PROFILE}" \
@@ -34,7 +34,7 @@ for account in $(
         --email-address="${SECURITY_CONTACT_EMAIL}" \
         --phone-number="${SECURITY_CONTACT_PHONE}"
 
-    echo "アカウント${account}の代替連絡先の設定が完了しました。"
+    echo "アカウント：${account}の代替連絡先の設定が完了しました。"
     
     sleep 0.2
 done 
