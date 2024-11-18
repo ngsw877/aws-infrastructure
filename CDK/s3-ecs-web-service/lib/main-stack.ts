@@ -203,7 +203,6 @@ export class MainStack extends Stack {
       vpc,
 			internetFacing: true,
 			dropInvalidHeaderFields: true,
-			deletionProtection: true,
 			securityGroup: backendAlbSecurityGroup,
 			vpcSubnets: vpc.selectSubnets({
         subnetGroupName: 'Public',
@@ -736,6 +735,8 @@ export class MainStack extends Stack {
         },
       },
     );
+
+    
 	}
 }
 
