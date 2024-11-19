@@ -19,13 +19,23 @@
 2. 設定ファイル`security-contact-config.json`を編集し、セキュリティ代替連絡先情報等を設定する
 
 ## 方法①：既存メンバーアカウントへの一括設定方法
+
+前提条件：
+メンバーアカウントの代替連絡先を設定するために、以下の３つの権限が必要です。
+1. account: GetAlternateContact 
+2. account: PutAlternateContact 
+3. account: DeleteAlternateContact 
+
+
 スクリプトを実行し、既存の全メンバーアカウントに対して共通のセキュリティ代替連絡先を一括設定します。
 
 ```shell
 ./put-sec-alt-contacts-for-all-member-accounts.sh
 ```
 
-<small>※ このスクリプトでAWS Organizationsの管理アカウントには設定できないため、管理アカウントのセキュリティ代替連絡先はマネジメントコンソール等から設定する必要があります。</small>
+<small>※1 このスクリプトでAWS Organizationsの管理アカウントには設定できないため、管理アカウントのセキュリティ代替連絡先はマネジメントコンソール等から設定する必要があります。</small>
+
+<small>※2 前提条件として、</small>
 
 なお、このスクリプトはAWS公式ブログで紹介されているスクリプトをベースにしています。
 - 参考：
