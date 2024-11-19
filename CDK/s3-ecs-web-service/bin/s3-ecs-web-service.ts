@@ -13,9 +13,9 @@ const app = new cdk.App();
 const envName = app.node.tryGetContext("env");
 
 if (!["dev", "stg", "prod"].includes(envName)) {
-	throw new Error(
-		`無効な環境です。デプロイ時には 'dev', 'stg', または 'prod' を指定してください。\n例: cdk deploy -c env=dev`,
-	);
+  throw new Error(
+    `無効な環境です。デプロイ時には 'dev', 'stg', または 'prod' を指定してください。\n例: cdk deploy -c env=dev`,
+  );
 }
 
 // パラメータを取得
@@ -23,25 +23,25 @@ const params = getParams(envName);
 
 // バージニアリージョン用のスタック
 const globalStack = new GlobalStack(
-	app,
-	`${envName}-S3EcsWebServiceGlobal`,
-	params.globalStackProps,
+  app,
+  `${envName}-S3EcsWebServiceGlobal`,
+  params.globalStackProps,
 );
 
 // 東京リージョン用のスタック
 new MainStack(app, `${envName}-S3EcsWebServiceMain`, {
-	...params.mainStackProps,
-	cloudfrontCertificate: globalStack.cloudfrontCertificate,
-	hostedZone: globalStack.hostedZone,
+  ...params.mainStackProps,
+  cloudfrontCertificate: globalStack.cloudfrontCertificate,
+  hostedZone: globalStack.hostedZone,
 });
 
 function getParams(envName: EnvName) {
-	switch (envName) {
-		case "dev":
-			return devParams;
-		case "stg":
-			return stgParams;
-		case "prod":
-			return prodParams;
-	}
+  switch (envName) {
+    case "dev":
+      return devParams;
+    case "stg":
+      return stgParams;
+    case "prod":
+      return prodParams;
+  }
 }

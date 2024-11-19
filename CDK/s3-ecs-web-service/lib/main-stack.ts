@@ -1,52 +1,52 @@
-import { 
-    Duration, 
-    Stack,
-		PhysicalName,
-		RemovalPolicy,
-    aws_ec2 as ec2,
-    aws_cloudfront as cloudfront,
-    aws_route53 as route53,
-    aws_route53_targets as targets,
-    aws_certificatemanager as acm,
-    aws_elasticloadbalancingv2 as elbv2,
-    aws_ecs as ecs,
-    aws_s3 as s3,
-    aws_iam as iam,
-		aws_applicationautoscaling as applicationautoscaling,
-		aws_cloudwatch as cloudwatch,
-		aws_ecr as ecr,
-		aws_logs as logs,
-    region_info as ri,
-    aws_kms as kms,
-    aws_kinesisfirehose as firehose,
-    aws_ssm as ssm,
-    aws_cloudformation as cfn,
-    aws_scheduler as scheduler,
-    CfnOutput
+import {
+  Duration,
+  Stack,
+  PhysicalName,
+  RemovalPolicy,
+  aws_ec2 as ec2,
+  aws_cloudfront as cloudfront,
+  aws_route53 as route53,
+  aws_route53_targets as targets,
+  aws_certificatemanager as acm,
+  aws_elasticloadbalancingv2 as elbv2,
+  aws_ecs as ecs,
+  aws_s3 as s3,
+  aws_iam as iam,
+  aws_applicationautoscaling as applicationautoscaling,
+  aws_cloudwatch as cloudwatch,
+  aws_ecr as ecr,
+  aws_logs as logs,
+  region_info as ri,
+  aws_kms as kms,
+  aws_kinesisfirehose as firehose,
+  aws_ssm as ssm,
+  aws_cloudformation as cfn,
+  aws_scheduler as scheduler,
+  CfnOutput,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
 import type { MainStackProps } from "../types/params";
 
 export class MainStack extends Stack {
-	constructor(scope: Construct, id: string, props: MainStackProps) {
-		super(scope, id, props);
+  constructor(scope: Construct, id: string, props: MainStackProps) {
+    super(scope, id, props);
 
-		if (!props.cloudfrontCertificate || !props.hostedZone) {
-			throw new Error(
-				"GlobalStackから取得した、cloudfrontCertificateとhostedZoneの両方が必須です。",
-			);
-		}
+    if (!props.cloudfrontCertificate || !props.hostedZone) {
+      throw new Error(
+        "GlobalStackから取得した、cloudfrontCertificateとhostedZoneの両方が必須です。",
+      );
+    }
 
-		const appDomain = props.hostedZone.zoneName;
+    const appDomain = props.hostedZone.zoneName;
     const apiDomain = `api.${appDomain}`;
 
-		new CfnOutput(this, "FrontendAppUrl", {
-			value: `https://${appDomain}`,
-		});
-		new CfnOutput(this, "BackendApiUrl", {
-			value: `https://${apiDomain}`,
-		});
+    new CfnOutput(this, "FrontendAppUrl", {
+      value: `https://${appDomain}`,
+    });
+    new CfnOutput(this, "BackendApiUrl", {
+      value: `https://${apiDomain}`,
+    });
 
     // 集約ログ用S3バケット
     const logsBucket = new s3.Bucket(this, "LogsBucket", {
@@ -54,7 +54,9 @@ export class MainStack extends Stack {
         {
           id: "log-expiration",
           enabled: true,
-          expiration: Duration.days(props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS),
+          expiration: Duration.days(
+            props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS,
+          ),
         },
       ],
       accessControl: s3.BucketAccessControl.PRIVATE,
@@ -63,131 +65,133 @@ export class MainStack extends Stack {
       enforceSSL: true,
     });
 
-		/*************************************
-		 * ネットワークリソース
-		 *************************************/
-		// VPCとサブネット
-		const vpc = new ec2.Vpc(this, "Vpc", {
-			maxAzs: 2,
-			subnetConfiguration: [
-				{
-					cidrMask: 24,
-					name: "Public",
-					subnetType: ec2.SubnetType.PUBLIC,
-				},
-				{
-					cidrMask: 24,
-					name: "Private",
-					subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-				},
-			],
-			natGateways: props.natGatewaysCount,
-		});
-
-		/*************************************
-		 * フロントエンド用リソース
-		 *************************************/
-		// フロントエンド用S3バケット
-		const frontendBucket = new s3.Bucket(this, "FrontendBucket", {
-			versioned: true,
-			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-			encryption: s3.BucketEncryption.S3_MANAGED,
-			enforceSSL: true,
-		});
-
-		// アップロードされたファイル用S3バケット
-		const uploadedFilesBucket = new s3.Bucket(this, "UploadedFilesBucket", {
-			versioned: true,
-			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-			encryption: s3.BucketEncryption.S3_MANAGED,
-			enforceSSL: true,
-		});
-
-		// CloudFrontログ用S3バケット
-		const cloudFrontLogsBucket = new s3.Bucket(this, "CloudFrontLogsBucket", {
-			lifecycleRules: [
-				{
-					id: "cloudfront-logs-expiration",
-					enabled: true,
-					expiration: Duration.days(props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS),
-				},
-			],
-			blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-			encryption: s3.BucketEncryption.S3_MANAGED,
-			enforceSSL: true,
-			accessControl: s3.BucketAccessControl.LOG_DELIVERY_WRITE,
-		});
-
-		// フロントエンド用CloudFront
-		const frontendCloudFront = new CloudFrontToS3(this, "FrontendCloudFront", {
-			existingBucketObj: frontendBucket,
-			cloudFrontDistributionProps: {
-				certificate: props.cloudfrontCertificate,
-				domainNames: [appDomain],
-				defaultBehavior: {
-					viewerProtocolPolicy:
-						cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-					// オリジンリクエストポリシー
-					originRequestPolicy: new cloudfront.OriginRequestPolicy(
-						this,
-						"FrontendOriginRequestPolicy",
-						{
-							originRequestPolicyName: `${this.stackName}-FrontendOriginRequestPolicy`,
-							comment: "FrontendOriginRequestPolicy",
-						},
-					),
-					// キャッシュポリシー
-					cachePolicy: new cloudfront.CachePolicy(this, "FrontendCachePolicy", {
-						cachePolicyName: `${this.stackName}-FrontendCachePolicy`,
-						comment: "FrontendCachePolicy",
-						// キャッシュ期間
-						defaultTtl: props.defaultTtl,
-            maxTtl: props.maxTtl,
-            minTtl: props.minTtl,
-						// 圧縮サポート
-						enableAcceptEncodingBrotli: true,
-						enableAcceptEncodingGzip: true,
-					}),
-				},
-				priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
-				httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
-				logBucket: cloudFrontLogsBucket,
-				logFilePrefix: "FrontendCloudFront/",
-				defaultRootObject: "index.html",
-				errorResponses: [
-					{
-						httpStatus: 404,
-						responseHttpStatus: 404,
-						responsePagePath: "/404.html",
-						ttl: Duration.seconds(10),
-					},
-				],
-			},
-		});
-
-		// フロントエンド用CloudFrontのエイリアスレコード
-		new route53.ARecord(this, "CloudFrontAliasRecord", {
-			zone: props.hostedZone,
-			recordName: appDomain,
-			target: route53.RecordTarget.fromAlias(
-				new targets.CloudFrontTarget(
-					frontendCloudFront.cloudFrontWebDistribution,
-				),
-			),
-		});
-
-		/*************************************
-		 * バックエンド用リソース
-		 *************************************/
-		// ALB用ACM証明書
-		const albCertificate = new acm.Certificate(this, "AlbCertificate", {
-			certificateName: `${this.stackName}-alb-certificate`,
-			domainName: appDomain,
-			subjectAlternativeNames: [`*.${appDomain}`],
-			validation: acm.CertificateValidation.fromDns(props.hostedZone),
+    /*************************************
+     * ネットワークリソース
+     *************************************/
+    // VPCとサブネット
+    const vpc = new ec2.Vpc(this, "Vpc", {
+      maxAzs: 2,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: "Public",
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+        {
+          cidrMask: 24,
+          name: "Private",
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+      ],
+      natGateways: props.natGatewaysCount,
     });
 
-		// ALBセキュリティグループ
+    /*************************************
+     * フロントエンド用リソース
+     *************************************/
+    // フロントエンド用S3バケット
+    const frontendBucket = new s3.Bucket(this, "FrontendBucket", {
+      versioned: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+    });
+
+    // アップロードされたファイル用S3バケット
+    const uploadedFilesBucket = new s3.Bucket(this, "UploadedFilesBucket", {
+      versioned: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+    });
+
+    // CloudFrontログ用S3バケット
+    const cloudFrontLogsBucket = new s3.Bucket(this, "CloudFrontLogsBucket", {
+      lifecycleRules: [
+        {
+          id: "cloudfront-logs-expiration",
+          enabled: true,
+          expiration: Duration.days(
+            props?.logRetentionDays ?? logs.RetentionDays.THREE_MONTHS,
+          ),
+        },
+      ],
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      accessControl: s3.BucketAccessControl.LOG_DELIVERY_WRITE,
+    });
+
+    // フロントエンド用CloudFront
+    const frontendCloudFront = new CloudFrontToS3(this, "FrontendCloudFront", {
+      existingBucketObj: frontendBucket,
+      cloudFrontDistributionProps: {
+        certificate: props.cloudfrontCertificate,
+        domainNames: [appDomain],
+        defaultBehavior: {
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          // オリジンリクエストポリシー
+          originRequestPolicy: new cloudfront.OriginRequestPolicy(
+            this,
+            "FrontendOriginRequestPolicy",
+            {
+              originRequestPolicyName: `${this.stackName}-FrontendOriginRequestPolicy`,
+              comment: "FrontendOriginRequestPolicy",
+            },
+          ),
+          // キャッシュポリシー
+          cachePolicy: new cloudfront.CachePolicy(this, "FrontendCachePolicy", {
+            cachePolicyName: `${this.stackName}-FrontendCachePolicy`,
+            comment: "FrontendCachePolicy",
+            // キャッシュ期間
+            defaultTtl: props.defaultTtl,
+            maxTtl: props.maxTtl,
+            minTtl: props.minTtl,
+            // 圧縮サポート
+            enableAcceptEncodingBrotli: true,
+            enableAcceptEncodingGzip: true,
+          }),
+        },
+        priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
+        httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+        logBucket: cloudFrontLogsBucket,
+        logFilePrefix: "FrontendCloudFront/",
+        defaultRootObject: "index.html",
+        errorResponses: [
+          {
+            httpStatus: 404,
+            responseHttpStatus: 404,
+            responsePagePath: "/404.html",
+            ttl: Duration.seconds(10),
+          },
+        ],
+      },
+    });
+
+    // フロントエンド用CloudFrontのエイリアスレコード
+    new route53.ARecord(this, "CloudFrontAliasRecord", {
+      zone: props.hostedZone,
+      recordName: appDomain,
+      target: route53.RecordTarget.fromAlias(
+        new targets.CloudFrontTarget(
+          frontendCloudFront.cloudFrontWebDistribution,
+        ),
+      ),
+    });
+
+    /*************************************
+     * バックエンド用リソース
+     *************************************/
+    // ALB用ACM証明書
+    const albCertificate = new acm.Certificate(this, "AlbCertificate", {
+      certificateName: `${this.stackName}-alb-certificate`,
+      domainName: appDomain,
+      subjectAlternativeNames: [`*.${appDomain}`],
+      validation: acm.CertificateValidation.fromDns(props.hostedZone),
+    });
+
+    // ALBセキュリティグループ
     const backendAlbSecurityGroup = new ec2.SecurityGroup(
       this,
       "BackendAlbSecurityGroup",
@@ -198,24 +202,24 @@ export class MainStack extends Stack {
       },
     );
 
-		// ALB
-		const backendAlb = new elbv2.ApplicationLoadBalancer(this, "BackendAlb", {
+    // ALB
+    const backendAlb = new elbv2.ApplicationLoadBalancer(this, "BackendAlb", {
       vpc,
-			internetFacing: true,
-			dropInvalidHeaderFields: true,
-			securityGroup: backendAlbSecurityGroup,
-			vpcSubnets: vpc.selectSubnets({
-        subnetGroupName: 'Public',
+      internetFacing: true,
+      dropInvalidHeaderFields: true,
+      securityGroup: backendAlbSecurityGroup,
+      vpcSubnets: vpc.selectSubnets({
+        subnetGroupName: "Public",
       }),
-		});
-    
+    });
+
     // logsBucketおよびバケットポリシーの作成が完了してからALBを作成する（でないと権限エラーになりスタックデプロイに失敗する）
     backendAlb.node.addDependency(logsBucket);
 
     // ALBアクセスログ用S3バケットの設定
-    backendAlb.setAttribute('access_logs.s3.enabled', 'true');
-    backendAlb.setAttribute('access_logs.s3.bucket', logsBucket.bucketName);
-    
+    backendAlb.setAttribute("access_logs.s3.enabled", "true");
+    backendAlb.setAttribute("access_logs.s3.bucket", logsBucket.bucketName);
+
     // Permissions for Access Logging
     //    Why don't use alb.logAccessLogs(albLogBucket); ?
     //    Because logAccessLogs method adds wider permission to other account (PutObject*). S3 will become Noncompliant on Security Hub [S3.6]
@@ -224,21 +228,29 @@ export class MainStack extends Stack {
     logsBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['s3:PutObject'],
+        actions: ["s3:PutObject"],
         // ALB access logging needs S3 put permission from ALB service account for the region
-        principals: [new iam.AccountPrincipal(ri.RegionInfo.get(Stack.of(this).region).elbv2Account)],
-        resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+        principals: [
+          new iam.AccountPrincipal(
+            ri.RegionInfo.get(Stack.of(this).region).elbv2Account,
+          ),
+        ],
+        resources: [
+          logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`),
+        ],
       }),
     );
     logsBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['s3:PutObject'],
-        principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
-        resources: [logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`)],
+        actions: ["s3:PutObject"],
+        principals: [new iam.ServicePrincipal("delivery.logs.amazonaws.com")],
+        resources: [
+          logsBucket.arnForObjects(`AWSLogs/${Stack.of(this).account}/*`),
+        ],
         conditions: {
           StringEquals: {
-            's3:x-amz-acl': 'bucket-owner-full-control',
+            "s3:x-amz-acl": "bucket-owner-full-control",
           },
         },
       }),
@@ -246,42 +258,42 @@ export class MainStack extends Stack {
     logsBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['s3:GetBucketAcl'],
-        principals: [new iam.ServicePrincipal('delivery.logs.amazonaws.com')],
+        actions: ["s3:GetBucketAcl"],
+        principals: [new iam.ServicePrincipal("delivery.logs.amazonaws.com")],
         resources: [logsBucket.bucketArn],
       }),
     );
 
-		const httpListener = backendAlb.addListener("HttpListener", {
-			port: 80,
-			protocol: elbv2.ApplicationProtocol.HTTP,
-			defaultAction: elbv2.ListenerAction.redirect({
-				protocol: elbv2.ApplicationProtocol.HTTPS,
-				port: "443",
-				permanent: true,
-			}),
-		});
+    const httpListener = backendAlb.addListener("HttpListener", {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        port: "443",
+        permanent: true,
+      }),
+    });
 
-		const httpsListener = backendAlb.addListener("HttpsListener", {
-			port: 443,
-			protocol: elbv2.ApplicationProtocol.HTTPS,
-			certificates: [albCertificate],
-		});
+    const httpsListener = backendAlb.addListener("HttpsListener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [albCertificate],
+    });
 
     // ALB用のエイリアスレコード
-    new route53.ARecord(this, 'AlbAliasRecord', {
+    new route53.ARecord(this, "AlbAliasRecord", {
       zone: props.hostedZone,
       recordName: apiDomain,
       target: route53.RecordTarget.fromAlias(
-        new targets.LoadBalancerTarget(backendAlb)
+        new targets.LoadBalancerTarget(backendAlb),
       ),
     });
 
-		/*************************************
-		 * ECSリソース（バックエンド用）
-		 *************************************/
-		// ECR
-		const backendEcrRepository = new ecr.Repository(
+    /*************************************
+     * ECSリソース（バックエンド用）
+     *************************************/
+    // ECR
+    const backendEcrRepository = new ecr.Repository(
       this,
       "BackendNginxECRRepository",
       {
@@ -325,40 +337,42 @@ export class MainStack extends Stack {
       },
     );
 
-		// ECSクラスター
-		const ecsCluster = new ecs.Cluster(this, 'EcsCluster', {
+    // ECSクラスター
+    const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
       vpc,
       containerInsights: true,
       enableFargateCapacityProviders: true,
       clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
     });
 
-		// タスク実行ロール
-		const taskExecutionRole = new iam.Role(this, 'EcsTaskExecutionRole', {
-      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    // タスク実行ロール
+    const taskExecutionRole = new iam.Role(this, "EcsTaskExecutionRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
       managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonECSTaskExecutionRolePolicy",
+        ),
       ],
       inlinePolicies: {
-				taskExecutionPolicy: new iam.PolicyDocument({
-              statements: [
-                  new iam.PolicyStatement({
-                      effect: iam.Effect.ALLOW,
-                      actions: ["ssm:GetParameters", "secretsmanager:GetSecretValue"],
-                      resources: [
-                          `arn:${this.partition}:ssm:${this.region}:${this.account}:parameter/*`,
-                          `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret/*`,
-                      ],
-                  }),
+        taskExecutionPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["ssm:GetParameters", "secretsmanager:GetSecretValue"],
+              resources: [
+                `arn:${this.partition}:ssm:${this.region}:${this.account}:parameter/*`,
+                `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret/*`,
               ],
-          }),
+            }),
+          ],
+        }),
       },
     });
 
-		// タスクロール
-		const taskRole = new iam.Role(this, 'EcsTaskRole', {
-      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-			// TODO: アプリケーションに合わせたポリシーを追加する
+    // タスクロール
+    const taskRole = new iam.Role(this, "EcsTaskRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+      // TODO: アプリケーションに合わせたポリシーを追加する
     });
 
     // Data Firehose関係
@@ -401,9 +415,9 @@ export class MainStack extends Stack {
     // CloudWatch Logsへのアクセス権限を付与
     backendKinesisErrorLogGroup.grantWrite(firehoseRole);
     // KMSキーの使用権限を付与（AWSマネージド型キーを参照）
-    const kmsKey = kms.Key.fromLookup(this, 'S3KmsKey', {
-      aliasName: 'alias/aws/s3'
-    });   
+    const kmsKey = kms.Key.fromLookup(this, "S3KmsKey", {
+      aliasName: "alias/aws/s3",
+    });
     kmsKey.grantDecrypt(firehoseRole);
     kmsKey.grantEncrypt(firehoseRole);
 
@@ -465,46 +479,44 @@ export class MainStack extends Stack {
       },
     );
 
-		// タスク定義
-		const backendEcsTask = new ecs.FargateTaskDefinition(this, 'BackendEcsTask', {
-			family: `${this.stackName}-backend`,
-			taskRole: taskRole,
-      executionRole: taskExecutionRole,
-      cpu: props.backendEcsTaskCpu,
-      memoryLimitMiB: props.backendEcsTaskMemory,
-			runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
-        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+    // タスク定義
+    const backendEcsTask = new ecs.FargateTaskDefinition(
+      this,
+      "BackendEcsTask",
+      {
+        family: `${this.stackName}-backend`,
+        taskRole: taskRole,
+        executionRole: taskExecutionRole,
+        cpu: props.backendEcsTaskCpu,
+        memoryLimitMiB: props.backendEcsTaskMemory,
+        runtimePlatform: {
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+        },
       },
-    });
-		// webコンテナ
-		backendEcsTask.addContainer("web", {
-      image: ecs.ContainerImage.fromEcrRepository(
-        backendEcrRepository,
-        "web",
-      ),
+    );
+    // webコンテナ
+    backendEcsTask.addContainer("web", {
+      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "web"),
       portMappings: [{ containerPort: 80, hostPort: 80 }],
       readonlyRootFilesystem: false,
       logging: ecs.LogDrivers.firelens({}),
     });
     // appコンテナ
     backendEcsTask.addContainer("app", {
-      image: ecs.ContainerImage.fromEcrRepository(
-        backendEcrRepository,
-        "app",
-      ),
+      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "app"),
       environment: {
-				TZ: "Asia/Tokyo",
+        TZ: "Asia/Tokyo",
         APP_ENV: props.envName,
         APP_DEBUG: String(props.appDebug),
       },
       secrets: {
         APP_KEY: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
-            this, 
-            "AppKeyParam", 
-            { parameterName: `/${this.stackName}/app_key` }
-          )
+            this,
+            "AppKeyParam",
+            { parameterName: `/${this.stackName}/app_key` },
+          ),
         ),
       },
       readonlyRootFilesystem: false,
@@ -512,36 +524,29 @@ export class MainStack extends Stack {
     });
 
     backendEcsTask.addFirelensLogRouter("log", {
-      image: ecs.ContainerImage.fromEcrRepository(
-        backendEcrRepository,
-        "log",
-      ),
+      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "log"),
       environment: {
-				KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
-				KINESIS_WEB_DELIVERY_STREAM: backendWebLogDeliveryStream.ref,
+        KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
+        KINESIS_WEB_DELIVERY_STREAM: backendWebLogDeliveryStream.ref,
         AWS_REGION: this.region,
       },
       secrets: {
         SLACK_WEBHOOK_URL_LOG: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
-            this, 
-            "SlackWebhookUrlParam", 
-            { parameterName: `/${this.stackName}/slack/webhook_url` }
-          )
+            this,
+            "SlackWebhookUrlParam",
+            { parameterName: `/${this.stackName}/slack/webhook_url` },
+          ),
         ),
       },
       user: "0",
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "firelens",
-        logGroup: new logs.LogGroup(
-					this,
-					"BackendLogRouterLogGroup",
-					{
-						logGroupName: "backend-logrouter-logs",
-						retention: props.logRetentionDays,
-						removalPolicy: RemovalPolicy.DESTROY,
-					},
-				),
+        logGroup: new logs.LogGroup(this, "BackendLogRouterLogGroup", {
+          logGroupName: "backend-logrouter-logs",
+          retention: props.logRetentionDays,
+          removalPolicy: RemovalPolicy.DESTROY,
+        }),
       }),
       firelensConfig: {
         type: ecs.FirelensLogRouterType.FLUENTBIT,
@@ -553,40 +558,44 @@ export class MainStack extends Stack {
       },
     });
 
-		// ECSサービス用セキュリティグループ
-		const appSecurityGroup = new ec2.SecurityGroup(this, 'AppSecurityGroup', {
+    // ECSサービス用セキュリティグループ
+    const appSecurityGroup = new ec2.SecurityGroup(this, "AppSecurityGroup", {
       vpc,
       description: "Security group for Backend ECS Service",
       allowAllOutbound: true, // for AWS APIs
     });
 
-		// ECSサービス
-		const backendEcsService = new ecs.FargateService(this, 'BackendEcsService', {
-      cluster: ecsCluster,
-      taskDefinition: backendEcsTask,
-      desiredCount: props.backendDesiredCount,
-      enableExecuteCommand: true,
-      platformVersion: ecs.FargatePlatformVersion.LATEST,
-      // https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ecs-readme.html#fargate-capacity-providers
-      capacityProviderStrategies: [
-        {
-          capacityProvider: 'FARGATE',
-          weight: 1,
-        },
-      ],
-      securityGroups: [appSecurityGroup],
-      serviceName: PhysicalName.GENERATE_IF_NEEDED,
-    });
-		const ecsServiceName = backendEcsService.serviceName;
+    // ECSサービス
+    const backendEcsService = new ecs.FargateService(
+      this,
+      "BackendEcsService",
+      {
+        cluster: ecsCluster,
+        taskDefinition: backendEcsTask,
+        desiredCount: props.backendDesiredCount,
+        enableExecuteCommand: true,
+        platformVersion: ecs.FargatePlatformVersion.LATEST,
+        // https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ecs-readme.html#fargate-capacity-providers
+        capacityProviderStrategies: [
+          {
+            capacityProvider: "FARGATE",
+            weight: 1,
+          },
+        ],
+        securityGroups: [appSecurityGroup],
+        serviceName: PhysicalName.GENERATE_IF_NEEDED,
+      },
+    );
+    const ecsServiceName = backendEcsService.serviceName;
 
-		// ALBのターゲットグループ
-		const appTargetGroup = httpsListener.addTargets('AppTargetGroup', {
+    // ALBのターゲットグループ
+    const appTargetGroup = httpsListener.addTargets("AppTargetGroup", {
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [backendEcsService],
       deregistrationDelay: Duration.seconds(30),
     });
     appTargetGroup.configureHealthCheck({
-      path: '/api/hc',
+      path: "/api/hc",
       enabled: true,
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
@@ -595,7 +604,7 @@ export class MainStack extends Stack {
       healthyHttpCodes: "200",
     });
 
-		// スケーラブルターゲット
+    // スケーラブルターゲット
     const backendScalableTarget = new applicationautoscaling.ScalableTarget(
       this,
       "BackendScalableTarget",
@@ -629,16 +638,16 @@ export class MainStack extends Stack {
             { lower: 80, change: 50 }, // CPU使用率が80%を超えた場合、タスク数を50%増加させる
           ],
           metric: new cloudwatch.Metric({
-						namespace: "AWS/ECS",
-						metricName: "CPUUtilization",
-						dimensionsMap: {
-							ClusterName: ecsCluster.clusterName,
-							ServiceName: ecsServiceName,
-						},
-						statistic: "Maximum",
-						// 評価期間
-						period: props.backendEcsScaleOutPeriod,
-					}),
+            namespace: "AWS/ECS",
+            metricName: "CPUUtilization",
+            dimensionsMap: {
+              ClusterName: ecsCluster.clusterName,
+              ServiceName: ecsServiceName,
+            },
+            statistic: "Maximum",
+            // 評価期間
+            period: props.backendEcsScaleOutPeriod,
+          }),
         },
       );
 
@@ -663,16 +672,16 @@ export class MainStack extends Stack {
             { lower: 60, change: 0 }, // CPU使用率が60%以上80%未満の場合、タスク数は変更しない
           ],
           metric: new cloudwatch.Metric({
-						namespace: "AWS/ECS",
-						metricName: "CPUUtilization",
-						dimensionsMap: {
-							ClusterName: ecsCluster.clusterName,
-							ServiceName: ecsServiceName,
-						},
-						statistic: "Maximum",
-						// 評価期間
-						period: props.backendEcsScaleInPeriod,
-					}),
+            namespace: "AWS/ECS",
+            metricName: "CPUUtilization",
+            dimensionsMap: {
+              ClusterName: ecsCluster.clusterName,
+              ServiceName: ecsServiceName,
+            },
+            statistic: "Maximum",
+            // 評価期間
+            period: props.backendEcsScaleInPeriod,
+          }),
         },
       );
 
@@ -692,51 +701,40 @@ export class MainStack extends Stack {
       }),
     );
     // タスク開始スケジュール
-    new scheduler.CfnSchedule(
-      this,
-      "EcsStartSchedule",
-      {
-        state: props.ecsStartSchedulerState,
-        scheduleExpression: "cron(0 8 ? * MON-FRI *)",
-        scheduleExpressionTimezone: "Asia/Tokyo",
-        flexibleTimeWindow: {
-          mode: "OFF",
-        },
-        target: {
-          arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
-          roleArn: ecsSchedulerExecutionRole.roleArn,
-          input: JSON.stringify({
-            Cluster: ecsCluster.clusterName,
-            Service: backendEcsService.serviceName,
-            DesiredCount: props.backendDesiredCount,
-          }),
-        },
+    new scheduler.CfnSchedule(this, "EcsStartSchedule", {
+      state: props.ecsStartSchedulerState,
+      scheduleExpression: "cron(0 8 ? * MON-FRI *)",
+      scheduleExpressionTimezone: "Asia/Tokyo",
+      flexibleTimeWindow: {
+        mode: "OFF",
       },
-    );
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
+        roleArn: ecsSchedulerExecutionRole.roleArn,
+        input: JSON.stringify({
+          Cluster: ecsCluster.clusterName,
+          Service: backendEcsService.serviceName,
+          DesiredCount: props.backendDesiredCount,
+        }),
+      },
+    });
     // タスク停止スケジュール
-    new scheduler.CfnSchedule(
-      this,
-      "EcsStopSchedule",
-      {
-        state: props.ecsStopSchedulerState,
-        scheduleExpression: "cron(0 21 ? * MON-FRI *)",
-        scheduleExpressionTimezone: "Asia/Tokyo",
-        flexibleTimeWindow: {
-          mode: "OFF",
-        },
-        target: {
-          arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
-          roleArn: ecsSchedulerExecutionRole.roleArn,
-          input: JSON.stringify({
-            Cluster: ecsCluster.clusterName,
-            Service: backendEcsService.serviceName,
-            DesiredCount: 0,
-          }),
-        },
+    new scheduler.CfnSchedule(this, "EcsStopSchedule", {
+      state: props.ecsStopSchedulerState,
+      scheduleExpression: "cron(0 21 ? * MON-FRI *)",
+      scheduleExpressionTimezone: "Asia/Tokyo",
+      flexibleTimeWindow: {
+        mode: "OFF",
       },
-    );
-
-    
-	}
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
+        roleArn: ecsSchedulerExecutionRole.roleArn,
+        input: JSON.stringify({
+          Cluster: ecsCluster.clusterName,
+          Service: backendEcsService.serviceName,
+          DesiredCount: 0,
+        }),
+      },
+    });
+  }
 }
-

@@ -1,12 +1,12 @@
 class Friend {
-	//アクセス修飾子　private を追加
-	private readonly firstName: string;
-	private readonly lastName: string;
+  //アクセス修飾子　private を追加
+  private readonly firstName: string;
+  private readonly lastName: string;
 
-	constructor(firstName: string, lastName: string) {
-		this.firstName = firstName;
-		this.lastName = lastName;
-	}
+  constructor(firstName: string, lastName: string) {
+    this.firstName = firstName;
+    this.lastName = lastName;
+  }
 }
 const goro = new Friend("Type", "四郎");
 

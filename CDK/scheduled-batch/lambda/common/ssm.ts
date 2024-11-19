@@ -1,7 +1,7 @@
 import {
-	GetParameterCommand,
-	PutParameterCommand,
-	SSMClient,
+  GetParameterCommand,
+  PutParameterCommand,
+  SSMClient,
 } from "@aws-sdk/client-ssm";
 
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION });
@@ -11,14 +11,14 @@ const ssmClient = new SSMClient({ region: process.env.AWS_REGION });
  * @param parameterName
  */
 export const getParameterStoreValue = async (
-	parameterName: string,
+  parameterName: string,
 ): Promise<string> => {
-	const command = new GetParameterCommand({
-		Name: parameterName,
-		WithDecryption: true,
-	});
-	const response = await ssmClient.send(command);
-	return response.Parameter?.Value || "";
+  const command = new GetParameterCommand({
+    Name: parameterName,
+    WithDecryption: true,
+  });
+  const response = await ssmClient.send(command);
+  return response.Parameter?.Value || "";
 };
 
 /**
@@ -27,15 +27,15 @@ export const getParameterStoreValue = async (
  * @param value
  */
 export const updateParameterStoreValue = async (
-	parameterName: string,
-	value: string,
+  parameterName: string,
+  value: string,
 ): Promise<void> => {
-	const putCommand = new PutParameterCommand({
-		Name: parameterName,
-		Value: value,
-		Type: "SecureString",
-		Overwrite: true,
-	});
+  const putCommand = new PutParameterCommand({
+    Name: parameterName,
+    Value: value,
+    Type: "SecureString",
+    Overwrite: true,
+  });
 
-	await ssmClient.send(putCommand);
+  await ssmClient.send(putCommand);
 };
