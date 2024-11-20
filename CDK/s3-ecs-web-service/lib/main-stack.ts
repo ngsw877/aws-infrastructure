@@ -746,7 +746,8 @@ export class MainStack extends Stack {
     );
 
     //GitHub Actions用のIAMロールとポリシー
-    const githubActionsRole = new iam.Role(this, "GitHubActionsRole", {
+    new iam.Role(this, "GitHubActionsRole", {
+      roleName: `${this.stackName}-GitHubActionsRole`,
       assumedBy: new iam.WebIdentityPrincipal(
         githubActionsOidcProvider.openIdConnectProviderArn,
         {
