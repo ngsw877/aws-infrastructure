@@ -713,7 +713,7 @@ export class MainStack extends Stack {
         roleArn: ecsSchedulerExecutionRole.roleArn,
         input: JSON.stringify({
           Cluster: ecsCluster.clusterName,
-          Service: backendEcsService.serviceName,
+          Service: ecsServiceName,
           DesiredCount: props.backendDesiredCount,
         }),
       },
@@ -731,7 +731,7 @@ export class MainStack extends Stack {
         roleArn: ecsSchedulerExecutionRole.roleArn,
         input: JSON.stringify({
           Cluster: ecsCluster.clusterName,
-          Service: backendEcsService.serviceName,
+          Service: ecsServiceName,
           DesiredCount: 0,
         }),
       },
@@ -799,6 +799,17 @@ export class MainStack extends Stack {
           ],
         }),
       },
+    });
+
+    // GitHub Actions用のOutputs
+    new CfnOutput(this, "EcrRepositoryUri", {
+      value: `${this.account}.dkr.ecr.${this.region}.amazonaws.com/${backendEcrRepository.repositoryName}`,
+    });
+    new CfnOutput(this, "EcsClusterArn", {
+      value: ecsCluster.clusterArn,
+    });
+    new CfnOutput(this, "BackendEcsServiceName", {
+      value: ecsServiceName,
     });
   }
 }
