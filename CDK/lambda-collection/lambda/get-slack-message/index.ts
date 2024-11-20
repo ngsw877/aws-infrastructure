@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { getParameterStoreValue } from "../../../scheduled-batch/lambda/common/ssm";
+import { decode } from 'he';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -34,7 +35,7 @@ export const handler = async () => {
     // messagesが存在するか確認
     if (result.messages && Array.isArray(result.messages)) {
       const messages = result.messages.map((msg) => ({
-        text: msg.text,
+        text: decode(msg.text ?? ""),
         formattedDate: dayjs.unix(msg.ts ? Number.parseFloat(msg.ts) : 0).tz("Asia/Tokyo").format('YYYY-MM-DD HH:mm:ss'),
       }));
       return {
