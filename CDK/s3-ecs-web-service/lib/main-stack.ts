@@ -736,5 +736,69 @@ export class MainStack extends Stack {
         }),
       },
     });
+
+    // GitHub Actions用のOIDCプロバイダー
+    const githubActionsOidcProvider = new iam.OpenIdConnectProvider(this, "GitHubActionsOidcProvider", {
+      url: "https://token.actions.githubusercontent.com",
+      clientIds: ["sts.amazonaws.com"],
+        thumbprints: ["ffffffffffffffffffffffffffffffffffffffff"],
+      },
+    );
+
+    //GitHub Actions用のIAMロールとポリシー
+    const githubActionsRole = new iam.Role(this, "GitHubActionsRole", {
+      assumedBy: new iam.WebIdentityPrincipal(
+        githubActionsOidcProvider.openIdConnectProviderArn,
+        {
+          StringLike: {
+            'token.actions.githubusercontent.com:sub': `repo:${props.githubOrgName}/${props.githubRepositoryName}:*`
+          }
+        }
+      ),
+      inlinePolicies: {
+        GitHubActionsPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "ecr:GetAuthorizationToken",
+                "ecs:ListServices",
+                "sts:GetCallerIdentity",
+              ],
+              resources: ["*"],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["cloudformation:DescribeStacks"],
+              resources: [
+                `arn:${this.partition}:cloudformation:${this.region}:${this.account}:stack/${this.stackName}/*`,
+              ],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:CompleteLayerUpload",
+                "ecr:InitiateLayerUpload",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart",
+              ],
+              resources: [backendEcrRepository.repositoryArn],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["ecs:DescribeClusters"],
+              resources: [ecsCluster.clusterArn],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["ecs:UpdateService"],
+              resources: [backendEcsService.serviceArn],
+            }),
+          ],
+        }),
+      },
+    });
   }
 }

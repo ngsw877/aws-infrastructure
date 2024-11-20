@@ -33,6 +33,8 @@ export interface MainStackProps extends StackProps {
   appDebug: boolean;
   ecsStartSchedulerState: SchedulerState;
   ecsStopSchedulerState: SchedulerState;
+  githubOrgName: string;
+  githubRepositoryName: string;
   // 以下は、GlobalStackのスタックからインポートする
   cloudfrontCertificate?: acm.ICertificate;
   hostedZone?: route53.IHostedZone;

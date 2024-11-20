@@ -27,7 +27,7 @@ const mainStackProps: MainStackProps = {
   backendEcsTaskMemory: 2048,
   backendMaxTaskCount: 1,
   backendMinTaskCount: 1,
-  backendDesiredCount: 1,
+  backendDesiredCount: 0,
   backendEcsScaleOutPeriod: Duration.seconds(300),
   backendEcsScaleOutEvaluationPeriods: 3,
   backendEcsScaleInPeriod: Duration.seconds(300),
@@ -35,6 +35,8 @@ const mainStackProps: MainStackProps = {
   appDebug: true,
   ecsStartSchedulerState: "ENABLED",
   ecsStopSchedulerState: "ENABLED",
+  githubOrgName: "hoge",
+  githubRepositoryName: "s3-ecs-web-service",
 };
 
 export const params: Params = {
