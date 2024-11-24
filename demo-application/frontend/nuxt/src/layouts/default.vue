@@ -6,7 +6,7 @@
     </footer>
   </div>
 </template>
-<style scoped>
+<style scoped lang="scss">
 .container {
   color: red;
 }
