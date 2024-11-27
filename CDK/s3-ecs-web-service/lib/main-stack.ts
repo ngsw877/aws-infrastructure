@@ -122,6 +122,32 @@ export class MainStack extends Stack {
       accessControl: s3.BucketAccessControl.LOG_DELIVERY_WRITE,
     });
 
+    // CloudFrontFunction Frontendリクエスト用
+    const frontendIndexPageFunction = new cloudfront.Function(
+      this,
+      "FrontendIndexPageFunction",
+      {
+        functionName: `${this.stackName}-FrontendIndexPageFunction`,
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+        code: cloudfront.FunctionCode.fromFile({
+          filePath: "cloudfront-functions/FrontendIndexPageFunction.js",
+        }),
+      },
+    );
+
+    // CloudFront Function レスポンスセキュリティヘッダー設定用
+    const frontendHttpSecurityHeaderFunction = new cloudfront.Function(
+      this,
+      "FrontendHttpSecurityHeaderFunction",
+      {
+        functionName: `${this.stackName}-FrontendHttpSecurityHeaderFunction`,
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+        code: cloudfront.FunctionCode.fromFile({
+          filePath: "cloudfront-functions/FrontendHttpSecurityHeaderFunction.js",
+        }),
+      },
+    );
+
     // フロントエンド用CloudFront
     const frontendCloudFront = new CloudFrontToS3(this, "FrontendCloudFront", {
       existingBucketObj: frontendBucket,
@@ -131,6 +157,16 @@ export class MainStack extends Stack {
         defaultBehavior: {
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          functionAssociations: [
+            {
+              function: frontendIndexPageFunction,
+              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+            },
+            {
+              function: frontendHttpSecurityHeaderFunction,
+              eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
+            },
+          ],
           // オリジンリクエストポリシー
           originRequestPolicy: new cloudfront.OriginRequestPolicy(
             this,
