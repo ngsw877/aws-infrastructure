@@ -1,13 +1,20 @@
-import * as cdk from "aws-cdk-lib";
+import {
+  Stack,
+  Duration,
+  aws_s3 as s3,
+  aws_wafv2 as wafv2,
+} from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
+import type { Construct } from "constructs";
 import type { GlobalStackProps } from "../types/params";
 
-export class GlobalStack extends cdk.Stack {
-  public readonly cloudfrontCertificate: acm.ICertificate;
+export class GlobalStack extends Stack {
   public readonly hostedZone: route53.IHostedZone;
+  public readonly cloudfrontCertificate: acm.ICertificate;
+  public readonly cloudFrontWebAcl: wafv2.CfnWebACL;
 
-  constructor(scope: cdk.App, id: string, props: GlobalStackProps) {
+  constructor(scope: Construct, id: string, props: GlobalStackProps) {
     super(scope, id, props);
 
     // Route53ホストゾーンの定義
@@ -28,6 +35,83 @@ export class GlobalStack extends cdk.Stack {
         certificateName: `${this.stackName}-cloudfront-certificate`,
         domainName: props.appDomain,
         validation: acm.CertificateValidation.fromDns(this.hostedZone),
+      },
+    );
+
+    // CloudFront用WAF WebACL
+    this.cloudFrontWebAcl = new wafv2.CfnWebACL(this, "CloudFrontWebACL", {
+      defaultAction: { allow: {} },
+      scope: "CLOUDFRONT",
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: "CloudFrontWebACL",
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        {
+          name: "AWSManagedRulesCommonRuleSet",
+          priority: 1,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              name: "AWSManagedRulesCommonRuleSet",
+              vendorName: "AWS",
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: "AWSManagedRulesCommonRuleSet",
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    });
+
+    // WAF用ログバケット
+    const cloudFrontWafLogsBucket = new s3.Bucket(
+      this,
+      "CloudFrontWafLogsBucket",
+      {
+        // WAFのログは"aws-waf-logs-"で始まるバケットにしか設定できないためバケット名を固定
+        bucketName: `aws-waf-logs-${this.account}-bucket`,
+        versioned: false,
+        lifecycleRules: [
+        {
+          id: "cloudfront-waf-log-expiration",
+          enabled: true,
+          expiration: Duration.days(props?.logRetentionDays ?? 90),
+        },
+      ],
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+    });
+
+    // WAFログ出力設定
+    // Blockしたリクエストのみログ出力する
+    new wafv2.CfnLoggingConfiguration(
+      this,
+      "CloudFrontWafLogConfig",
+      {
+        logDestinationConfigs: [cloudFrontWafLogsBucket.bucketArn],
+        resourceArn: this.cloudFrontWebAcl.attrArn,
+        loggingFilter: {
+          DefaultBehavior: "DROP",
+          // BLOCKした場合のみKEEPの設定とする
+          Filters: [
+            {
+              Behavior: "KEEP",
+              Conditions: [
+                {
+                  ActionCondition: {
+                    Action: "BLOCK",
+                  },
+                },
+              ],
+              Requirement: "MEETS_ALL", // 条件全てに合致した場合
+            },
+          ],
+        },
       },
     );
   }

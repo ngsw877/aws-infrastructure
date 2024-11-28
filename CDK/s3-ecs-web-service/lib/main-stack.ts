@@ -154,6 +154,7 @@ export class MainStack extends Stack {
       cloudFrontDistributionProps: {
         certificate: props.cloudfrontCertificate,
         domainNames: [appDomain],
+        webAclId: props.cloudFrontWebAcl?.attrArn,
         defaultBehavior: {
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
