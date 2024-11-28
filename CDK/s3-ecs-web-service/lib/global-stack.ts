@@ -38,9 +38,20 @@ export class GlobalStack extends Stack {
       },
     );
 
+    // 許可するIPアドレスのセットを作成
+    const allowedIpSet = new wafv2.CfnIPSet(this, "AllowedIPSet", {
+      scope: "CLOUDFRONT",
+      ipAddressVersion: "IPV4",
+      addresses: [
+        "198.51.100.1/32",
+        "198.51.100.2/32"
+      ],
+      name: "AllowedIPs",
+    });
+
     // CloudFront用WAF WebACL
     this.cloudFrontWebAcl = new wafv2.CfnWebACL(this, "CloudFrontWebACL", {
-      defaultAction: { allow: {} },
+      defaultAction: { block: {} }, // デフォルトでブロック
       scope: "CLOUDFRONT",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
@@ -49,8 +60,23 @@ export class GlobalStack extends Stack {
       },
       rules: [
         {
-          name: "AWSManagedRulesCommonRuleSet",
+          name: "AllowSpecificIPs",
           priority: 1,
+          action: { allow: {} }, // 特定のIPを許可
+          statement: {
+            ipSetReferenceStatement: {
+              arn: allowedIpSet.attrArn,
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: "AllowSpecificIPs",
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: "AWSManagedRulesCommonRuleSet",
+          priority: 2,
           overrideAction: { none: {} },
           statement: {
             managedRuleGroupStatement: {
