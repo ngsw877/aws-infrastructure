@@ -9,6 +9,10 @@ const globalStackProps: GlobalStackProps = {
   crossRegionReferences: true,
   hostedZoneId: "Z03555611YEKDMTHN9OGE",
   appDomain: "dev.s3-ecs-web-service.kk-study.click",
+  allowedIpAddresses: [
+    "192.0.2.1/32",
+    "192.0.2.2/32"
+  ],
 };
 
 const mainStackProps: MainStackProps = {

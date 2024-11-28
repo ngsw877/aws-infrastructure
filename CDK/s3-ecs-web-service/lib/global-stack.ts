@@ -38,20 +38,22 @@ export class GlobalStack extends Stack {
       },
     );
 
-    // 許可するIPアドレスのセットを作成
-    const allowedIpSet = new wafv2.CfnIPSet(this, "AllowedIPSet", {
-      scope: "CLOUDFRONT",
-      ipAddressVersion: "IPV4",
-      addresses: [
-        "198.51.100.1/32",
-        "198.51.100.2/32"
-      ],
-      name: "AllowedIPs",
-    });
+    // 許可IPアドレスが指定されている場合のみIPセットを作成
+    const allowedIpSet = props.allowedIpAddresses?.length
+      ? new wafv2.CfnIPSet(this, "AllowedIPSet", {
+          scope: "CLOUDFRONT",
+          ipAddressVersion: "IPV4",
+          addresses: props.allowedIpAddresses,
+          name: "AllowedIPs",
+        })
+      : undefined;
 
     // CloudFront用WAF WebACL
     this.cloudFrontWebAcl = new wafv2.CfnWebACL(this, "CloudFrontWebACL", {
-      defaultAction: { block: {} }, // デフォルトでブロック
+      defaultAction: 
+        props.allowedIpAddresses?.length 
+          ? { block: {} }  // 許可IPアドレスが指定されている場合はブロック
+          : { allow: {} }, // 許可IPアドレスが指定されていない場合は許可
       scope: "CLOUDFRONT",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
@@ -59,10 +61,11 @@ export class GlobalStack extends Stack {
         sampledRequestsEnabled: true,
       },
       rules: [
-        {
+        // 許可IPアドレスが指定されている場合のみ、許可ルールを追加
+        ...(allowedIpSet ? [{
           name: "AllowSpecificIPs",
           priority: 1,
-          action: { allow: {} }, // 特定のIPを許可
+          action: { allow: {} },
           statement: {
             ipSetReferenceStatement: {
               arn: allowedIpSet.attrArn,
@@ -73,10 +76,11 @@ export class GlobalStack extends Stack {
             metricName: "AllowSpecificIPs",
             sampledRequestsEnabled: true,
           },
-        },
+        }] : []),
+        // AWSマネージドルールは常に追加
         {
           name: "AWSManagedRulesCommonRuleSet",
-          priority: 2,
+          priority: allowedIpSet ? 2 : 1,
           overrideAction: { none: {} },
           statement: {
             managedRuleGroupStatement: {

@@ -14,6 +14,7 @@ export interface GlobalStackProps extends StackProps {
   hostedZoneId: string;
   appDomain: string;
   logRetentionDays?: logs.RetentionDays;
+  allowedIpAddresses?: string[];
 }
 
 export interface MainStackProps extends StackProps {
