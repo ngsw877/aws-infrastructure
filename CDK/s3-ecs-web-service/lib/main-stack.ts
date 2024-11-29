@@ -23,6 +23,7 @@ import {
   aws_cloudformation as cfn,
   aws_scheduler as scheduler,
   CfnOutput,
+  aws_wafv2 as wafv2,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
@@ -301,7 +302,7 @@ export class MainStack extends Stack {
       }),
     );
 
-    const httpListener = backendAlb.addListener("HttpListener", {
+    backendAlb.addListener("HttpListener", {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       defaultAction: elbv2.ListenerAction.redirect({
@@ -325,6 +326,117 @@ export class MainStack extends Stack {
         new targets.LoadBalancerTarget(backendAlb),
       ),
     });
+
+    // ALB用WAF WebACL
+    const albWebAcl = new wafv2.CfnWebACL(this, "AlbWebACL", {
+      defaultAction: { allow: {} },  // デフォルトで許可
+      scope: "REGIONAL",
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: "AlbWebACL",
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        {
+          name: "AWSManagedRulesCommonRuleSet",
+          priority: 1,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              name: "AWSManagedRulesCommonRuleSet",
+              vendorName: "AWS",
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: "AWSManagedRulesCommonRuleSet",
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    });
+
+    // WAF用ログバケット
+    const albWafLogsBucket = new s3.Bucket(this, "AlbWafLogsBucket", {
+      // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
+      bucketName: `aws-waf-logs-${this.account}-${albWebAcl.node.id.toLowerCase()}`,
+      versioned: false,
+      lifecycleRules: [
+        {
+          id: "alb-waf-log-expiration",
+          enabled: true,
+          expiration: Duration.days(props?.logRetentionDays ?? 90),
+        },
+      ],
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+    });
+
+    // WAFログ出力設定
+    new wafv2.CfnLoggingConfiguration(this, "AlbWafLogConfig", {
+      logDestinationConfigs: [albWafLogsBucket.bucketArn],
+      resourceArn: albWebAcl.attrArn,
+      loggingFilter: {
+        DefaultBehavior: "DROP",
+        Filters: [
+          {
+            Behavior: "KEEP",
+            Conditions: [
+              {
+                ActionCondition: {
+                  Action: "BLOCK",
+                },
+              },
+            ],
+            Requirement: "MEETS_ALL",
+          },
+        ],
+      },
+    });
+
+    // ALBにWAFを関連付け
+    new wafv2.CfnWebACLAssociation(this, "AlbWafAssociation", {
+      resourceArn: backendAlb.loadBalancerArn,
+      webAclArn: albWebAcl.attrArn,
+    });
+
+    // WAFログバケット用のポリシー @see https://repost.aws/ja/knowledge-center/waf-turn-on-logging
+    albWafLogsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "AWSLogDeliveryAclCheck",
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("delivery.logs.amazonaws.com")],
+        actions: ["s3:GetBucketAcl"],
+        resources: [albWafLogsBucket.bucketArn],
+        conditions: {
+          StringEquals: {
+            "aws:SourceAccount": [this.account]
+          },
+          ArnLike: {
+            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`]
+          }
+        }
+      })
+    );
+    albWafLogsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "AWSLogDeliveryWrite",
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("delivery.logs.amazonaws.com")],
+        actions: ["s3:PutObject"],
+        resources: [albWafLogsBucket.arnForObjects("AWSLogs/*")],
+        conditions: {
+          StringEquals: {
+            "s3:x-amz-acl": "bucket-owner-full-control",
+            "aws:SourceAccount": [this.account]
+          },
+          ArnLike: {
+            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`]
+          }
+        }
+      })
+    );
 
     /*************************************
      * ECSリソース（バックエンド用）
@@ -849,5 +961,6 @@ export class MainStack extends Stack {
     new CfnOutput(this, "BackendEcsServiceName", {
       value: ecsServiceName,
     });
+
   }
 }
