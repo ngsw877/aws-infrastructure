@@ -92,7 +92,6 @@ export class MainStack extends Stack {
      *************************************/
     // フロントエンド用S3バケット
     const frontendBucket = new s3.Bucket(this, "FrontendBucket", {
-      versioned: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
@@ -360,7 +359,6 @@ export class MainStack extends Stack {
     const albWafLogsBucket = new s3.Bucket(this, "AlbWafLogsBucket", {
       // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
       bucketName: `aws-waf-logs-${this.account}-${albWebAcl.node.id.toLowerCase()}`,
-      versioned: false,
       lifecycleRules: [
         {
           id: "alb-waf-log-expiration",
