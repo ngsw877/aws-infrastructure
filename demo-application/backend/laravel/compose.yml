@@ -3,6 +3,7 @@ services:
     build: ./docker/php
     volumes:
       - .:/var/www
+    working_dir: /var/www/src
   nginx:
     image: nginx 
     ports:
