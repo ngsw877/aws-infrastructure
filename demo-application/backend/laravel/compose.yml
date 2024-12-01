@@ -1,12 +1,10 @@
 services:
   app:
-    container_name: app_laravel  
     build: ./docker/php
     volumes:
       - .:/var/www
   nginx:
     image: nginx 
-    container_name: nginx
     ports:
       - 8000:80 
     volumes:
@@ -17,7 +15,6 @@ services:
       - app
   db:
     image: mysql:8.0.36
-    container_name: db
     environment: 
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: database 
@@ -28,9 +25,7 @@ services:
       - ./docker/db/sql:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
-  # phpMyAdmin
   phpmyadmin:
-    container_name: test_phpmyadmin
     image: phpmyadmin
     environment:
     - PMA_USER=root
