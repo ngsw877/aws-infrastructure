@@ -1,4 +1,4 @@
 .idea/
 .DS_Store
 tmp/
-demo-application/backend/laravel/docker/db/data
+demo-application/backend/laravel_mysql/docker/db/data
