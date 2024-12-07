@@ -9,8 +9,9 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
+    "dev": "cdk deploy -c env=dev --all --require-approval never",
     "diff:dev": "cdk diff -c env=dev --all",
-    "dev": "cdk deploy -c env=dev --all --require-approval never"
+    "destroy:dev": "cdk destroy -c env=dev --all"
   },
   "devDependencies": {
     "@aws-solutions-constructs/aws-cloudfront-s3": "^2.74.0",
