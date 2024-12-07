@@ -1,5 +1,10 @@
 import { Aws, Duration, aws_logs as logs } from "aws-cdk-lib";
-import type { GlobalStackProps, MainStackProps, Params } from "../types/params";
+import type { AppDomainProps, GlobalStackProps, MainStackProps, Params } from "../types/params";
+
+const appDomainProps: AppDomainProps = {
+  route53HostedZoneId: "Z03555611YEKDMTHN9OGE",
+  appDomainName: "dev.s3-ecs-web-service.kk-study.click",
+};
 
 const globalStackProps: GlobalStackProps = {
   env: {
@@ -7,8 +12,7 @@ const globalStackProps: GlobalStackProps = {
     region: "us-east-1",
   },
   crossRegionReferences: true,
-  hostedZoneId: "Z03555611YEKDMTHN9OGE",
-  appDomain: "dev.s3-ecs-web-service.kk-study.click",
+  ...appDomainProps,
   // IPアドレス制限する場合は指定
   // allowedIpAddresses: [
   //   "192.0.2.1/32",
@@ -22,6 +26,7 @@ const mainStackProps: MainStackProps = {
     region: "ap-northeast-1",
   },
   crossRegionReferences: true,
+  ...appDomainProps,
   envName: "dev",
   natGatewaysCount: 1,
   logRetentionDays: logs.RetentionDays.ONE_MONTH,

@@ -10,20 +10,19 @@ import type { Construct } from "constructs";
 import type { GlobalStackProps } from "../types/params";
 
 export class GlobalStack extends Stack {
-  public readonly hostedZone: route53.IHostedZone;
   public readonly cloudfrontCertificate: acm.ICertificate;
   public readonly cloudFrontWebAcl: wafv2.CfnWebACL;
 
   constructor(scope: Construct, id: string, props: GlobalStackProps) {
     super(scope, id, props);
 
-    // Route53ホストゾーンの定義
-    this.hostedZone = route53.HostedZone.fromHostedZoneAttributes(
+    // Route53ホストゾーンの取得
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
       this,
       "HostedZone",
       {
-        hostedZoneId: props.hostedZoneId,
-        zoneName: props.appDomain,
+        hostedZoneId: props.route53HostedZoneId,
+        zoneName: props.appDomainName,
       },
     );
 
@@ -33,8 +32,8 @@ export class GlobalStack extends Stack {
       "CloudFrontCertificate",
       {
         certificateName: `${this.stackName}-cloudfront-certificate`,
-        domainName: props.appDomain,
-        validation: acm.CertificateValidation.fromDns(this.hostedZone),
+        domainName: props.appDomainName,
+        validation: acm.CertificateValidation.fromDns(hostedZone),
       },
     );
 

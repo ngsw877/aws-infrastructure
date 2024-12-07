@@ -20,7 +20,6 @@ import {
   aws_kms as kms,
   aws_kinesisfirehose as firehose,
   aws_ssm as ssm,
-  aws_cloudformation as cfn,
   aws_scheduler as scheduler,
   CfnOutput,
   aws_wafv2 as wafv2,
@@ -33,21 +32,31 @@ export class MainStack extends Stack {
   constructor(scope: Construct, id: string, props: MainStackProps) {
     super(scope, id, props);
 
-    if (!props.cloudfrontCertificate || !props.hostedZone) {
+    if (!props.cloudfrontCertificate || !props.cloudFrontWebAcl) {
       throw new Error(
-        "GlobalStackから取得した、cloudfrontCertificateとhostedZoneの両方が必須です。",
+        "GlobalStackから取得した、「cloudfrontCertificate」と「cloudFrontWebAcl」の両方が必須です。",
       );
     }
 
-    const appDomain = props.hostedZone.zoneName;
-    const apiDomain = `api.${appDomain}`;
+    const appDomainName = props.appDomainName;
+    const apiDomainName = `api.${appDomainName}`;
 
     new CfnOutput(this, "FrontendAppUrl", {
-      value: `https://${appDomain}`,
+      value: `https://${appDomainName}`,
     });
     new CfnOutput(this, "BackendApiUrl", {
-      value: `https://${apiDomain}`,
+      value: `https://${apiDomainName}`,
     });
+
+    // Route53ホストゾーンの取得
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
+      this,
+      "HostedZone",
+      {
+        hostedZoneId: props.route53HostedZoneId,
+        zoneName: appDomainName,
+      },
+    );
 
     // 集約ログ用S3バケット
     const logsBucket = new s3.Bucket(this, "LogsBucket", {
@@ -153,7 +162,7 @@ export class MainStack extends Stack {
       existingBucketObj: frontendBucket,
       cloudFrontDistributionProps: {
         certificate: props.cloudfrontCertificate,
-        domainNames: [appDomain],
+        domainNames: [appDomainName],
         webAclId: props.cloudFrontWebAcl?.attrArn,
         defaultBehavior: {
           viewerProtocolPolicy:
@@ -208,8 +217,8 @@ export class MainStack extends Stack {
 
     // フロントエンド用CloudFrontのエイリアスレコード
     new route53.ARecord(this, "CloudFrontAliasRecord", {
-      zone: props.hostedZone,
-      recordName: appDomain,
+      zone: hostedZone,
+      recordName: appDomainName,
       target: route53.RecordTarget.fromAlias(
         new targets.CloudFrontTarget(
           frontendCloudFront.cloudFrontWebDistribution,
@@ -223,9 +232,9 @@ export class MainStack extends Stack {
     // ALB用ACM証明書
     const albCertificate = new acm.Certificate(this, "AlbCertificate", {
       certificateName: `${this.stackName}-alb-certificate`,
-      domainName: appDomain,
-      subjectAlternativeNames: [`*.${appDomain}`],
-      validation: acm.CertificateValidation.fromDns(props.hostedZone),
+      domainName: apiDomainName,
+      subjectAlternativeNames: [`*.${appDomainName}`],
+      validation: acm.CertificateValidation.fromDns(hostedZone),
     });
 
     // ALBセキュリティグループ
@@ -319,8 +328,8 @@ export class MainStack extends Stack {
 
     // ALB用のエイリアスレコード
     new route53.ARecord(this, "AlbAliasRecord", {
-      zone: props.hostedZone,
-      recordName: apiDomain,
+      zone: hostedZone,
+      recordName: apiDomainName,
       target: route53.RecordTarget.fromAlias(
         new targets.LoadBalancerTarget(backendAlb),
       ),
