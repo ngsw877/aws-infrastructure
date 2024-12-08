@@ -18,6 +18,7 @@ on:
 env:
   AWS_REGION: "ap-northeast-1"
   AWS_BASE_STACK_NAME: "S3EcsWebServiceMain"
+  WORKING_DIRECTORY: "demo-application/frontend/nuxt"
 
 jobs:
   deploy:
@@ -43,7 +44,7 @@ jobs:
           fi
 
       # ロールを引き受ける
-      - name: Determin assume role
+      - name: Determine assume role
         run: echo "role_to_assume=${{ 'arn:aws:iam::' }}${{ env.account_id }}${{ ':role/' }}${{ env.env_name }}${{ '-' }}${{ env.AWS_BASE_STACK_NAME }}${{ '-GitHubActionsRole' }}" >> $GITHUB_ENV
 
       # デプロイ先環境を表示
@@ -69,11 +70,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: './demo-application/frontend/nuxt/package-lock.json'
+          cache-dependency-path: '${{ env.WORKING_DIRECTORY }}/package-lock.json'
       
       # パッケージのインストール
       - name: Install dependencies
-        working-directory: demo-application/frontend/nuxt
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: npm ci
 
       # CloudFormationの出力値を取得
@@ -93,14 +94,14 @@ jobs:
 
       # 静的ファイルの生成
       - name: Generate static files
-        working-directory: demo-application/frontend/nuxt
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: npm run generate
         env:
           API_BASE_URL: ${{ env.API_BASE_URL }}
 
       # S3へのデプロイ
       - name: Deploy to S3
-        working-directory: demo-application/frontend/nuxt
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: aws s3 sync dist/ s3://${{ env.FRONTEND_BUCKET_NAME }}/ --delete
 
       # CloudFrontのキャッシュ削除
