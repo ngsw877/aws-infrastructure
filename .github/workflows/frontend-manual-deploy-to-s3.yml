@@ -37,6 +37,10 @@ jobs:
           elif [ "${{ inputs.deploy_to }}" = "develop" ]; then
             echo "env_name=dev" >> $GITHUB_ENV
             echo "account_id=${{ secrets.DEV_ACCOUNT_ID }}" >> $GITHUB_ENV
+          else
+            echo "Error: Invalid deploy target"
+            exit 1
+          fi
 
       # ロールを引き受ける
       - name: Determin assume role
