@@ -914,6 +914,7 @@ export class MainStack extends Stack {
       ),
       inlinePolicies: {
         GitHubActionsPolicy: new iam.PolicyDocument({
+          // --- バックエンドアプリ用 ---
           statements: [
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
@@ -953,12 +954,38 @@ export class MainStack extends Stack {
               actions: ["ecs:UpdateService"],
               resources: [backendEcsService.serviceArn],
             }),
+            // --- フロントエンドアプリ用 ---
+            // S3バケットへのアクセス権限
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:DeleteObject"
+              ],
+              resources: [
+                frontendBucket.bucketArn,
+                `${frontendBucket.bucketArn}/*`
+              ],
+            }),
+            // CloudFrontのキャッシュ無効化権限
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "cloudfront:CreateInvalidation",
+                "cloudfront:GetInvalidation"
+              ],
+              resources: [
+                `arn:${this.partition}:cloudfront::${this.account}:distribution/${frontendCloudFront.cloudFrontWebDistribution.distributionId}`
+              ],
+            }),
           ],
         }),
       },
     });
 
-    // GitHub Actions用のOutputs
+    // GitHub Actions用のOutputs（バックエンドアプリ用）
     new CfnOutput(this, "EcrRepositoryUri", {
       value: `${this.account}.dkr.ecr.${this.region}.amazonaws.com/${backendEcrRepository.repositoryName}`,
     });
@@ -967,6 +994,17 @@ export class MainStack extends Stack {
     });
     new CfnOutput(this, "BackendEcsServiceName", {
       value: ecsServiceName,
+    });
+
+    // GitHub Actions用のOutputs（フロントエンドアプリ用）
+    new CfnOutput(this, "ApiBaseUrl", {
+      value: `https://${apiDomainName}/api`,
+    });
+    new CfnOutput(this, "FrontendBucketName", {
+      value: frontendBucket.bucketName,
+    });
+    new CfnOutput(this, "FrontendCloudFrontDistributionId", {
+      value: frontendCloudFront.cloudFrontWebDistribution.distributionId,
     });
 
   }

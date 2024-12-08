@@ -45,8 +45,8 @@ const mainStackProps: MainStackProps = {
   appDebug: true,
   ecsStartSchedulerState: "ENABLED",
   ecsStopSchedulerState: "ENABLED",
-  githubOrgName: "hoge",
-  githubRepositoryName: "s3-ecs-web-service",
+  githubOrgName: "ngsw877",
+  githubRepositoryName: "aws-infrastructure",
 };
 
 export const params: Params = {
