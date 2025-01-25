@@ -355,12 +355,8 @@ Resources:
   # NAT Gateway
   NatGateway:
     Type: AWS::EC2::NatGateway
-    DependsOn: EIP
     Properties:
-      AllocationId:
-        Fn::GetAtt:
-          - EIP
-          - AllocationId
+      AllocationId: !GetAtt EIP.AllocationId
       SubnetId:
         Fn::ImportValue:
           !Sub "${VpcStackName}-PublicSubnetAz1"
@@ -374,7 +370,6 @@ Resources:
   # NAT Gateway用のルーティングをプライベートサブネットのルートテーブルに追加する
   PrivateRoute:
     Type: AWS::EC2::Route
-    DependsOn: NatGateway
     Properties:
       RouteTableId:
         !Ref PrivateRouteTable

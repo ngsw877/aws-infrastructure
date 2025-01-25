@@ -3,12 +3,12 @@
 PROFILE="$1"
 
 if [[ "$2" = "fargate" ]]; then
-  STACK_NAME="sample-fargate"
+  BASE_STACK_NAME="fargate"
   TEMPLATE="fargate.yml"
   PARAMETERS_FILE="fargate.json"
 
 elif [[ "$2" = "spot" ]]; then
-  STACK_NAME="sample-spot-instance"
+  BASE_STACK_NAME="spot-instance"
   TEMPLATE="spot-instance.yml"
 
   # GPUインスタンスの使用を尋ねる
@@ -25,10 +25,17 @@ else
   exit 1
 fi
 
-# 引数がある場合、STACK_NAMEに代入する
-if [[ "$3" != "" ]]; then
-  STACK_NAME="$3"
+# 環境を選択してください (dev/stg/prod): 
+echo "環境を選択してください (dev/stg/prod): "
+read -r ENV_NAME
+
+# 環境のバリデーション
+if [[ "$ENV_NAME" != "dev" && "$ENV_NAME" != "stg" && "$ENV_NAME" != "prod" ]]; then
+  echo "ERROR: 不正な環境名です。dev、stg、またはprodを選択してください。"
+  exit 1
 fi
+
+STACK_NAME="${ENV_NAME}-${BASE_STACK_NAME}"
 
 aws cloudformation \
   deploy \

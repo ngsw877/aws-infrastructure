@@ -22,7 +22,7 @@ Outputs:
     Value: !Ref Certificate
     Export:
       Name: !Sub "${AWS::StackName}-CertificateArn"
-  DomainName:
+  Fqdn:
     Value: !Ref Fqdn
     Export:
       Name: !Sub "${AWS::StackName}-Fqdn"
