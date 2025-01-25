@@ -40,7 +40,7 @@ jobs:
       - name: Build and push app image
         uses: docker/build-push-action@v4
         with:
-          context: ./CloudFormation/ecs/docker/php
+          context: ./cloud-formation/ecs/docker/php
           push: true
           provenance: false
           tags: ${{ env.ECR_REPO_URI }}:${{ github.run_number }}-app
@@ -77,7 +77,7 @@ jobs:
           BACKEND_APP_DOMAIN: "127.0.0.1"
           RESOLVER: "169.254.169.253"
         with:
-          context: ./CloudFormation/ecs/docker/nginx
+          context: ./cloud-formation/ecs/docker/nginx
           push: true
           provenance: false
           tags: ${{ env.ECR_REPO_URI }}:${{ github.run_number }}-web
