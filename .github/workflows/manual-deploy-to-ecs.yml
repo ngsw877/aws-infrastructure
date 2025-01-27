@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   call-deploy-workflow:
-    uses: ./.github/workflows/reusable-workflows/deploy-to-ecs.yml
+    uses: ./.github/workflows/_deploy-to-ecs.yml
     secrets: inherit
     with:
       deploy-to: ${{ inputs.deploy-to }}
