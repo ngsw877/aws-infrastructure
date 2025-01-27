@@ -1,4 +1,4 @@
-name: Manual Deploy to ECS
+name: ECS Manual Deploy
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Auto Deploy to ECS
+name: ECS Auto Deploy
 
 on:
   workflow_dispatch:
