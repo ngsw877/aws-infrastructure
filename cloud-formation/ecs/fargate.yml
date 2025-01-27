@@ -74,7 +74,8 @@ Resources:
 
   EcrRepository:
     Type: AWS::ECR::Repository
-    DeletionPolicy: RetainExceptOnCreate
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       LifecyclePolicy:
         LifecyclePolicyText: |
@@ -172,11 +173,9 @@ Resources:
   WebAppEcsService:
     Type: AWS::ECS::Service
     DependsOn:
-      - WebAppHttpsProdListener # ターゲットグループがリスナーへ登録される前にWebAppEcsServiceを作成しようとすると、ターゲットグループがALBに紐付けられていないエラーになる
+      - WebAppHttpsListener # ターゲットグループがリスナーへ登録される前にWebAppEcsServiceを作成しようとすると、ターゲットグループがALBに紐付けられていないエラーになる
       - ApplicationLogGroup
     Properties:
-      DeploymentController:
-        Type: "CODE_DEPLOY"
       Cluster: !Ref EcsCluster
       DesiredCount: !Ref WebAppTaskDesiredCount
       TaskDefinition: !Ref WebAppEcsTask
@@ -184,7 +183,7 @@ Resources:
       LoadBalancers:
         - ContainerName: web # タスク定義のContainerDefinitions.Name
           ContainerPort: 80
-          TargetGroupArn: !Ref WebAppTaskBlueTargetGroup
+          TargetGroupArn: !Ref WebAppTaskTargetGroup
       EnableExecuteCommand: true
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -200,87 +199,12 @@ Resources:
                 !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
 
   #======================
-  # CodeDeploy
-  #======================
-  CodeDeployApplication:
-    Type: AWS::CodeDeploy::Application
-    Properties:
-      ApplicationName: !Sub "${AWS::StackName}-blue-green-application"
-      ComputePlatform: "ECS"
-
-  CodeDeployDeploymentGroup:
-    Type: AWS::CodeDeploy::DeploymentGroup
-    DependsOn:
-      - CodeDeployApplication
-    Properties:
-      ApplicationName: !Ref CodeDeployApplication
-      DeploymentGroupName: !Sub "${CodeDeployApplication}-dg"
-      DeploymentConfigName: "CodeDeployDefault.ECSAllAtOnce"
-      AutoRollbackConfiguration:
-        Enabled: "true"
-        Events:
-          - "DEPLOYMENT_FAILURE"
-          - "DEPLOYMENT_STOP_ON_REQUEST"
-      BlueGreenDeploymentConfiguration:
-        DeploymentReadyOption:
-          ActionOnTimeout: "STOP_DEPLOYMENT"
-          WaitTimeInMinutes: "1440"
-        TerminateBlueInstancesOnDeploymentSuccess:
-          Action: "TERMINATE"
-          TerminationWaitTimeInMinutes: "60"
-      DeploymentStyle:
-        DeploymentOption: "WITH_TRAFFIC_CONTROL"
-        DeploymentType: "BLUE_GREEN"
-      LoadBalancerInfo:
-        TargetGroupPairInfoList:
-          - ProdTrafficRoute:
-              ListenerArns:
-                - !Ref WebAppHttpsProdListener
-            TestTrafficRoute:
-              ListenerArns:
-                - !Ref WebAppHttpsTestListener
-            TargetGroups:
-              - Name: !GetAtt WebAppTaskBlueTargetGroup.TargetGroupName
-              - Name: !GetAtt WebAppTaskGreenTargetGroup.TargetGroupName
-      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
-      ECSServices:
-        - ClusterName: !Ref EcsCluster
-          ServiceName: !GetAtt WebAppEcsService.Name
-
-  CodeDeployRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-CodeDeployRole"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "codedeploy.amazonaws.com"
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
-
-  #======================
   # ターゲットグループ
   #======================
-  WebAppTaskBlueTargetGroup:
+  WebAppTaskTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub "${AWS::StackName}-blue-tg"
-      Protocol: HTTP
-      Port: 80
-      VpcId:
-        Fn::ImportValue:
-          !Sub "${VpcStackName}-VpcId"
-      TargetGroupAttributes:
-        - { Key: "deregistration_delay.timeout_seconds", Value: "10" }
-      TargetType: ip
-
-  WebAppTaskGreenTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub "${AWS::StackName}-green-tg"
+      Name: !Sub "${AWS::StackName}-tg"
       Protocol: HTTP
       Port: 80
       VpcId:
@@ -325,7 +249,7 @@ Resources:
             Port: 443
             StatusCode: HTTP_301
 
-  WebAppHttpsProdListener:
+  WebAppHttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref WebAppLoadBalancer
@@ -338,24 +262,7 @@ Resources:
               !Sub "${AcmStackName}-CertificateArn"
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref WebAppTaskBlueTargetGroup
-
-  WebAppHttpsTestListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref WebAppLoadBalancer
-      Port:
-        Fn::ImportValue:
-          !Sub "${SecurityGroupStackName}-TestListenerPort"
-      Protocol: HTTPS
-      SslPolicy: !Ref ElbSecurityPolicy
-      Certificates:
-        - CertificateArn:
-            Fn::ImportValue:
-              !Sub "${AcmStackName}-CertificateArn"
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref WebAppTaskGreenTargetGroup
+          TargetGroupArn: !Ref WebAppTaskTargetGroup
 
   WebAppHttpsDnsRecord:
     Type: AWS::Route53::RecordSet
@@ -457,17 +364,8 @@ Resources:
           - Effect: Allow
             Action:
               - "ecs:DescribeServices"
-              - "codedeploy:GetDeploymentGroup"
-              - "codedeploy:CreateDeployment"
-              - "codedeploy:GetDeployment"
-              - "codedeploy:GetDeploymentConfig"
-              - "codedeploy:RegisterApplicationRevision"
-              - "codedeploy:GetApplicationRevision"
             Resource:
               - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${EcsCluster}/${WebAppEcsService.Name}"
-              - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${CodeDeployApplication}/${CodeDeployDeploymentGroup}"
-              - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*"
-              - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:${CodeDeployApplication}"
           - Effect: Allow
             Action:
               - "cloudformation:DescribeStacks"
@@ -491,3 +389,11 @@ Resources:
             Action:
               - "ecs:UpdateService"
             Resource: !Ref WebAppEcsService
+
+Outputs:
+  EcrRepositoryUri:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}"
+  EcsClusterArn:
+    Value: !GetAtt EcsCluster.Arn
+  BackendEcsServiceName:
+    Value: !GetAtt WebAppEcsService.Name
