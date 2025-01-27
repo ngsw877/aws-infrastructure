@@ -1,10 +1,10 @@
 <?php
-$title         = 'My PHP Page v5!!!';
+$title         = 'My PHP Page v6!!!';
 $tableContents = [
-	'APP_ENV'   => $_SERVER['APP_ENV'],
-	'APP_DEBUG' => $_SERVER['APP_DEBUG'],
-	'TZ'        => $_SERVER['TZ'],
-	'ASSET_URL' => $_SERVER['ASSET_URL'] ?? '',
+    'APP_ENV'   => $_SERVER['APP_ENV'],
+    'APP_DEBUG' => $_SERVER['APP_DEBUG'],
+    'TZ'        => $_SERVER['TZ'],
+    'ASSET_URL' => $_SERVER['ASSET_URL'] ?? '',
 ];
 ?>
 
@@ -39,17 +39,17 @@ $tableContents = [
 				</thead>
 				<tbody>
 				<?php
-				$index = 0;
-				foreach($tableContents as $key => $value){
-					echo "<tr>";
-					echo "<th scope='row'>" . $index . "</th>";
-					echo "<td>" . $key . "</td>";
-					echo "<td>" . $value . "</td>";
-					echo "</tr>";
-					
-					$index++;
-				}
-				?>
+                $index = 0;
+foreach ($tableContents as $key => $value) {
+    echo "<tr>";
+    echo "<th scope='row'>" . $index . "</th>";
+    echo "<td>" . $key . "</td>";
+    echo "<td>" . $value . "</td>";
+    echo "</tr>";
+
+    $index++;
+}
+?>
 				</tbody>
 			</table>
 		</div>
