@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Determine assume role
         id: determine-assume-role
-        run: echo "GITHUB_ACTIONS_ROLE_ARN=${{ 'arn:aws:iam::' }}${{ secrets.AWS_ACCOUNT_ID }}${{ ':role/' }}${{ vars.CFN_STACK_NAME }}${{ '-GitHubActionsRole' }}" >> "${GITHUB_ENV}"
+        run: echo "GITHUB_ACTIONS_ROLE_ARN=${{ 'arn:aws:iam::' }}${{ vars.AWS_ACCOUNT_ID }}${{ ':role/' }}${{ vars.CFN_STACK_NAME }}${{ '-GitHubActionsRole' }}" >> "${GITHUB_ENV}"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -64,8 +64,6 @@ jobs:
           echo "BUILD_VERSION=${GITHUB_SHA}(${GITHUB_RUN_NUMBER})" >> $GITHUB_ENV
           echo "BUILD_HASH=${GITHUB_SHA}" >> $GITHUB_ENV
     outputs:
-      CFN_STACK_NAME: ${{vars.CFN_STACK_NAME}}
-      env_name: ${{env.env_name}}
       GITHUB_ACTIONS_ROLE_ARN: ${{ env.GITHUB_ACTIONS_ROLE_ARN }}
       ECR_REPO_URI: ${{env.ECR_REPO_URI}}
       ECR_REPOSITORY_NAME: ${{env.ECR_REPOSITORY_NAME}}
