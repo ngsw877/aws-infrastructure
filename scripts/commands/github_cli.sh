@@ -17,7 +17,7 @@ workflow_file_name="ワークフローファイル名"
 
 gh api "repos/${owner}/${repository_name}/actions/workflows/${workflow_file_name}/runs?per_page=100" \
 | jq -r '.workflow_runs[].id' \
-| xargs -P4 -I{} gh api repos/{owner}/{repository_name}/actions/runs/{} -X DELETE
+| xargs -P4 -I{} gh api "repos/${owner}/${repository_name}/actions/runs/{}" -X DELETE
 
 # デフォルトブランチ以外のGitHub Actionsワークフローを手動実行する
 workflow_file_name=
