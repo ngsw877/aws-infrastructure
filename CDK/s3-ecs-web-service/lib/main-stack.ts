@@ -1007,5 +1007,10 @@ export class MainStack extends Stack {
       value: frontendCloudFront.cloudFrontWebDistribution.distributionId,
     });
 
+    new CfnOutput(this, "GitHubActionsOidcProviderArn", {
+      value: githubActionsOidcProvider.openIdConnectProviderArn,
+      exportName: "GitHubActionsOidcProviderArn",
+    });
+
   }
 }

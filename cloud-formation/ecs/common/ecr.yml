@@ -9,6 +9,7 @@ Resources:
   EcrRepository:
     Type: AWS::ECR::Repository
     DeletionPolicy: RetainExceptOnCreate
+    UpdateReplacePolicy: Retain
     Properties:
       RepositoryName: !Ref RepositoryName
       LifecyclePolicy:
