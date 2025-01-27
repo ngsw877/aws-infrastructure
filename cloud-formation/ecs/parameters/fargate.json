@@ -16,7 +16,7 @@
     "ParameterValue": "common-sg"
   },
   {
-    "ParameterKey": "BackendTaskDesiredCount",
-    "ParameterValue": "1"
+    "ParameterKey": "WebAppTaskDesiredCount",
+    "ParameterValue": "0"
   }
 ]
