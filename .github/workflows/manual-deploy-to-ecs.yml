@@ -50,15 +50,15 @@ jobs:
           ECS_CLUSTER_ARN_OUTPUT_KEY: "EcsClusterArn"
           ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY: "BackendEcsServiceName"
         run: |
-          ECR_REPO_URI=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey==\\'${{ env.ECR_REPO_URI_OUTPUT_KEY }}\\'].OutputValue"`
+          ECR_REPO_URI=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECR_REPO_URI_OUTPUT_KEY }}'].OutputValue"`
           echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_ENV
           
           echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_ENV
           
-          ECS_CLUSTER_ARN=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey==\\'${{ env.ECS_CLUSTER_ARN_OUTPUT_KEY }}\\'].OutputValue"`
+          ECS_CLUSTER_ARN=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECS_CLUSTER_ARN_OUTPUT_KEY }}'].OutputValue"`
           echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_ENV
           
-          ECS_BACKEND_SERVICE_NAME=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey==\\'${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}\\'].OutputValue"`
+          ECS_BACKEND_SERVICE_NAME=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}'].OutputValue"`
           echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_ENV
           
           echo "BUILD_VERSION=${GITHUB_SHA}(${GITHUB_RUN_NUMBER})" >> $GITHUB_ENV
