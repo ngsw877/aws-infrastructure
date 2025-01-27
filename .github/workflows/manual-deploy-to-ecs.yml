@@ -12,13 +12,6 @@ on:
         type: string
         required: true
 
-env:
-  AWS_REGION: "ap-northeast-1"
-
-defaults:
-  run:
-    shell: bash
-
 permissions:
   id-token: write
   contents: read

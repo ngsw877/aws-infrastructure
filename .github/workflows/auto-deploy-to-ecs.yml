@@ -1,0 +1,17 @@
+name: Auto Deploy to ECS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - staging
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  call-deploy-workflow:
+    uses: ./.github/workflows/_deploy-to-ecs.yml
+    secrets: inherit
