@@ -105,7 +105,7 @@ jobs:
           context: ./cloud-formation/ecs/docker/php
           push: true
           provenance: false
-          tags: ${{ env.ECR_REPO_URI }}:${{ github.run_number }}-app
+          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-app
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
@@ -145,7 +145,7 @@ jobs:
           context: ./cloud-formation/ecs/docker/nginx
           push: true
           provenance: false
-          tags: ${{ env.ECR_REPO_URI }}:${{ github.run_number }}-web
+          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-web
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
@@ -175,10 +175,10 @@ jobs:
 
       - name: Delivery
         run: |
-          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${{ secrets.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-app --output json | jq --raw-output --join-output '.images[0].imageManifest')
-          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${{ secrets.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-web --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-app --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-web --output json | jq --raw-output --join-output '.images[0].imageManifest')
 
-          aws ecr put-image --registry-id ${{ secrets.AWS_ACCOUNT_ID }} \
+          aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
             --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
             --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
@@ -190,7 +190,7 @@ jobs:
               fi
             }
 
-          aws ecr put-image --registry-id ${{ secrets.AWS_ACCOUNT_ID }} \
+          aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
             --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
             --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
