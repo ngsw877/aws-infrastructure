@@ -16,10 +16,6 @@
     "ParameterValue": "common-sg"
   },
   {
-    "ParameterKey": "EcrStackName",
-    "ParameterValue": "common-ecr"
-  },
-  {
     "ParameterKey": "BackendTaskDesiredCount",
     "ParameterValue": "1"
   }

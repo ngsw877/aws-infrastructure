@@ -26,9 +26,6 @@ Parameters:
   SecurityGroupStackName:
     Type: String
     Default: "common-sg"
-  EcrStackName:
-    Type: String
-    Default: "common-ecr"
   AcmStackName:
     Type: String
     Default: "common-acm-for-alb"
@@ -75,6 +72,30 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
 
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "action": {
+                  "type": "expire"
+                },
+                "selection": {
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 7,
+                  "tagStatus": "untagged"
+                },
+                "description": "Untagged images",
+                "rulePriority": 1
+              }
+            ]
+          }
+
   # ECSクラスター
   EcsCluster:
     Type: AWS::ECS::Cluster
@@ -101,8 +122,7 @@ Resources:
               - ""
               - - !Ref AWS::AccountId
                 - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
-                - Fn::ImportValue:
-                    !Sub "${EcrStackName}-EcrRepositoryName"
+                - !Ref EcrRepository
                 - ":"
                 - !Ref AppWebAppDockerImageTag
           PortMappings:
@@ -129,8 +149,7 @@ Resources:
               - ""
               - - !Ref AWS::AccountId
                 - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
-                - Fn::ImportValue:
-                    !Sub "${EcrStackName}-EcrRepositoryName"
+                - !Ref EcrRepository
                 - ":"
                 - !Ref WebAppDockerImageTag
           PortMappings:
@@ -462,9 +481,7 @@ Resources:
               - "ecr:InitiateLayerUpload"
               - "ecr:PutImage"
               - "ecr:UploadLayerPart"
-            Resource:
-              - Fn::ImportValue:
-                  !Sub "${EcrStackName}-EcrRepositoryArn"
+            Resource: !GetAtt EcrRepository.Arn
           - Effect: Allow
             Action:
               - "ecs:DescribeClusters"
@@ -474,4 +491,3 @@ Resources:
             Action:
               - "ecs:UpdateService"
             Resource: !Ref WebAppEcsService
-
