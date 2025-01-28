@@ -60,16 +60,22 @@ jobs:
           ECS_BACKEND_SERVICE_NAME=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}'].OutputValue"`
           echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_ENV
           
-          echo "BUILD_VERSION=${GITHUB_SHA}(${GITHUB_RUN_NUMBER})" >> $GITHUB_ENV
-          echo "BUILD_HASH=${GITHUB_SHA}" >> $GITHUB_ENV
+          BUILD_VERSION="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
+          echo "::notice::BUILD_VERSION is ${BUILD_VERSION}"
+
+          APP_IMAGE_TAG="app-${BUILD_VERSION}"
+          echo "APP_IMAGE_TAG=${APP_IMAGE_TAG}" >> $GITHUB_ENV
+
+          WEB_IMAGE_TAG="web-${BUILD_VERSION}"
+          echo "WEB_IMAGE_TAG=${WEB_IMAGE_TAG}" >> $GITHUB_ENV
     outputs:
       GITHUB_ACTIONS_ROLE_ARN: ${{ env.GITHUB_ACTIONS_ROLE_ARN }}
-      ECR_REPO_URI: ${{env.ECR_REPO_URI}}
-      ECR_REPOSITORY_NAME: ${{env.ECR_REPOSITORY_NAME}}
-      ECS_CLUSTER_ARN: ${{env.ECS_CLUSTER_ARN}}
-      ECS_BACKEND_SERVICE_NAME: ${{env.ECS_BACKEND_SERVICE_NAME}}
-      BUILD_VERSION: ${{env.BUILD_VERSION}}
-      BUILD_HASH: ${{env.BUILD_HASH}}
+      ECR_REPO_URI: ${{ env.ECR_REPO_URI }}
+      ECR_REPOSITORY_NAME: ${{ env.ECR_REPOSITORY_NAME }}
+      ECS_CLUSTER_ARN: ${{ env.ECS_CLUSTER_ARN }}
+      ECS_BACKEND_SERVICE_NAME: ${{ env.ECS_BACKEND_SERVICE_NAME }}
+      APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+      WEB_IMAGE_TAG: ${{ env.WEB_IMAGE_TAG }}
 
   build-and-push-app-image:
     runs-on: ubuntu-latest
@@ -104,7 +110,7 @@ jobs:
           context: ./cloud-formation/ecs/docker/php
           push: true
           provenance: false
-          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-app
+          tags: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.APP_IMAGE_TAG }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
@@ -144,7 +150,7 @@ jobs:
           context: ./cloud-formation/ecs/docker/nginx
           push: true
           provenance: false
-          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-web
+          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ needs.setup.outputs.WEB_IMAGE_TAG }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
@@ -174,11 +180,11 @@ jobs:
 
       - name: Delivery
         run: |
-          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-app --output json | jq --raw-output --join-output '.images[0].imageManifest')
-          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-web --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} --image-ids imageTag=${{ needs.setup.outputs.WEB_IMAGE_TAG }} --output json | jq --raw-output --join-output '.images[0].imageManifest')
 
           aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
-            --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
+            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
             --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
                 echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
@@ -190,7 +196,7 @@ jobs:
             }
 
           aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
-            --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
+            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
             --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
                 echo "Catch ImageAlreadyExistsException on web image deploy. It is OK, Ignored"
