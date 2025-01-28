@@ -1,4 +1,5 @@
 name: ECS Manual Deploy
+run-name: Manual Deploy to 【${{ inputs.deploy-to }}】
 
 on:
   workflow_dispatch:
