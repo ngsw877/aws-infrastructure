@@ -36,8 +36,10 @@ jobs:
           AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
           CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
         run: |
+          set -x
           GITHUB_ACTIONS_ROLE_ARN=arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.CFN_STACK_NAME }}-GitHubActionsRole
           echo "GITHUB_ACTIONS_ROLE_ARN=${GITHUB_ACTIONS_ROLE_ARN}" >> $GITHUB_OUTPUT
+          set +x
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -56,6 +58,7 @@ jobs:
           ECS_CLUSTER_ARN_OUTPUT_KEY: "EcsClusterArn"
           ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY: "BackendEcsServiceName"
         run: |
+          set -x
           # CloudFormationスタックからOutputsを一度に取得
           OUTPUTS=$(aws cloudformation describe-stacks \
             --stack-name ${{ env.CFN_STACK_NAME }} \
@@ -82,6 +85,7 @@ jobs:
           
           echo "::notice::APP_IMAGE_TAG is ${APP_IMAGE_TAG}"
           echo "::notice::WEB_IMAGE_TAG is ${WEB_IMAGE_TAG}"
+          set +x
     outputs:
       GITHUB_ACTIONS_ROLE_ARN: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
       ECR_REPO_URI: ${{ steps.set-params.outputs.ECR_REPO_URI }}
@@ -197,6 +201,7 @@ jobs:
         env:
           AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
         run: |
+          set -x
           # appイメージのマニフェストを取得
           MANIFEST_APP=$(aws ecr batch-get-image \
             --registry-id ${{ env.AWS_ACCOUNT_ID }} \
@@ -246,3 +251,4 @@ jobs:
           --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
           --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
           --force-new-deployment
+          set +x
