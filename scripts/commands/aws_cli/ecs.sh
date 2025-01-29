@@ -1,12 +1,11 @@
 #!/bin/zsh
 
+# FARGATEタスクを起動する
 cluster_name=
 task_definition=
-task_arn=
 subnet_id=
 security_group_id=
 
-# FARGATEタスクを起動する
 aws ecs run-task \                                                                                      
   --cluster ${cluster_name} \          
   --launch-type FARGATE \             
@@ -15,6 +14,7 @@ aws ecs run-task \
 
 ## FARGATEタスクのアプリコンテナで任意のコマンドを実行し、タスクARNを取得する
 ## NOTE: appコンテナのコンテナ定義にて、essential:trueに設定すると、appコンテナが終了したらタスクが全体が終了する
+
 task_arn=$(aws ecs run-task \                                                                                      
   --cluster ${cluster_name} \          
   --launch-type FARGATE \             
@@ -34,6 +34,9 @@ task_arn=$(aws ecs run-task \
 echo ${task_arn}
 
 # タスクの詳細を取得する
+cluster_name=
+task_arn=
+
 aws ecs describe-tasks \
   --cluster ${cluster_name} \
   --tasks ${task_arn}
@@ -46,6 +49,9 @@ app_exit_code=$(aws ecs describe-tasks \
             --output text)
 
 # タスクが終了するまで待機する
+cluster_name=
+task_arn=
+
 aws ecs wait tasks-stopped \
   --cluster ${cluster_name} \
   --tasks ${task_arn}
