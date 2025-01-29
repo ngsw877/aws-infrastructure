@@ -201,39 +201,56 @@ jobs:
         env:
           AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
         run: |
-          set -x
-          # appイメージのマニフェストを取得
-          MANIFEST_APP=$(aws ecr batch-get-image \
-            --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-            --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} \
-            --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          echo "::group::appイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_APP=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          # NOTE: set -xは標準エラー出力であるからか、::group::で適切にグルーピングされないため2>&1でエラー出力を標準出力に変換
+          echo "::endgroup::"
 
-          # webイメージのマニフェストを取得
-          MANIFEST_WEB=$(aws ecr batch-get-image \
-            --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+          echo "::group::webイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_WEB=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
             --image-ids imageTag=${{ needs.setup.outputs.WEB_IMAGE_TAG }} \
-            --output json | jq --raw-output --join-output '.images[0].imageManifest')
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          echo "::endgroup::"
 
-          # ECRのイメージのappタグを更新
-          aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-            --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
-              # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
-              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
-                echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
-                true
-              else
-                # その他のエラーの場合はログを出力してエラー終了
-                cat app_log
-                false
-              fi
-            }
+          echo "::group::ECRのイメージのappタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
+                # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
+                if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
+                  echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
+                  true
+                else
+                  # その他のエラーの場合はログを出力してエラー終了
+                  cat app_log
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
 
-          # ECRのイメージのwebタグを更新
-          aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-            --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+          echo "::group::ECRのイメージのwebタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
             --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
               # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
@@ -242,13 +259,20 @@ jobs:
               else
                 # その他のエラーの場合はログを出力してエラー終了
                 cat web_log
-                false
-              fi
-            }
-          
-          # ECSサービスを更新
-          aws ecs update-service \
-          --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
-          --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
-          --force-new-deployment
-          set +x
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECSサービスを更新"
+          {
+            set -x
+            aws ecs update-service \
+              --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+              --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
+              --force-new-deployment
+            set +x
+          } 2>&1
+          echo "::endgroup::"
