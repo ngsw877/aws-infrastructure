@@ -15,4 +15,3 @@ permissions:
 jobs:
   call-deploy-workflow:
     uses: ./.github/workflows/_deploy-to-ecs.yml
-    secrets: inherit
