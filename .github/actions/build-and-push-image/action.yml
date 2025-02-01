@@ -1,5 +1,7 @@
 name: "Build and Push Image"
-description: "Composite action for building and pushing Docker images."
+description: |
+  Composite action for building and pushing Docker images.
+  Requires `id-token: write` permission in the workflow when using `aws-actions/configure-aws-credentials@v2`.
 
 inputs:
   aws-region:
