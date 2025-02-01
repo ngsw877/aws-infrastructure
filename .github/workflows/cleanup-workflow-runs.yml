@@ -1,0 +1,37 @@
+name: Cleanup Old Workflow Runs
+
+on:
+  schedule:
+    # 例: 毎日UTCの0時に実行 (日本時間09:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old runs (multi workflows)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -x
+          GITHUB_REPO="${{ github.repository }}"
+          
+          # GitHub Actionsの実行履歴を削除したいworkflowファイルを指定
+          WORKFLOW_FILES=(
+            "./ecs-auto-deploy.yml"
+            "./ecs-manual-deploy.yml"
+          )
+
+          # 指定したworkflowファイルごとに実行履歴を全て削除
+          for workflow_file in "${WORKFLOW_FILES[@]}"; do
+            echo "Deleting old runs for ${workflow_file}..."
+            gh api \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              "repos/${GITHUB_REPO}/actions/workflows/${workflow_file}/runs?per_page=100" \
+            | jq -r '.workflow_runs[].id' \
+            | xargs -P4 -I{} gh api \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                "repos/${GITHUB_REPO}/actions/runs/{}" \
+                -X DELETE
+          done
