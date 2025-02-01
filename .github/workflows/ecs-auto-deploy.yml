@@ -5,8 +5,11 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - staging
       - develop
+    paths:
+      - cloud-formation/ecs/docker/**
 
 permissions:
   id-token: write
