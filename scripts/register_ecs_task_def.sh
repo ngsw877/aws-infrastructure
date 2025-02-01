@@ -31,7 +31,10 @@ new_task_def=$(\
       .registeredAt,
       .registeredBy
     ) |
-    .containerDefinitions |= map(if .name == $CONTAINER_NAME then .image = $IMAGE else . end)
+    .containerDefinitions |= map(
+      select(.name != "web") |
+      if .name == $CONTAINER_NAME then .image = $IMAGE else . end
+    )
   ')
 
 echo "${new_task_def}" > ${task_def_file_name}
