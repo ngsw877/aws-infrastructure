@@ -1,0 +1,65 @@
+map $http_user_agent $loggable {
+    ~ELB-HealthChecker  0;
+    default             1;
+}
+
+log_format json_combined escape=json
+      '{'
+        '"source":"${LOG_SOURCE_NAME}",'
+        '"time":"$time_iso8601",'
+        '"client_ip":"$http_x_forwarded_for",'
+        '"status":"$status",'
+        '"remote_addr":"$remote_addr",'
+        '"remote_user":"$remote_user",'
+        '"request":"$request",'
+        '"request_time":"$request_time",'
+        '"request_method":"$request_method",'
+        '"request_length":"$request_length",'
+        '"request_uri":"$request_uri",'
+        '"request_id":"$request_id",'
+        '"uri":"$uri",'
+        '"query_string":"$query_string",'
+        '"bytes_sent":"$bytes_sent",'
+        '"body_bytes_sent":"$body_bytes_sent",'
+        '"https":"$https",'
+        '"http_referrer":"$http_referer",'
+        '"http_user_agent":"$http_user_agent",'
+        '"upstream_response_time":"$upstream_response_time"'
+      '}';
+
+server {
+    listen 80;
+    root /var/www/html/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+	    resolver ${RESOLVER} valid=30s ipv6=off;
+    	set $backend_app_domain ${BACKEND_APP_DOMAIN};
+        fastcgi_pass $backend_app_domain:9001;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_hide_header X-Powered-By;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    error_log  /var/log/nginx/error.log notice;
+    access_log  /var/log/nginx/access.log json_combined if=$loggable;
+}
