@@ -51,9 +51,11 @@ services:
             - 'postgresql:/var/lib/postgresql/data'
         environment:
             PGTZ: Asia/Tokyo
+            PGUSER: webapp
+            PGDATABASE: demo_db
             POSTGRES_USER: webapp
-            POSTGRES_PASSWORD: webapp
             POSTGRES_DB: demo_db
+            POSTGRES_PASSWORD: webapp
         ports:
             - "15432:5432"
 
