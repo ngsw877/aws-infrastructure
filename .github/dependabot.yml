@@ -4,3 +4,29 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+      time: "07:00"
+      timezone: "Asia/Tokyo"
+  - package-ecosystem: "npm"
+    directory: "demo-application/frontend"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "Asia/Tokyo"
+  - package-ecosystem: "composer"
+    directory: "demo-application/backend/src"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "Asia/Tokyo"
+  - package-ecosystem: "docker"
+    directory: "demo-application/backend/docker/php"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "Asia/Tokyo"
+  - package-ecosystem: "docker"
+    directory: "demo-application/backend/docker/nginx"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "Asia/Tokyo"
