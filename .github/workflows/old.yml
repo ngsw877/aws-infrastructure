@@ -1,0 +1,12 @@
+
+# Dependabotの動作確認をするために、意図的に古いactionsを指定
+name: Old
+
+on:
+  workflow_call:
+jobs:
+  old:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/setup-go@v4 # 意図的に古いバージョンを指定
