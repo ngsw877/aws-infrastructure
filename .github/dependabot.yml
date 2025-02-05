@@ -3,16 +3,12 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
-      time: "07:00"
-      timezone: "Asia/Tokyo"
+      interval: "weekly"
 
   - package-ecosystem: "npm"
     directory: "demo-application/frontend"
     schedule:
-      interval: "daily"
-      time: "07:00"
-      timezone: "Asia/Tokyo"
+      interval: "weekly"
     groups:
       npm-production:
         dependency-type: production
@@ -26,9 +22,7 @@ updates:
   - package-ecosystem: "composer"
     directory: "demo-application/backend/src"
     schedule:
-      interval: "daily"
-      time: "07:00"
-      timezone: "Asia/Tokyo"
+      interval: "weekly"
     groups:
       composer-production:
         dependency-type: production
@@ -42,13 +36,9 @@ updates:
   - package-ecosystem: "docker"
     directory: "demo-application/backend/docker/php"
     schedule:
-      interval: "daily"
-      time: "07:00"
-      timezone: "Asia/Tokyo"
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "demo-application/backend/docker/nginx"
     schedule:
-      interval: "daily"
-      time: "07:00"
-      timezone: "Asia/Tokyo"
+      interval: "weekly"
