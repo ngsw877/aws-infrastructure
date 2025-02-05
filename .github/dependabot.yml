@@ -8,9 +8,7 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "npm"
-    directories:
-      - "/cdk"
-      - "/cdk/**"
+    directory: "/cdk/lambda-collection"
     schedule:
       interval: "weekly"
     groups:
