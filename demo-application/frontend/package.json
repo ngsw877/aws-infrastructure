@@ -16,6 +16,6 @@
   },
   "devDependencies": {
     "sass": "^1.81.0",
-    "sass-embedded": "^1.81.0"
+    "sass-embedded": "^1.83.4"
   }
 }
