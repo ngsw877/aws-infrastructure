@@ -6,24 +6,46 @@ updates:
       interval: "daily"
       time: "07:00"
       timezone: "Asia/Tokyo"
+
   - package-ecosystem: "npm"
     directory: "demo-application/frontend"
     schedule:
       interval: "daily"
       time: "07:00"
       timezone: "Asia/Tokyo"
+    groups:
+      npm-production:
+        dependency-type: production
+        patterns:
+          - "*"
+      npm-development:
+        dependency-type: development
+        patterns:
+          - "*"
+
   - package-ecosystem: "composer"
     directory: "demo-application/backend/src"
     schedule:
       interval: "daily"
       time: "07:00"
       timezone: "Asia/Tokyo"
+    groups:
+      composer-production:
+        dependency-type: production
+        patterns:
+          - "*"
+      composer-development:
+        dependency-type: development
+        patterns:
+          - "*"
+
   - package-ecosystem: "docker"
     directory: "demo-application/backend/docker/php"
     schedule:
       interval: "daily"
       time: "07:00"
       timezone: "Asia/Tokyo"
+
   - package-ecosystem: "docker"
     directory: "demo-application/backend/docker/nginx"
     schedule:
