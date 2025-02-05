@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-bullseye
+FROM php:8.4-fpm-bullseye
 
 ENV TZ=Asia/Tokyo \
     LANG=ja_JP.UTF-8
