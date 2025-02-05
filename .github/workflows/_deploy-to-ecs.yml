@@ -42,7 +42,7 @@ jobs:
           set +x
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
@@ -151,7 +151,7 @@ jobs:
       name: ${{ inputs.deploy-to }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
