@@ -20,7 +20,7 @@
     "typescript": "~5.5.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.156.0",
+    "aws-cdk-lib": "2.178.1",
     "cdk-dynamo-table-viewer": "^0.2.486",
     "constructs": "^10.0.0"
   }
