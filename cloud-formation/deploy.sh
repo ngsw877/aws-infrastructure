@@ -1,35 +1,59 @@
 #!/bin/bash
 
-# 引数の数をチェック
-if [ "$#" -lt 3 ]; then
-  echo "profileを指定してください"
-  read -r PROFILE
+usage() {
+  echo "Usage: $0 [-p AWS_PROFILE] -t TEMPLATE_FILE -s STACK_NAME [-e]" >&2
+  exit 1
+}
 
-  echo "デプロイするCFnテンプレートのパスを指定してください"
-  read -r TEMPLATE
+# 初期値設定
+EXECUTE_CHANGES="false"
 
-  echo "スタック名を指定してください"
-  read -r STACK_NAME
-else
-  # コマンドライン引数から値を割り当て
-  PROFILE="$1"
-  TEMPLATE="$2"
-  STACK_NAME="$3"
+# オプション解析
+while getopts "p:t:s:e" opt; do
+  case $opt in
+    p)
+      AWS_PROFILE="${OPTARG}"
+      ;;
+    t)
+      TEMPLATE="${OPTARG}"
+      ;;
+    s)
+      STACK_NAME="${OPTARG}"
+      ;;
+    e)
+      EXECUTE_CHANGES="true"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+# 必須パラメータが未設定の場合は入力を促す
+
+if [ -z "$TEMPLATE" ]; then
+  read -rp "デプロイするCFnテンプレートのパスを指定してください: " TEMPLATE
 fi
 
-# デフォルトで --no-execute-changeset オプションを設定
-changeset_option="--no-execute-changeset"
+if [ -z "$STACK_NAME" ]; then
+  read -rp "スタック名を指定してください: " STACK_NAME
+fi
 
-# 引数に -e(execute) が指定されている場合、オプションを外す
-if [[ "$4" == "-e" ]]; then
+if [ -z "$AWS_PROFILE" ]; then
+  # 環境変数にも設定が無ければ入力を促す
+  read -rp "AWS_PROFILEを指定してください: " AWS_PROFILE
+fi
+
+# オプション処理：-e が指定されていれば、変更セット実行（自動実行）となる
+changeset_option="--no-execute-changeset"
+if [ "$EXECUTE_CHANGES" = "true" ]; then
   changeset_option=""
 fi
 
-# AWS CloudFormationを使用してデプロイ
-aws cloudformation \
-  --profile "${PROFILE}" \
-  deploy \
-  --template-file "${TEMPLATE}" \
-  --stack-name "${STACK_NAME}"  \
+# AWS CloudFormation deploy を実行
+aws cloudformation deploy \
+  --profile "$AWS_PROFILE" \
+  --template-file "$TEMPLATE" \
+  --stack-name "$STACK_NAME" \
   --capabilities CAPABILITY_NAMED_IAM \
   $changeset_option
