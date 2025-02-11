@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  EventBridgeでEC2停止イベントを受け取り、SSMオートメーションを実行する。
+  EventBridgeルールとSSMオートメーションを連携した動作確認用の構成。
+
+Parameters:
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
+Resources:
+  # EventBridgeルール
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - "aws.ec2"
+        detail-type:
+          - "EC2 Instance State-change Notification"
+        detail:
+          state:
+            - "stopped"
+      Targets:
+        - Id: StartEc2Automation
+          Arn: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::automation-definition/AWS-StartEC2Instance:$LATEST"
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          DeadLetterConfig:
+            Arn: !GetAtt EventDlq.Arn
+          InputTransformer:
+            InputPathsMap:
+              instanceId: "$.detail.instance-id"
+            InputTemplate: !Sub |
+              {
+                "InstanceId": ["<instanceId>"],
+                "AutomationAssumeRole": ["${SsmAutomationRole.Arn}"]
+              }
+
+  # EventBridge用のIAMロール
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+                - ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "AllowSsmAutomation"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:StartAutomationExecution
+                  - ssm:GetAutomationExecution
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::automation-definition/AWS-StartEC2Instance:*"
+              - Effect: Allow
+                Action: iam:PassRole # SSMオートメーションの引数にロールを渡すために必要
+                Resource: !GetAtt SsmAutomationRole.Arn
+
+  # SSMオートメーション用のIAMロール
+  SsmAutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeSSMAutomationPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StartInstances
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                Resource: "*"
+
+  # EventBridgeで配信失敗したイベントを処理するDLQ
+  EventDlq:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      QueueName: "Event-DLQ"
+      MessageRetentionPeriod: 345600 # 4日
+
+  # EventBridgeのイベント配信失敗時に、DLQへエラーメッセージ送信できるようにするポリシー
+  EventDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventDlq
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # @see https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-rule-dlq.html#eb-dlq-perms
+          - Sid: "Allow EventBridge Send Message To DLQ"
+            Effect: Allow
+            Principal:
+              Service: "events.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt EventDlq.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !GetAtt EventBridgeRule.Arn
+
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: !Ref "AWS::StackName"
