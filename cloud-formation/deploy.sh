@@ -1,27 +1,27 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $0 [-p AWS_PROFILE] -t TEMPLATE_FILE -s STACK_NAME [-e]" >&2
+  echo "Usage: $0 [-t TEMPLATE_FILE] [-s STACK_NAME] [-p PARAMETER_FILE] [-e] [-P AWS_PROFILE]" >&2
   exit 1
 }
 
-# 初期値設定
-EXECUTE_CHANGES="false"
-
 # オプション解析
-while getopts "p:t:s:e" opt; do
+while getopts "t:s:p:eP:" opt; do
   case $opt in
-    p)
-      AWS_PROFILE="${OPTARG}"
-      ;;
     t)
       TEMPLATE="${OPTARG}"
       ;;
     s)
       STACK_NAME="${OPTARG}"
       ;;
+    p)
+      PARAMETER_FILE="${OPTARG}"
+      ;;
     e)
       EXECUTE_CHANGES="true"
+      ;;
+    P)
+      AWS_PROFILE="${OPTARG}"
       ;;
     *)
       usage
@@ -29,8 +29,7 @@ while getopts "p:t:s:e" opt; do
   esac
 done
 
-# 必須パラメータが未設定の場合は入力を促す
-
+# 必須パラメータが未設定の場合はエラー
 if [ -z "$TEMPLATE" ]; then
   read -rp "デプロイするCFnテンプレートのパスを指定してください: " TEMPLATE
 fi
@@ -39,8 +38,8 @@ if [ -z "$STACK_NAME" ]; then
   read -rp "スタック名を指定してください: " STACK_NAME
 fi
 
+# AWS_PROFILEが未設定の場合は入力を促す
 if [ -z "$AWS_PROFILE" ]; then
-  # 環境変数にも設定が無ければ入力を促す
   read -rp "AWS_PROFILEを指定してください: " AWS_PROFILE
 fi
 
@@ -50,10 +49,17 @@ if [ "$EXECUTE_CHANGES" = "true" ]; then
   changeset_option=""
 fi
 
+# パラメータファイルオプション設定
+parameter_override_option=""
+if [ -n "$PARAMETER_FILE" ]; then
+  parameter_override_option="--parameter-overrides file://$PARAMETER_FILE"
+fi
+
 # AWS CloudFormation deploy を実行
 aws cloudformation deploy \
-  --profile "$AWS_PROFILE" \
+  --profile "${AWS_PROFILE}" \
   --template-file "$TEMPLATE" \
   --stack-name "$STACK_NAME" \
   --capabilities CAPABILITY_NAMED_IAM \
-  $changeset_option
+  $changeset_option \
+  $parameter_override_option
