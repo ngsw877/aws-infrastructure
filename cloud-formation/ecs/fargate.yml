@@ -216,9 +216,9 @@ Resources:
           AssignPublicIp: DISABLED
           Subnets:
             - Fn::ImportValue:
-                !Sub "${VpcStackName}-PrivateSubnetAz1"
+                !Sub "${VpcStackName}-PrivateSubnet1"
             - Fn::ImportValue:
-                !Sub "${VpcStackName}-PrivateSubnetAz2"
+                !Sub "${VpcStackName}-PrivateSubnet2"
           SecurityGroups:
             - Fn::ImportValue:
                 !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
@@ -248,9 +248,9 @@ Resources:
       Scheme: internet-facing
       Subnets:
         - Fn::ImportValue:
-            !Sub "${VpcStackName}-PublicSubnetAz1"
+            !Sub "${VpcStackName}-PublicSubnet1"
         - Fn::ImportValue:
-            !Sub "${VpcStackName}-PublicSubnetAz2"
+            !Sub "${VpcStackName}-PublicSubnet2"
       SecurityGroups:
         - Fn::ImportValue:
             !Sub "${SecurityGroupStackName}-LoadBalancerSecurityGroup"
@@ -310,7 +310,7 @@ Resources:
       AllocationId: !GetAtt EIP.AllocationId
       SubnetId:
         Fn::ImportValue:
-          !Sub "${VpcStackName}-PublicSubnetAz1"
+          !Sub "${VpcStackName}-PublicSubnet1"
 
   # NAT Gateway用の固定IPアドレス
   EIP:
@@ -338,21 +338,21 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} Private Routes
 
-  PrivateSubnetAz1RouteTableAssociation:
+  PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId:
         Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnetAz1"
+          !Sub  "${VpcStackName}-PrivateSubnet1"
 
-  PrivateSubnetAz2RouteTableAssociation:
+  PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId:
         Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnetAz2"
+          !Sub  "${VpcStackName}-PrivateSubnet2"
 
   GitHubActionsRole:
     Type: AWS::IAM::Role
