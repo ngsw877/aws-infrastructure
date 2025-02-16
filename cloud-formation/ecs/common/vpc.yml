@@ -152,10 +152,20 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnet1"
 
+  PrivateSubnet1CidrBlock:
+    Value: !Select [ 0, !Ref PrivateCidrBlocks ]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet1CidrBlock"
+
   PrivateSubnet2:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnet2"
+
+  PrivateSubnet2CidrBlock:
+    Value: !Select [ 1, !Ref PrivateCidrBlocks ]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet2CidrBlock"
 
   PrivateSubnet3:
     Value: !Ref PrivateSubnet3

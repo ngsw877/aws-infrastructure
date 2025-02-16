@@ -1,0 +1,66 @@
+[
+  {
+    "ParameterKey": "VpcStackName",
+    "ParameterValue": "common-vpc"
+  },
+  {
+    "ParameterKey": "EnableReadReplica",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "HostedZoneId",
+    "ParameterValue": "Z05580762DNJR53OQCHM2"
+  },
+  {
+    "ParameterKey": "PrimaryRdsCustomDomainName",
+    "ParameterValue": "db.dev.sample-app.click"
+  },
+  {
+    "ParameterKey": "ReplicaRdsCustomDomainName",
+    "ParameterValue": "db.dev-replica.sample-app.click"
+  },
+  {
+    "ParameterKey": "Engine",
+    "ParameterValue": "postgres"
+  },
+  {
+    "ParameterKey": "EngineVersion",
+    "ParameterValue": "13.18"
+  },
+  {
+    "ParameterKey": "RdsPort",
+    "ParameterValue": "5432"
+  },
+  {
+    "ParameterKey": "EnableMultiAZ",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "PrimaryRdsInstanceClass",
+    "ParameterValue": "db.t4g.micro"
+  },
+  {
+    "ParameterKey": "ReplicaRdsInstanceClass",
+    "ParameterValue": "db.t4g.micro"
+  },
+  {
+    "ParameterKey": "StorageType",
+    "ParameterValue": "gp3"
+  },
+  {
+    "ParameterKey": "AllocatedStorage",
+    "ParameterValue": "100"
+  },
+  {
+    "ParameterKey": "MaxAllocatedStorage",
+    "ParameterValue": "1200"
+  },
+  {
+    "ParameterKey": "RdsLogStatement",
+    "ParameterValue": "none"
+  },
+  {
+    "ParameterKey": "DbMasterUserName",
+    "ParameterValue": "webapp"
+  }
+]
