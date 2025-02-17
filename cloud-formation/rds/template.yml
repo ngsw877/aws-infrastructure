@@ -119,6 +119,7 @@ Resources:
         "max_worker_processes": "76"
         "max_parallel_workers": "76"
         "max_parallel_workers_per_gather": "76"
+        "rds.logical_replication": 1 # RDSのBlue/Greenデプロイをするために有効化する必要がある
 
   ReplicaRdsParameterGroup:
     Type: AWS::RDS::DBParameterGroup
