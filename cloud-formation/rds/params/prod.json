@@ -62,5 +62,17 @@
   {
     "ParameterKey": "DbMasterUserName",
     "ParameterValue": "webapp"
+  },
+  {
+    "ParameterKey": "AmiId",
+    "ParameterValue": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
+  },
+  {
+    "ParameterKey": "Ec2InstanceType",
+    "ParameterValue": "t4g.micro"
+  },
+  {
+    "ParameterKey": "PostgresqlClientVersion",
+    "ParameterValue": "postgresql15"
   }
 ]

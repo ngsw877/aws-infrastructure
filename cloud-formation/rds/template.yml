@@ -68,6 +68,23 @@ Parameters:
   DbMasterUserName:
     Type: String
 
+  ### 踏み台EC2 ###
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64
+  
+  Ec2InstanceType:
+    Type: String
+    Default: "t4g.micro"
+
+  PostgresqlClientVersion:
+    Type: String
+    Description: "PostgreSQL client version to install on bastion EC2"
+    AllowedValues:
+      - "postgresql15"
+      - "postgresql16"
+    Default: "postgresql15"
+
 Outputs:
   DatabaseHostName:
     Value: !Ref PrimaryRdsCustomDomainRecord
@@ -263,3 +280,65 @@ Resources:
       Name: !Ref ReplicaRdsCustomDomainName
       ResourceRecords:
         - !GetAtt ReplicaRdsInstance.Endpoint.Address
+
+  #======================
+  # RDSへの接続用の踏み台サーバー
+  #======================
+  BastionEc2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Path: "/"
+
+  BastionEc2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref BastionEc2Role
+
+  # 踏み台EC2（SSM接続可能）
+  BastionEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref Ec2InstanceType
+      IamInstanceProfile: !Ref BastionEc2InstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-PublicSubnet1"
+          GroupSet:
+            - !Ref BastionEc2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-bastion-ec2"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -x
+
+          sudo dnf update -y
+
+          # PostgreSQLクライアントをインストール
+          sudo dnf install -y ${PostgresqlClientVersion}
+
+  BastionEc2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Bastion EC2
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
