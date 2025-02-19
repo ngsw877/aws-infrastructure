@@ -9,7 +9,7 @@ on:
       - staging
       - develop
     paths:
-      - cloud-formation/ecs/docker/**
+      - demo-application/backend/**
 
 permissions:
   id-token: write
