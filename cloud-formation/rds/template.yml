@@ -279,6 +279,16 @@ Resources:
         Fn::ImportValue:
           !Sub "${VpcStackName}-PrivateSubnet2CidrBlock"
 
+  # RDSセキュリティグループに踏み台EC2からの接続を許可
+  RdsSecurityGroupIngressFromBastionEc2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RdsPort
+      ToPort: !Ref RdsPort
+      SourceSecurityGroupId: !Ref BastionEc2SecurityGroup  # 踏み台EC2のセキュリティグループを指定
+
   PrimaryRdsCustomDomainRecord:
     Type: AWS::Route53::RecordSet
     Properties:
