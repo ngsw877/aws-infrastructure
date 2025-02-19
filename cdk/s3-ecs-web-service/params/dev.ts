@@ -2,8 +2,8 @@ import { Aws, Duration, aws_logs as logs } from "aws-cdk-lib";
 import type { AppDomainProps, GlobalStackProps, MainStackProps, Params } from "../types/params";
 
 const appDomainProps: AppDomainProps = {
-  route53HostedZoneId: "Z03555611YEKDMTHN9OGE",
-  appDomainName: "dev.s3-ecs-web-service.kk-study.click",
+  route53HostedZoneId: "Z0201048170ZNG2QS3LN1",
+  appDomainName: "dev.s3-ecs-web-service.sample-app.click",
 };
 
 const globalStackProps: GlobalStackProps = {
@@ -36,7 +36,7 @@ const mainStackProps: MainStackProps = {
   backendEcsTaskCpu: 1024,
   backendEcsTaskMemory: 2048,
   backendMaxTaskCount: 1,
-  backendMinTaskCount: 1,
+  backendMinTaskCount: 0,
   backendDesiredCount: 0,
   backendEcsScaleOutPeriod: Duration.seconds(300),
   backendEcsScaleOutEvaluationPeriods: 3,

@@ -23,6 +23,7 @@ import {
   aws_scheduler as scheduler,
   CfnOutput,
   aws_wafv2 as wafv2,
+  Fn,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
@@ -73,6 +74,10 @@ export class MainStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      // スタック削除時にバケットも削除
+      removalPolicy: RemovalPolicy.DESTROY,
+      // バケット内のオブジェクトも自動削除
+      autoDeleteObjects: true,
     });
 
     /*************************************
@@ -104,6 +109,8 @@ export class MainStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // アップロードされたファイル用S3バケット
@@ -112,6 +119,8 @@ export class MainStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // CloudFrontログ用S3バケット
@@ -129,6 +138,8 @@ export class MainStack extends Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       accessControl: s3.BucketAccessControl.LOG_DELIVERY_WRITE,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // CloudFrontFunction Frontendリクエスト用
@@ -367,7 +378,7 @@ export class MainStack extends Stack {
     // WAF用ログバケット
     const albWafLogsBucket = new s3.Bucket(this, "AlbWafLogsBucket", {
       // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
-      bucketName: `aws-waf-logs-${this.account}-${albWebAcl.node.id.toLowerCase()}`,
+      bucketName: `aws-waf-logs-${albWebAcl.node.id.toLowerCase()}-${Date.now()}`,
       lifecycleRules: [
         {
           id: "alb-waf-log-expiration",
@@ -378,10 +389,12 @@ export class MainStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // WAFログ出力設定
-    new wafv2.CfnLoggingConfiguration(this, "AlbWafLogConfig", {
+    const wafLogConfig = new wafv2.CfnLoggingConfiguration(this, "AlbWafLogConfig", {
       logDestinationConfigs: [albWafLogsBucket.bucketArn],
       resourceArn: albWebAcl.attrArn,
       loggingFilter: {
@@ -401,6 +414,9 @@ export class MainStack extends Stack {
         ],
       },
     });
+
+    // バケットポリシーが完全に作成された後にWAFログ設定を行うように依存関係を追加
+    wafLogConfig.node.addDependency(albWafLogsBucket);
 
     // ALBにWAFを関連付け
     new wafv2.CfnWebACLAssociation(this, "AlbWafAssociation", {
@@ -894,18 +910,13 @@ export class MainStack extends Stack {
     });
 
     // GitHub Actions用のOIDCプロバイダー
-    const githubActionsOidcProvider = new iam.OpenIdConnectProvider(this, "GitHubActionsOidcProvider", {
-      url: "https://token.actions.githubusercontent.com",
-      clientIds: ["sts.amazonaws.com"],
-        thumbprints: ["ffffffffffffffffffffffffffffffffffffffff"],
-      },
-    );
+    const githubActionsOidcProviderArn = Fn.importValue("GitHubActionsOidcProviderArn");
 
     //GitHub Actions用のIAMロールとポリシー
     new iam.Role(this, "GitHubActionsRole", {
       roleName: `${this.stackName}-GitHubActionsRole`,
       assumedBy: new iam.WebIdentityPrincipal(
-        githubActionsOidcProvider.openIdConnectProviderArn,
+        githubActionsOidcProviderArn,
         {
           StringLike: {
             'token.actions.githubusercontent.com:sub': `repo:${props.githubOrgName}/${props.githubRepositoryName}:*`
@@ -1005,11 +1016,6 @@ export class MainStack extends Stack {
     });
     new CfnOutput(this, "FrontendCloudFrontDistributionId", {
       value: frontendCloudFront.cloudFrontWebDistribution.distributionId,
-    });
-
-    new CfnOutput(this, "GitHubActionsOidcProviderArn", {
-      value: githubActionsOidcProvider.openIdConnectProviderArn,
-      exportName: "GitHubActionsOidcProviderArn",
     });
 
   }

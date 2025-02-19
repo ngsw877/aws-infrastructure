@@ -3,6 +3,7 @@ import {
   Duration,
   aws_s3 as s3,
   aws_wafv2 as wafv2,
+  RemovalPolicy,
 } from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
@@ -102,7 +103,7 @@ export class GlobalStack extends Stack {
       "CloudFrontWafLogsBucket",
       {
         // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
-        bucketName: `aws-waf-logs-${this.account}-${this.cloudFrontWebAcl.node.id.toLowerCase()}`,
+        bucketName: `aws-waf-logs-${this.cloudFrontWebAcl.node.id.toLowerCase()}-${Date.now()}`,
         versioned: false,
         lifecycleRules: [
         {
@@ -114,11 +115,13 @@ export class GlobalStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // WAFログ出力設定
     // Blockしたリクエストのみログ出力する
-    new wafv2.CfnLoggingConfiguration(
+    const wafLogConfig = new wafv2.CfnLoggingConfiguration(
       this,
       "CloudFrontWafLogConfig",
       {
@@ -143,5 +146,8 @@ export class GlobalStack extends Stack {
         },
       },
     );
+
+    // ログバケットの作成が完了してからWAFログ出力設定を作成する（でないとバケットポリシー関連のエラーが発生してスタックデプロイに失敗することがある）
+    wafLogConfig.node.addDependency(cloudFrontWafLogsBucket);
   }
 }
