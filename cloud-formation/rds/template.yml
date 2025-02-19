@@ -85,6 +85,25 @@ Parameters:
       - "postgresql16"
     Default: "postgresql15"
 
+  ### RDSとEC2の自動停止/起動スケジュール設定 ###
+  AutoStopTime:
+    Type: String
+    Default: "cron(0 21 ? * MON-FRI *)"
+    Description: "Cron expression for auto-stop schedule"
+
+  AutoStartTime:
+    Type: String
+    Default: "cron(0 8 ? * MON-FRI *)"
+    Description: "Cron expression for auto-start schedule"
+
+  ScheduleState:
+    Type: String
+    AllowedValues:
+      - "ENABLED"
+      - "DISABLED"
+    Default: "ENABLED"
+    Description: "State of the auto start/stop schedules"
+
 Outputs:
   DatabaseHostName:
     Value: !Ref PrimaryRdsCustomDomainRecord
@@ -281,9 +300,9 @@ Resources:
       ResourceRecords:
         - !GetAtt ReplicaRdsInstance.Endpoint.Address
 
-  #======================
+  #==============================
   # RDSへの接続用の踏み台サーバー
-  #======================
+  #==============================
   BastionEc2Role:
     Type: AWS::IAM::Role
     Properties:
@@ -342,3 +361,119 @@ Resources:
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
+
+  #==============================
+  # RDSの開始/停止用のEventBridgeスケジュール
+  #==============================
+  RdsStopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStopTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance"
+        RoleArn: !GetAtt RdsSchedulerRole.Arn
+        Input: !Sub |
+          {
+            "DbInstanceIdentifier": "${PrimaryRdsInstance}"
+          }
+
+  # RDS開始用のEventBridgeスケジュール
+  RdsStartSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStartTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:rds:startDBInstance"
+        RoleArn: !GetAtt RdsSchedulerRole.Arn
+        Input: !Sub |
+          {
+            "DbInstanceIdentifier": "${PrimaryRdsInstance}"
+          }
+
+  # EventBridgeスケジューラー用のIAMロール
+  RdsSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RdsStartStopPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:StopDBInstance
+                  - rds:StartDBInstance
+                Resource: !Sub "arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:${PrimaryRdsInstance}"
+
+  #==============================
+  # EC2の開始/停止用のEventBridgeスケジュール
+  #==============================
+  Ec2StopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStopTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
+        RoleArn: !GetAtt Ec2SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "InstanceIds": ["${BastionEc2Instance}"]
+          }
+
+  # EC2開始用のEventBridgeスケジュール
+  Ec2StartSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStartTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
+        RoleArn: !GetAtt Ec2SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "InstanceIds": ["${BastionEc2Instance}"]
+          }
+
+  # EC2スケジューラー用のIAMロール
+  Ec2SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Ec2StartStopPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${BastionEc2Instance}"

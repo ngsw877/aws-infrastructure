@@ -74,5 +74,17 @@
   {
     "ParameterKey": "PostgresqlClientVersion",
     "ParameterValue": "postgresql15"
+  },
+  {
+    "ParameterKey": "AutoStopTime",
+    "ParameterValue": "cron(0 21 ? * MON-FRI *)"
+  },
+  {
+    "ParameterKey": "AutoStartTime",
+    "ParameterValue":"cron(0 8 ? * MON-FRI *)"
+  },
+  {
+    "ParameterKey": "ScheduleState",
+    "ParameterValue": "ENABLED"
   }
 ]
