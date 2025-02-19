@@ -1,0 +1,56 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/**"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directories:
+      - "cdk/**/*"
+    schedule:
+      interval: "weekly"
+    groups:
+      cdk-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "demo-application/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-production:
+        dependency-type: production
+        patterns:
+          - "*"
+      npm-development:
+        dependency-type: development
+        patterns:
+          - "*"
+
+  - package-ecosystem: "composer"
+    directory: "demo-application/backend/src"
+    schedule:
+      interval: "weekly"
+    groups:
+      composer-production:
+        dependency-type: production
+        patterns:
+          - "*"
+      composer-development:
+        dependency-type: development
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "demo-application/backend/docker/php"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "demo-application/backend/docker/nginx"
+    schedule:
+      interval: "weekly"

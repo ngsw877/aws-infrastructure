@@ -1,15 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-  # プロジェクト名を入力する。各リソースのNameタグの値となる。
-  EnvironmentName:
-    Description: "An environment name that is prefixed to resource names"
-    Type: String
-    Default: sample-ecs
-
   # VPCのCIDRレンジ
-  VpcCIDR:
-    Description: "Please enter the IP range (CIDR notation) for this VPC"
+  VpcCidr:
     Type: String
     Default: "10.99.0.0/16"
 
@@ -23,31 +16,17 @@ Parameters:
     Type: CommaDelimitedList
     Default: "10.99.20.0/24, 10.99.21.0/24, 10.99.22.0/24"
 
-Mappings:
-  RegionMap:
-    ap-northeast-1:
-      Az1: "ap-northeast-1a"
-      Az2: "ap-northeast-1c"
-      Az3: "ap-northeast-1d"
-
 Resources:
   Vpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref VpcCIDR
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: !Ref EnvironmentName
 
   # インターネットゲートウェイ
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Ref EnvironmentName
 
   # インターネットゲートウェイをVPCにアタッチする
   InternetGatewayAttachment:
@@ -61,72 +40,54 @@ Resources:
   #======================
 
   ### パブリックサブネット ###
-  PublicSubnetAz1:
+  PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az1 ]
+      AvailabilityZone: !Select [ 0, !GetAZs ]
       CidrBlock: !Select [ 0, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
 
-  PublicSubnetAz2:
+  PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az2 ]
+      AvailabilityZone: !Select [ 1, !GetAZs ]
       CidrBlock: !Select [ 1, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
 
-  PublicSubnetAz3:
+  PublicSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az3 ]
+      AvailabilityZone: !Select [ 2, !GetAZs ]
       CidrBlock: !Select [ 2, !Ref PublicCidrBlocks ]
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Public Subnet (AZ3)
 
   ### プライベートサブネット ###
-  PrivateSubnetAz1:
+  PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az1 ]
+      AvailabilityZone: !Select [ 0, !GetAZs ]
       CidrBlock: !Select [ 0, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
 
-  PrivateSubnetAz2:
+  PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az2 ]
+      AvailabilityZone: !Select [ 1, !GetAZs ]
       CidrBlock: !Select [ 1, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
 
-  PrivateSubnetAz3:
+  PrivateSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      AvailabilityZone: !FindInMap [ RegionMap, !Ref "AWS::Region", Az3 ]
+      AvailabilityZone: !Select [ 2, !GetAZs ]
       CidrBlock: !Select [ 2, !Ref PrivateCidrBlocks ]
       MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
 
   #======================
   # ルートテーブル
@@ -136,9 +97,6 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName} Public Routes
 
   DefaultPublicRoute:
     Type: AWS::EC2::Route
@@ -148,17 +106,17 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnetAz1RouteTableAssociation:
+  PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnetAz1
+      SubnetId: !Ref PublicSubnet1
 
-  PublicSubnetAz2RouteTableAssociation:
+  PublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnetAz2
+      SubnetId: !Ref PublicSubnet2
 
 Outputs:
   ### VPC ###
@@ -173,33 +131,43 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
 
   ### パブリックサブネット ###
-  PublicSubnetAz1:
-    Value: !Ref PublicSubnetAz1
+  PublicSubnet1:
+    Value: !Ref PublicSubnet1
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnetAz1"
+      Name: !Sub "${AWS::StackName}-PublicSubnet1"
 
-  PublicSubnetAz2:
-    Value: !Ref PublicSubnetAz2
+  PublicSubnet2:
+    Value: !Ref PublicSubnet2
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnetAz2"
+      Name: !Sub "${AWS::StackName}-PublicSubnet2"
 
-  PublicSubnetAz3:
-    Value: !Ref PublicSubnetAz3
+  PublicSubnet3:
+    Value: !Ref PublicSubnet3
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnetAz3"
+      Name: !Sub "${AWS::StackName}-PublicSubnet3"
 
   ### プライベートサブネット ###
-  PrivateSubnetAz1:
-    Value: !Ref PrivateSubnetAz1
+  PrivateSubnet1:
+    Value: !Ref PrivateSubnet1
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnetAz1"
+      Name: !Sub "${AWS::StackName}-PrivateSubnet1"
 
-  PrivateSubnetAz2:
-    Value: !Ref PrivateSubnetAz2
+  PrivateSubnet1CidrBlock:
+    Value: !Select [ 0, !Ref PrivateCidrBlocks ]
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnetAz2"
+      Name: !Sub "${AWS::StackName}-PrivateSubnet1CidrBlock"
 
-  PrivateSubnetAz3:
-    Value: !Ref PrivateSubnetAz3
+  PrivateSubnet2:
+    Value: !Ref PrivateSubnet2
     Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnetAz3"
+      Name: !Sub "${AWS::StackName}-PrivateSubnet2"
+
+  PrivateSubnet2CidrBlock:
+    Value: !Select [ 1, !Ref PrivateCidrBlocks ]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet2CidrBlock"
+
+  PrivateSubnet3:
+    Value: !Ref PrivateSubnet3
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet3"

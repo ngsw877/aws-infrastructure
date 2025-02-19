@@ -10,14 +10,14 @@ Parameters:
   WebAppEcsTaskMemory:
     Type: Number
     Default: 2048
-  AppWebAppDockerImageTag:
+  AppImageTag:
     Type: String
     Default: "app"
   AppEnv:
     Type: String
   AppDebug:
     Type: String
-  WebAppDockerImageTag:
+  WebImageTag:
     Type: String
     Default: "web"
   VpcStackName:
@@ -78,21 +78,46 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       LifecyclePolicy:
-        LifecyclePolicyText: |
+        LifecyclePolicyText: !Sub |
           {
             "rules": [
               {
+                "rulePriority": 10,
+                "description": "Delete app tagged images when there are more than 3",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPatternList": ["*${AppImageTag}*"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
                 "action": {
                   "type": "expire"
-                },
+                }
+              },
+              {
+                "rulePriority": 20,
+                "description": "Delete web tagged images when there are more than 3",
                 "selection": {
-                  "countType": "sinceImagePushed",
-                  "countUnit": "days",
-                  "countNumber": 7,
-                  "tagStatus": "untagged"
+                  "tagStatus": "tagged",
+                  "tagPatternList": ["*${WebImageTag}*"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
                 },
-                "description": "Untagged images",
-                "rulePriority": 1
+                "action": {
+                  "type": "expire"
+                }
+              },
+              {
+                "rulePriority": 100,
+                "description": "Delete all untagged images when there are more than 3",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": {
+                  "type": "expire"
+                }
               }
             ]
           }
@@ -125,7 +150,7 @@ Resources:
                 - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
                 - !Ref EcrRepository
                 - ":"
-                - !Ref AppWebAppDockerImageTag
+                - !Ref AppImageTag
           PortMappings:
             - { ContainerPort: 9000, HostPort: 9000 }
           LogConfiguration:
@@ -152,7 +177,7 @@ Resources:
                 - !Sub ".dkr.ecr.${AWS::Region}.amazonaws.com/"
                 - !Ref EcrRepository
                 - ":"
-                - !Ref WebAppDockerImageTag
+                - !Ref WebImageTag
           PortMappings:
             - { ContainerPort: 80, HostPort: 80 }
           LogConfiguration:
@@ -191,9 +216,9 @@ Resources:
           AssignPublicIp: DISABLED
           Subnets:
             - Fn::ImportValue:
-                !Sub "${VpcStackName}-PrivateSubnetAz1"
+                !Sub "${VpcStackName}-PrivateSubnet1"
             - Fn::ImportValue:
-                !Sub "${VpcStackName}-PrivateSubnetAz2"
+                !Sub "${VpcStackName}-PrivateSubnet2"
           SecurityGroups:
             - Fn::ImportValue:
                 !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
@@ -223,9 +248,9 @@ Resources:
       Scheme: internet-facing
       Subnets:
         - Fn::ImportValue:
-            !Sub "${VpcStackName}-PublicSubnetAz1"
+            !Sub "${VpcStackName}-PublicSubnet1"
         - Fn::ImportValue:
-            !Sub "${VpcStackName}-PublicSubnetAz2"
+            !Sub "${VpcStackName}-PublicSubnet2"
       SecurityGroups:
         - Fn::ImportValue:
             !Sub "${SecurityGroupStackName}-LoadBalancerSecurityGroup"
@@ -285,7 +310,7 @@ Resources:
       AllocationId: !GetAtt EIP.AllocationId
       SubnetId:
         Fn::ImportValue:
-          !Sub "${VpcStackName}-PublicSubnetAz1"
+          !Sub "${VpcStackName}-PublicSubnet1"
 
   # NAT Gateway用の固定IPアドレス
   EIP:
@@ -313,21 +338,21 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName} Private Routes
 
-  PrivateSubnetAz1RouteTableAssociation:
+  PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId:
         Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnetAz1"
+          !Sub  "${VpcStackName}-PrivateSubnet1"
 
-  PrivateSubnetAz2RouteTableAssociation:
+  PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId:
         Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnetAz2"
+          !Sub  "${VpcStackName}-PrivateSubnet2"
 
   GitHubActionsRole:
     Type: AWS::IAM::Role

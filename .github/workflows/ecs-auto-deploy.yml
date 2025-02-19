@@ -5,8 +5,11 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - staging
       - develop
+    paths:
+      - demo-application/backend/**
 
 permissions:
   id-token: write
@@ -15,4 +18,3 @@ permissions:
 jobs:
   call-deploy-workflow:
     uses: ./.github/workflows/_deploy-to-ecs.yml
-    secrets: inherit

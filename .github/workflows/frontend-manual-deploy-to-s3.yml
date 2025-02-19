@@ -18,7 +18,7 @@ on:
 env:
   AWS_REGION: "ap-northeast-1"
   AWS_BASE_STACK_NAME: "S3EcsWebServiceMain"
-  WORKING_DIRECTORY: "demo-application/frontend/nuxt"
+  WORKING_DIRECTORY: "demo-application/frontend/"
 
 jobs:
   deploy:
@@ -52,7 +52,7 @@ jobs:
         run: echo "Deploy to ${{ env.env_name }}. Code from ${{ inputs.branch }}."
 
       - name: Configure AWS credentials (Dev / Staging)
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.role_to_assume }}

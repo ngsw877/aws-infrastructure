@@ -16,6 +16,8 @@ on:
 
 env:
   AWS_REGION: "ap-northeast-1"
+  APP_DOCKER_CONTEXT: "./demo-application/backend/docker/php"
+  WEB_DOCKER_CONTEXT: "./demo-application/backend/docker/nginx"
 
 defaults:
   run:
@@ -30,46 +32,70 @@ jobs:
     environment:
       name: ${{ inputs.deploy-to }}
     steps:
-      - name: Determine assume role
-        id: determine-assume-role
-        run: echo "GITHUB_ACTIONS_ROLE_ARN=${{ 'arn:aws:iam::' }}${{ vars.AWS_ACCOUNT_ID }}${{ ':role/' }}${{ vars.CFN_STACK_NAME }}${{ '-GitHubActionsRole' }}" >> "${GITHUB_ENV}"
+      - name: Set GitHub Actions role ARN
+        id: set-role-arn
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+        run: |
+          set -x
+          GITHUB_ACTIONS_ROLE_ARN=arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.CFN_STACK_NAME }}-GitHubActionsRole
+          echo "GITHUB_ACTIONS_ROLE_ARN=${GITHUB_ACTIONS_ROLE_ARN}" >> $GITHUB_OUTPUT
+          set +x
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.GITHUB_ACTIONS_ROLE_ARN }}
+          role-to-assume: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
           role-skip-session-tagging: true
           mask-aws-account-id: false
   
       # 動的パラメータの解決
-      - name: Resolve dynamic params
+      - name: Set deployment parameters
+        id: set-params
         env:
+          CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
           ECR_REPO_URI_OUTPUT_KEY: "EcrRepositoryUri"
           ECS_CLUSTER_ARN_OUTPUT_KEY: "EcsClusterArn"
           ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY: "BackendEcsServiceName"
         run: |
-          ECR_REPO_URI=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECR_REPO_URI_OUTPUT_KEY }}'].OutputValue"`
-          echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_ENV
+          set -x
+          # CloudFormationスタックからOutputsを一度に取得
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CFN_STACK_NAME }} \
+            --output json \
+            --query "Stacks[0].Outputs")
+
+          # スタックのOutputsから各値を取得
+          ECR_REPO_URI=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECR_REPO_URI_OUTPUT_KEY }}\").OutputValue")
+          ECS_CLUSTER_ARN=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_CLUSTER_ARN_OUTPUT_KEY }}\").OutputValue")
+          ECS_BACKEND_SERVICE_NAME=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}\").OutputValue")
+
+          # ビルドバージョンを生成
+          BUILD_VERSION="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
+          APP_IMAGE_TAG="app-${BUILD_VERSION}"
+          WEB_IMAGE_TAG="web-${BUILD_VERSION}"
+
+          # ジョブのoutputsとして設定
+          echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_OUTPUT
+          echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_OUTPUT
+          echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_OUTPUT
+          echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_OUTPUT
+          echo "APP_IMAGE_TAG=${APP_IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "WEB_IMAGE_TAG=${WEB_IMAGE_TAG}" >> $GITHUB_OUTPUT
           
-          echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_ENV
-          
-          ECS_CLUSTER_ARN=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECS_CLUSTER_ARN_OUTPUT_KEY }}'].OutputValue"`
-          echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_ENV
-          
-          ECS_BACKEND_SERVICE_NAME=`aws cloudformation describe-stacks --stack-name ${{ vars.CFN_STACK_NAME }} --output text --query "Stacks[].Outputs[?OutputKey=='${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}'].OutputValue"`
-          echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_ENV
-          
-          echo "BUILD_VERSION=${GITHUB_SHA}(${GITHUB_RUN_NUMBER})" >> $GITHUB_ENV
-          echo "BUILD_HASH=${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "::notice::APP_IMAGE_TAG is ${APP_IMAGE_TAG}"
+          echo "::notice::WEB_IMAGE_TAG is ${WEB_IMAGE_TAG}"
+          set +x
     outputs:
-      GITHUB_ACTIONS_ROLE_ARN: ${{ env.GITHUB_ACTIONS_ROLE_ARN }}
-      ECR_REPO_URI: ${{env.ECR_REPO_URI}}
-      ECR_REPOSITORY_NAME: ${{env.ECR_REPOSITORY_NAME}}
-      ECS_CLUSTER_ARN: ${{env.ECS_CLUSTER_ARN}}
-      ECS_BACKEND_SERVICE_NAME: ${{env.ECS_BACKEND_SERVICE_NAME}}
-      BUILD_VERSION: ${{env.BUILD_VERSION}}
-      BUILD_HASH: ${{env.BUILD_HASH}}
+      GITHUB_ACTIONS_ROLE_ARN: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
+      ECR_REPO_URI: ${{ steps.set-params.outputs.ECR_REPO_URI }}
+      ECR_REPOSITORY_NAME: ${{ steps.set-params.outputs.ECR_REPOSITORY_NAME }}
+      ECS_CLUSTER_ARN: ${{ steps.set-params.outputs.ECS_CLUSTER_ARN }}
+      ECS_BACKEND_SERVICE_NAME: ${{ steps.set-params.outputs.ECS_BACKEND_SERVICE_NAME }}
+      APP_IMAGE_TAG: ${{ steps.set-params.outputs.APP_IMAGE_TAG }}
+      WEB_IMAGE_TAG: ${{ steps.set-params.outputs.WEB_IMAGE_TAG }}
 
   build-and-push-app-image:
     runs-on: ubuntu-latest
@@ -78,35 +104,18 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Build and push app image
+        uses: ./.github/actions/build-and-push-image
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
-          role-skip-session-tagging: true
-          mask-aws-account-id: true
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: true
-
-      - name: Build and push app image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./cloud-formation/ecs/docker/php
-          push: true
-          provenance: false
-          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-app
-          cache-from: type=gha,scope=app
-          cache-to: type=gha,mode=max,scope=app
+          context: ${{ env.APP_DOCKER_CONTEXT }}
+          ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.APP_IMAGE_TAG }}
+          cache-scope: app
 
   build-and-push-web-image:
     runs-on: ubuntu-latest
@@ -114,42 +123,25 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      BACKEND_APP_DOMAIN: "127.0.0.1"
+      RESOLVER: "169.254.169.253"
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Build and push web image
+        uses: ./.github/actions/build-and-push-image
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
-          role-skip-session-tagging: true
-          mask-aws-account-id: true
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: true
-
-      - name: Build add push web image
-        uses: docker/build-push-action@v4
-        env:
-          BACKEND_APP_DOMAIN: "127.0.0.1"
-          RESOLVER: "169.254.169.253"
-        with:
-          context: ./cloud-formation/ecs/docker/nginx
-          push: true
-          provenance: false
-          tags: ${{needs.setup.outputs.ECR_REPO_URI}}:${{ github.run_number }}-web
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+          context: ${{ env.WEB_DOCKER_CONTEXT }}
+          ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.WEB_IMAGE_TAG }}
+          cache-scope: web
           build-args: |
-            BACKEND_APP_DOMAIN
-            RESOLVER
+            BACKEND_APP_DOMAIN=${{ env.BACKEND_APP_DOMAIN }}
+            RESOLVER=${{ env.RESOLVER }}
 
   delivery:
     runs-on: ubuntu-latest
@@ -161,7 +153,7 @@ jobs:
       name: ${{ inputs.deploy-to }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
@@ -170,38 +162,85 @@ jobs:
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
-        id: login-ecr
+        with:
+          mask-password: true
 
       - name: Delivery
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
         run: |
-          MANIFEST_APP=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-app --output json | jq --raw-output --join-output '.images[0].imageManifest')
-          MANIFEST_WEB=$(aws ecr batch-get-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} --image-ids imageTag=${GITHUB_RUN_NUMBER}-web --output json | jq --raw-output --join-output '.images[0].imageManifest')
+          echo "::group::appイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_APP=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          # NOTE: set -xは標準エラー出力であるからか、::group::で適切にグルーピングされないため2>&1でエラー出力を標準出力に変換
+          echo "::endgroup::"
 
-          aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
-            --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
-            --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
-              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
-                echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
-                true
-              else
-                cat app_log
-                false
-              fi
-            }
+          echo "::group::webイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_WEB=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+            --image-ids imageTag=${{ needs.setup.outputs.WEB_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          echo "::endgroup::"
 
-          aws ecr put-image --registry-id ${{ vars.AWS_ACCOUNT_ID }} \
-            --repository-name ${{needs.setup.outputs.ECR_REPOSITORY_NAME}} \
+          echo "::group::ECRのイメージのappタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
+                # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
+                if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
+                  echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
+                  true
+                else
+                  # その他のエラーの場合はログを出力してエラー終了
+                  cat app_log
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECRのイメージのwebタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
             --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
+              # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
               if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
                 echo "Catch ImageAlreadyExistsException on web image deploy. It is OK, Ignored"
                 true
               else
+                # その他のエラーの場合はログを出力してエラー終了
                 cat web_log
-                false
-              fi
-            }
-          
-          aws ecs update-service \
-          --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
-          --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
-          --force-new-deployment
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECSサービスを更新"
+          {
+            set -x
+            aws ecs update-service \
+              --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+              --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
+              --force-new-deployment
+            set +x
+          } 2>&1
+          echo "::endgroup::"

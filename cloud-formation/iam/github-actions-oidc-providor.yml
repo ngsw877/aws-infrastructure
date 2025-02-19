@@ -12,6 +12,9 @@ Resources:
         # @see https://kakakakakku.hatenablog.com/entry/2023/07/14/095049
         # @see https://github.com/aws-actions/configure-aws-credentials?tab=readme-ov-file#configuring-iam-to-trust-github
         - "ffffffffffffffffffffffffffffffffffffffff"
+      Tags:
+        - Key: "StackName"
+          Value: !Ref AWS::StackName
 
 Outputs:
   GitHubActionsOidcProviderArn:

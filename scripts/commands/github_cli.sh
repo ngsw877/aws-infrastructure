@@ -29,4 +29,4 @@ gh workflow run ${workflow_file_name} \
 --ref ${branch_name} \
 -R ${repository_name} \
 -f branch=${branch_name} \
--f deploy_to=${deploy_to}
+-f deploy-to=${deploy_to}

@@ -1,0 +1,489 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  VpcStackName:
+    Type: String
+  
+  EnableReadReplica:
+    Type: String
+    AllowedValues:
+    - "true"
+    - "false"
+    Default: "false"
+
+  ### AWS::RDS::DBInstance ###
+  Engine:
+    Type: String
+    Default: "postgres"
+
+  EngineVersion:
+    Type: String
+
+  RdsPort:
+    Type: String
+    Default: "5432"
+
+  PrimaryRdsInstanceClass:
+    Type: String
+
+  ReplicaRdsInstanceClass:
+    Type: String
+
+  EnableMultiAZ:
+    Type: String
+    AllowedValues:
+    - "true"
+    - "false"
+    Default: "false"
+  
+  StorageType:
+    Type: String
+    Default: "gp3"
+
+  AllocatedStorage:
+    Type: String
+
+  MaxAllocatedStorage:
+    Type: String
+
+  ### AWS::RDS::DBParameterGroup ###
+  RdsParameterGroupFamily:
+    Type: String
+    Default: "postgres13"
+
+  RdsLogStatement:
+    Type: String
+    Default: "none"
+
+  ### RDSカスタムドメイン ###
+  HostedZoneId:
+    Type: String
+
+  PrimaryRdsCustomDomainName:
+    Type: String
+
+  ReplicaRdsCustomDomainName:
+    Type: String
+  
+  ### AWS::SecretsManager::Secret ###
+  DbMasterUserName:
+    Type: String
+
+  ### 踏み台EC2 ###
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64
+  
+  Ec2InstanceType:
+    Type: String
+    Default: "t4g.micro"
+
+  PostgresqlClientVersion:
+    Type: String
+    Description: "PostgreSQL client version to install on bastion EC2"
+    AllowedValues:
+      - "postgresql15"
+      - "postgresql16"
+    Default: "postgresql15"
+
+  ### RDSとEC2の自動停止/起動スケジュール設定 ###
+  AutoStopTime:
+    Type: String
+    Default: "cron(0 21 ? * MON-FRI *)"
+    Description: "Cron expression for auto-stop schedule"
+
+  AutoStartTime:
+    Type: String
+    Default: "cron(0 8 ? * MON-FRI *)"
+    Description: "Cron expression for auto-start schedule"
+
+  ScheduleState:
+    Type: String
+    AllowedValues:
+      - "ENABLED"
+      - "DISABLED"
+    Default: "ENABLED"
+    Description: "State of the auto start/stop schedules"
+
+Outputs:
+  DatabaseHostName:
+    Value: !Ref PrimaryRdsCustomDomainRecord
+    Export:
+      Name: !Sub "${AWS::StackName}-PrimaryRdsCustomDomainName"
+
+  DbMasterUserSecret:
+    Value: !Ref DbMasterUserSecret
+    Export:
+      Name: !Sub "${AWS::StackName}-DbMasterUserSecret"
+
+Conditions:
+  EnableReadReplica:
+    Fn::Equals: [ !Ref EnableReadReplica, "true" ]
+
+Resources:
+  RdsMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "monitoring.rds.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+  PrimaryRdsParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Family: !Ref RdsParameterGroupFamily
+      Description: !Sub "${AWS::StackName}-DB-Parameters"
+      Parameters:
+        "timezone": "Asia/Tokyo"
+        "statement_timeout": "1800000"
+        "idle_in_transaction_session_timeout": "1800000"
+        "log_min_error_statement": "INFO"
+        "log_statement": !Ref RdsLogStatement
+        "log_hostname": 0
+        "work_mem": "65536"
+        "temp_buffers": "8192"
+        "wal_keep_size": "8192"
+        "max_standby_archive_delay": "900000"
+        "max_standby_streaming_delay": "900000"
+        "max_worker_processes": "76"
+        "max_parallel_workers": "76"
+        "max_parallel_workers_per_gather": "76"
+        "rds.logical_replication": 1 # RDSのBlue/Greenデプロイをするために有効化する必要がある
+
+  ReplicaRdsParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Condition: EnableReadReplica
+    Properties:
+      Family: !Ref RdsParameterGroupFamily
+      Description: !Sub "${AWS::StackName}-DB-Parameters-for-ReadReplica"
+      Parameters:
+        "timezone": "Asia/Tokyo"
+        "log_min_error_statement": "INFO"
+        "log_statement": !Ref RdsLogStatement
+        "log_hostname": 0
+        "work_mem": "65536"
+        "temp_buffers": "8192"
+        "hot_standby_feedback": "1"
+        "max_standby_archive_delay": "-1"
+        "max_standby_streaming_delay": "-1"
+        "autovacuum": "0"
+
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: !Sub "${AWS::StackName}-DB-SubnetGroup"
+      SubnetIds:
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PrivateSubnet1"
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PrivateSubnet2"
+
+  DbMasterUserSecret:
+    Type: AWS::SecretsManager::Secret
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${DbMasterUserName}"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: "\"@/\\"
+
+  PrimaryRdsInstance:
+    Type: AWS::RDS::DBInstance
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      DeletionProtection: false
+      Engine: !Ref Engine
+      EngineVersion: !Ref EngineVersion
+      Port: !Ref RdsPort
+      MultiAZ: !Ref EnableMultiAZ
+      DBInstanceClass: !Ref PrimaryRdsInstanceClass
+      StorageType: !Ref StorageType
+      AllocatedStorage: !Ref AllocatedStorage
+      MaxAllocatedStorage: !Ref MaxAllocatedStorage
+      StorageEncrypted: true
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      EnableIAMDatabaseAuthentication: true
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "16:00-16:30"
+      PreferredMaintenanceWindow: "sun:13:00-sun:14:00"
+      MasterUsername: !Ref DbMasterUserName
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbMasterUserSecret}::password}}'
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref PrimaryRdsParameterGroup
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: 731 # 731日（2年）
+      MonitoringInterval: 60 # 60秒
+      MonitoringRoleArn: !GetAtt RdsMonitoringRole.Arn
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      CACertificateIdentifier: rds-ca-rsa2048-g1
+
+  ReplicaRdsInstance:
+    Type: AWS::RDS::DBInstance
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Condition: EnableReadReplica
+    Properties:
+      DeletionProtection: false
+      SourceDBInstanceIdentifier: !Ref PrimaryRdsInstance
+      DBInstanceClass: !Ref ReplicaRdsInstanceClass
+      DBParameterGroupName: !Ref ReplicaRdsParameterGroup
+      Engine: !Ref Engine
+      EngineVersion: !Ref EngineVersion
+      StorageType: !Ref StorageType
+      MaxAllocatedStorage: !Ref MaxAllocatedStorage
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      CACertificateIdentifier: rds-ca-rsa2048-g1
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for RDS
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+
+  RdsSecurityGroupIngressPrivateSubnet1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RdsPort
+      ToPort: !Ref RdsPort
+      CidrIp:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-PrivateSubnet1CidrBlock"
+
+  RdsSecurityGroupIngressPrivateSubnet2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RdsPort
+      ToPort: !Ref RdsPort
+      CidrIp:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-PrivateSubnet2CidrBlock"
+
+  # RDSセキュリティグループに踏み台EC2からの接続を許可
+  RdsSecurityGroupIngressFromBastionEc2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RdsPort
+      ToPort: !Ref RdsPort
+      SourceSecurityGroupId: !Ref BastionEc2SecurityGroup  # 踏み台EC2のセキュリティグループを指定
+
+  PrimaryRdsCustomDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Type: CNAME
+      TTL: 60
+      Name: !Ref PrimaryRdsCustomDomainName
+      ResourceRecords:
+        - !GetAtt PrimaryRdsInstance.Endpoint.Address
+
+  ReplicaRdsCustomDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: EnableReadReplica
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Type: CNAME
+      TTL: 60
+      Name: !Ref ReplicaRdsCustomDomainName
+      ResourceRecords:
+        - !GetAtt ReplicaRdsInstance.Endpoint.Address
+
+  #==============================
+  # RDSへの接続用の踏み台サーバー
+  #==============================
+  BastionEc2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Path: "/"
+
+  BastionEc2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref BastionEc2Role
+
+  # 踏み台EC2（SSM接続可能）
+  BastionEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref Ec2InstanceType
+      IamInstanceProfile: !Ref BastionEc2InstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-PublicSubnet1"
+          GroupSet:
+            - !Ref BastionEc2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-bastion-ec2"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -x
+
+          sudo dnf update -y
+
+          # PostgreSQLクライアントをインストール
+          sudo dnf install -y ${PostgresqlClientVersion}
+
+  BastionEc2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Bastion EC2
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  #==============================
+  # RDSの開始/停止用のEventBridgeスケジュール
+  #==============================
+  RdsStopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStopTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance"
+        RoleArn: !GetAtt RdsSchedulerRole.Arn
+        Input: !Sub |
+          {
+            "DbInstanceIdentifier": "${PrimaryRdsInstance}"
+          }
+
+  # RDS開始用のEventBridgeスケジュール
+  RdsStartSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStartTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:rds:startDBInstance"
+        RoleArn: !GetAtt RdsSchedulerRole.Arn
+        Input: !Sub |
+          {
+            "DbInstanceIdentifier": "${PrimaryRdsInstance}"
+          }
+
+  # EventBridgeスケジューラー用のIAMロール
+  RdsSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RdsStartStopPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:StopDBInstance
+                  - rds:StartDBInstance
+                Resource: !Sub "arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:${PrimaryRdsInstance}"
+
+  #==============================
+  # EC2の開始/停止用のEventBridgeスケジュール
+  #==============================
+  Ec2StopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStopTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
+        RoleArn: !GetAtt Ec2SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "InstanceIds": ["${BastionEc2Instance}"]
+          }
+
+  # EC2開始用のEventBridgeスケジュール
+  Ec2StartSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !Ref ScheduleState
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: !Ref AutoStartTime
+      ScheduleExpressionTimezone: "Asia/Tokyo"
+      Target:
+        Arn: !Sub "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
+        RoleArn: !GetAtt Ec2SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "InstanceIds": ["${BastionEc2Instance}"]
+          }
+
+  # EC2スケジューラー用のIAMロール
+  Ec2SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Ec2StartStopPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${BastionEc2Instance}"
