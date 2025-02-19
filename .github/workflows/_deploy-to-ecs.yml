@@ -16,6 +16,8 @@ on:
 
 env:
   AWS_REGION: "ap-northeast-1"
+  APP_DOCKER_CONTEXT: "./demo-application/backend/docker/php"
+  WEB_DOCKER_CONTEXT: "./demo-application/backend/docker/nginx"
 
 defaults:
   run:
@@ -111,7 +113,7 @@ jobs:
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
-          context: ./cloud-formation/ecs/docker/php
+          context: ${{ env.APP_DOCKER_CONTEXT }}
           ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.APP_IMAGE_TAG }}
           cache-scope: app
 
@@ -134,7 +136,7 @@ jobs:
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
-          context: ./cloud-formation/ecs/docker/nginx
+          context: ${{ env.WEB_DOCKER_CONTEXT }}
           ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.WEB_IMAGE_TAG }}
           cache-scope: web
           build-args: |
