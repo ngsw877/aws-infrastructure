@@ -17,21 +17,21 @@ services:
             context: docker/php
             dockerfile: Dockerfile
         environment:
-          APP_ENV: local
+            APP_ENV: local
         volumes:
             - './src:/var/www/html'
             - 'vendor:/.composer'
         depends_on:
-          db:
-            condition: service_healthy
+            db:
+                condition: service_healthy
 
     db:
         image: postgres:17
         healthcheck:
-          test: ["CMD-SHELL", "pg_isready --username $$POSTGRES_USER"]
-          interval: 1s
-          timeout: 5s
-          retries: 3
+            test: ["CMD-SHELL", "pg_isready --username $$POSTGRES_USER"]
+            interval: 1s
+            timeout: 5s
+            retries: 3
         command: [
             "-c","shared_buffers=1GB",
             "-c","work_mem=128MB",
