@@ -23,8 +23,9 @@ inputs:
     description: "Additional build arguments (optional)."
     required: false
   platforms:
-    description: "Platforms to build for (optional)."
+    description: "Platforms to build for (e.g., 'linux/amd64,linux/arm64')"
     required: false
+    default: "linux/amd64"
 
 runs:
   using: "composite"
@@ -36,12 +37,21 @@ runs:
         role-to-assume: ${{ inputs.role-to-assume }}
         role-skip-session-tagging: 'true'
         mask-aws-account-id: 'true'
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      if: inputs.platforms != 'linux/amd64'
+      with:
+        platforms: ${{ inputs.platforms }}
+
     - name: Setup Buildx
       uses: docker/setup-buildx-action@v3
+
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
       with:
         mask-password: 'true'
+
     - name: Build and push image
       uses: docker/build-push-action@v6
       with:
