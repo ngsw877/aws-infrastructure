@@ -76,17 +76,21 @@ jobs:
           BUILD_VERSION="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
           APP_IMAGE_TAG="app-${BUILD_VERSION}"
           WEB_IMAGE_TAG="web-${BUILD_VERSION}"
+          LOG_ROUTER_IMAGE_TAG="log-router-${BUILD_VERSION}"
 
           # ジョブのoutputsとして設定
           echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_OUTPUT
           echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_OUTPUT
           echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_OUTPUT
           echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_OUTPUT
+          
           echo "APP_IMAGE_TAG=${APP_IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "WEB_IMAGE_TAG=${WEB_IMAGE_TAG}" >> $GITHUB_OUTPUT
-          
+          echo "LOG_ROUTER_IMAGE_TAG=${LOG_ROUTER_IMAGE_TAG}" >> $GITHUB_OUTPUT
+
           echo "::notice::APP_IMAGE_TAG is ${APP_IMAGE_TAG}"
           echo "::notice::WEB_IMAGE_TAG is ${WEB_IMAGE_TAG}"
+          echo "::notice::LOG_ROUTER_IMAGE_TAG is ${LOG_ROUTER_IMAGE_TAG}"
           set +x
     outputs:
       GITHUB_ACTIONS_ROLE_ARN: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
@@ -96,6 +100,7 @@ jobs:
       ECS_BACKEND_SERVICE_NAME: ${{ steps.set-params.outputs.ECS_BACKEND_SERVICE_NAME }}
       APP_IMAGE_TAG: ${{ steps.set-params.outputs.APP_IMAGE_TAG }}
       WEB_IMAGE_TAG: ${{ steps.set-params.outputs.WEB_IMAGE_TAG }}
+      LOG_ROUTER_IMAGE_TAG: ${{ steps.set-params.outputs.LOG_ROUTER_IMAGE_TAG }}
 
   build-and-push-app-image:
     runs-on: ubuntu-latest
@@ -143,9 +148,29 @@ jobs:
             BACKEND_APP_DOMAIN=${{ env.BACKEND_APP_DOMAIN }}
             RESOLVER=${{ env.RESOLVER }}
 
+  build-and-push-log-router-image:
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - name: Build and push log-router image
+        uses: ./.github/actions/build-and-push-image
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
+          context: ${{ env.WEB_DOCKER_CONTEXT }}
+          ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.LOG_ROUTER_IMAGE_TAG }}
+          cache-scope: log-router
+
   delivery:
     runs-on: ubuntu-latest
-    needs: [ "setup", "build-and-push-app-image", "build-and-push-web-image" ]
+    needs: [ "setup", "build-and-push-app-image", "build-and-push-web-image", "build-and-push-log-router-image" ]
     permissions:
       id-token: write
       contents: read
@@ -194,6 +219,18 @@ jobs:
           } 2>&1
           echo "::endgroup::"
 
+          echo "::group::log-routerイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_LOG_ROUTER=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.LOG_ROUTER_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
           echo "::group::ECRのイメージのappタグを更新"
           {
             set -x
@@ -234,13 +271,32 @@ jobs:
           } 2>&1
           echo "::endgroup::"
 
-          echo "::group::ECSサービスを更新"
+          echo "::group::ECRのイメージのlog-routerタグを更新"
           {
             set -x
-            aws ecs update-service \
-              --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
-              --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
-              --force-new-deployment
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag log-router --image-manifest "${MANIFEST_LOG_ROUTER}" > log-router_log 2>&1 || {
+              # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
+              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' log-router_log ; then
+                echo "Catch ImageAlreadyExistsException on log-router image deploy. It is OK, Ignored"
+                true
+              else
+                # その他のエラーの場合はログを出力してエラー終了
+                cat log-router_log
+                false
+              fi
+            }
             set +x
           } 2>&1
           echo "::endgroup::"
+
+      # ECSサービスの更新
+      - name: Update ECS Service
+        run: |
+          set -x
+          aws ecs update-service \
+            --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+            --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
+            --force-new-deployment
+          set +x

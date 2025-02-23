@@ -686,8 +686,8 @@ export class MainStack extends Stack {
         APP_KEY: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this,
-            "AppKeyParam",
-            { parameterName: `/${this.stackName}/app_key` },
+            "AppContainerDefAppKeyParam",
+            { parameterName: `/${this.stackName}/ecs-task-def/app/env-vars/app-key` },
           ),
         ),
       },
@@ -695,19 +695,20 @@ export class MainStack extends Stack {
       logging: ecs.LogDrivers.firelens({}),
     });
 
-    backendEcsTask.addFirelensLogRouter("log", {
-      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "log"),
+    // log-routerコンテナ
+    backendEcsTask.addFirelensLogRouter("log-router", {
+      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "log-router"),
       environment: {
         KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
         KINESIS_WEB_DELIVERY_STREAM: backendWebLogDeliveryStream.ref,
         AWS_REGION: this.region,
       },
       secrets: {
-        SLACK_WEBHOOK_URL_LOG: ecs.Secret.fromSsmParameter(
+        APP_LOG_SLACK_WEBHOOK_URL: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this,
-            "SlackWebhookUrlParam",
-            { parameterName: `/${this.stackName}/slack/webhook_url` },
+            "LogRouterContainerDefAppLogSlackWebhookUrlParam",
+            { parameterName: `/${this.stackName}/ecs-task-def/log-router/env-vars/app-log-slack-webhook-url` },
           ),
         ),
       },
