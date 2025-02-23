@@ -22,7 +22,7 @@ RUN apt update \
 COPY zzz-docker.conf /usr/local/etc/php-fpm.d/
 COPY php.ini /usr/local/etc/php/conf.d/
 
-# COPY --chown=www-data:www-data . /var/www/html/
-# RUN composer install
+COPY --chown=www-data:www-data . /var/www/html/
+RUN composer install
 
 EXPOSE 9001
