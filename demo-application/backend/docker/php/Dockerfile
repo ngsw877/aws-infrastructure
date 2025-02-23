@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-bullseye
+FROM php:8.3-fpm-bullseye AS base
 
 ENV TZ=Asia/Tokyo \
     LANG=ja_JP.UTF-8
@@ -19,10 +19,20 @@ RUN apt update \
         pdo_pgsql \
         bcmath
 
+EXPOSE 9001
+
+# ローカル環境用
+FROM base AS local
+
 COPY zzz-docker.conf /usr/local/etc/php-fpm.d/
 COPY php.ini /usr/local/etc/php/conf.d/
 
-COPY --chown=www-data:www-data . /var/www/html/
-RUN composer install
+# デプロイ先環境用
+FROM base AS deploy
 
-EXPOSE 9001
+COPY docker/php/zzz-docker.conf /usr/local/etc/php-fpm.d/
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/php.ini
+
+COPY --chown=www-data:www-data src /var/www/html/
+
+RUN composer install

@@ -14,8 +14,9 @@ services:
             - app
     app:
         build:
-            context: docker/php
+            context: ./docker/php
             dockerfile: Dockerfile
+            target: local
         environment:
             APP_ENV: local
         volumes:

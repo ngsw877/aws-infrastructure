@@ -13,6 +13,12 @@ inputs:
   context:
     description: "The Docker build context path."
     required: true
+  file:
+    description: "The Dockerfile path."
+    required: false
+  target:
+    description: "The target stage to build for (e.g., 'local' or 'deploy')."
+    required: false
   ecr-image-tag:
     description: "The combined ECR image URI and tag in the format 'repository:tag'."
     required: true
@@ -58,9 +64,11 @@ runs:
     - name: Build and push image
       uses: docker/build-push-action@v6
       with:
-        context: ${{ inputs.context }}
         push: 'true'
         provenance: 'false'
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        target: ${{ inputs.target }}
         tags: ${{ inputs.ecr-image-tag }}
         cache-from: type=gha,scope=${{ inputs.cache-scope }}
         cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max
