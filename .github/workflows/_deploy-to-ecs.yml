@@ -121,6 +121,7 @@ jobs:
           context: ${{ env.APP_DOCKER_CONTEXT }}
           ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.APP_IMAGE_TAG }}
           cache-scope: app
+          platforms: linux/arm64
 
   build-and-push-web-image:
     runs-on: ubuntu-latest
@@ -144,6 +145,7 @@ jobs:
           context: ${{ env.WEB_DOCKER_CONTEXT }}
           ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.WEB_IMAGE_TAG }}
           cache-scope: web
+          platforms: linux/arm64
           build-args: |
             BACKEND_APP_DOMAIN=${{ env.BACKEND_APP_DOMAIN }}
             RESOLVER=${{ env.RESOLVER }}
@@ -167,6 +169,7 @@ jobs:
           context: ${{ env.WEB_DOCKER_CONTEXT }}
           ecr-image-tag: ${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.LOG_ROUTER_IMAGE_TAG }}
           cache-scope: log-router
+          platforms: linux/arm64
 
   delivery:
     runs-on: ubuntu-latest
