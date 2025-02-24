@@ -26,6 +26,8 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   defaultTtl?: Duration;
   maxTtl?: Duration;
   minTtl?: Duration;
+  healthCheckPath: string;
+  // ECS
   backendEcsTaskCpu: number;
   backendEcsTaskMemory: number;
   backendMaxTaskCount: number;
@@ -35,12 +37,15 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   backendEcsScaleOutEvaluationPeriods: number;
   backendEcsScaleInPeriod: Duration;
   backendEcsScaleInEvaluationPeriods: number;
+  // appコンテナ環境変数
   appDebug: boolean;
+  // スケジューラ
   ecsStartSchedulerState: SchedulerState;
   ecsStopSchedulerState: SchedulerState;
+  // GitHub Actions
   githubOrgName: string;
   githubRepositoryName: string;
-  // 以下は、GlobalStackのスタックからインポートする
+  // 以下は、GlobalStackからインポートする
   cloudfrontCertificate?: acm.ICertificate;
   cloudFrontWebAcl?: wafv2.CfnWebACL;
 }

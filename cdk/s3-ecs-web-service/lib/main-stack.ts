@@ -42,11 +42,14 @@ export class MainStack extends Stack {
     const appDomainName = props.appDomainName;
     const apiDomainName = `api.${appDomainName}`;
 
+    const frontendAppUrl = `https://${appDomainName}`;
+    const backendApiUrl = `https://${apiDomainName}`;
+
     new CfnOutput(this, "FrontendAppUrl", {
-      value: `https://${appDomainName}`,
+      value: frontendAppUrl,
     });
     new CfnOutput(this, "BackendApiUrl", {
-      value: `https://${apiDomainName}`,
+      value: backendApiUrl,
     });
 
     // Route53ホストゾーンの取得
@@ -121,6 +124,14 @@ export class MainStack extends Stack {
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET],
+          allowedOrigins: [frontendAppUrl],
+          allowedHeaders: ["*"],
+          maxAge: 3600,
+        },
+      ],
     });
 
     // CloudFrontログ用S3バケット
@@ -216,6 +227,12 @@ export class MainStack extends Stack {
         logFilePrefix: "FrontendCloudFront/",
         defaultRootObject: "index.html",
         errorResponses: [
+          {
+            httpStatus: 403,
+            responseHttpStatus: 200,
+            responsePagePath: "/",
+            ttl: Duration.seconds(0),
+          },
           {
             httpStatus: 404,
             responseHttpStatus: 404,
@@ -461,93 +478,7 @@ export class MainStack extends Stack {
       })
     );
 
-    /*************************************
-     * ECSリソース（バックエンド用）
-     *************************************/
-    // ECR
-    const backendEcrRepository = new ecr.Repository(
-      this,
-      "BackendNginxECRRepository",
-      {
-        removalPolicy: RemovalPolicy.DESTROY,
-        lifecycleRules: [
-          {
-            rulePriority: 10,
-            description: "app Delete more than 3 images",
-            tagStatus: ecr.TagStatus.TAGGED,
-            tagPatternList: ["*app*"],
-            maxImageCount: 3,
-          },
-          {
-            rulePriority: 20,
-            description: "web Delete more than 3 images",
-            tagStatus: ecr.TagStatus.TAGGED,
-            tagPatternList: ["*web*"],
-            maxImageCount: 3,
-          },
-          {
-            rulePriority: 30,
-            description: "log Delete more than 3 images",
-            tagStatus: ecr.TagStatus.TAGGED,
-            tagPatternList: ["*log*"],
-            maxImageCount: 3,
-          },
-          {
-            rulePriority: 80,
-            description: "All Tagged Delete more than 3 images",
-            tagStatus: ecr.TagStatus.TAGGED,
-            tagPatternList: ["*"],
-            maxImageCount: 3,
-          },
-          {
-            rulePriority: 90,
-            description: "All Untagged Delete more than 3 images",
-            tagStatus: ecr.TagStatus.UNTAGGED,
-            maxImageCount: 3,
-          },
-        ],
-      },
-    );
-
-    // ECSクラスター
-    const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
-      vpc,
-      containerInsights: true,
-      enableFargateCapacityProviders: true,
-      clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
-    });
-
-    // タスク実行ロール
-    const taskExecutionRole = new iam.Role(this, "EcsTaskExecutionRole", {
-      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "service-role/AmazonECSTaskExecutionRolePolicy",
-        ),
-      ],
-      inlinePolicies: {
-        taskExecutionPolicy: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: ["ssm:GetParameters", "secretsmanager:GetSecretValue"],
-              resources: [
-                `arn:${this.partition}:ssm:${this.region}:${this.account}:parameter/*`,
-                `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret/*`,
-              ],
-            }),
-          ],
-        }),
-      },
-    });
-
-    // タスクロール
-    const taskRole = new iam.Role(this, "EcsTaskRole", {
-      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-      // TODO: アプリケーションに合わせたポリシーを追加する
-    });
-
-    // Data Firehose関係
+        // Data Firehose関係
     // ロググループ
     const backendKinesisErrorLogGroup = new logs.LogGroup(
       this,
@@ -651,6 +582,133 @@ export class MainStack extends Stack {
       },
     );
 
+    /*************************************
+     * ECSリソース（バックエンド用）
+     *************************************/
+    // ECR
+    const backendEcrRepository = new ecr.Repository(
+      this,
+      "BackendNginxECRRepository",
+      {
+        removalPolicy: RemovalPolicy.DESTROY,
+        lifecycleRules: [
+          {
+            rulePriority: 10,
+            description: "app Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*app*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 20,
+            description: "web Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*web*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 30,
+            description: "log Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*log*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 80,
+            description: "All Tagged Delete more than 3 images",
+            tagStatus: ecr.TagStatus.TAGGED,
+            tagPatternList: ["*"],
+            maxImageCount: 3,
+          },
+          {
+            rulePriority: 90,
+            description: "All Untagged Delete more than 3 images",
+            tagStatus: ecr.TagStatus.UNTAGGED,
+            maxImageCount: 3,
+          },
+        ],
+      },
+    );
+
+    // ECSクラスター
+    const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
+      vpc,
+      containerInsights: true,
+      enableFargateCapacityProviders: true,
+      clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
+    });
+
+    // タスク実行ロール
+    const taskExecutionRole = new iam.Role(this, "EcsTaskExecutionRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonECSTaskExecutionRolePolicy",
+        ),
+      ],
+      inlinePolicies: {
+        taskExecutionPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["ssm:GetParameters", "secretsmanager:GetSecretValue"],
+              resources: [
+                `arn:${this.partition}:ssm:${this.region}:${this.account}:parameter/*`,
+                `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // ECSタスクロール
+    const taskRole = new iam.Role(this, "EcsTaskRole", {
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+      ),
+      path: "/",
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonEC2ContainerServiceEventsRole",
+        ),
+      ],
+      inlinePolicies: {
+        firehosePolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["firehose:PutRecordBatch"],
+              resources: [
+                `arn:aws:firehose:${this.region}:${this.account}:deliverystream/${backendAppLogDeliveryStream.ref}`,
+                `arn:aws:firehose:${this.region}:${this.account}:deliverystream/${backendWebLogDeliveryStream.ref}`,
+              ],
+            }),
+          ],
+        }),
+        // S3アップロード用の権限を追加
+        s3UploadPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "s3:GetObjectAcl",
+                "s3:PutObjectAcl"
+              ],
+              resources: [
+                uploadedFilesBucket.bucketArn,
+                `${uploadedFilesBucket.bucketArn}/*`
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
     // タスク定義
     const backendEcsTask = new ecs.FargateTaskDefinition(
       this,
@@ -681,6 +739,8 @@ export class MainStack extends Stack {
         TZ: "Asia/Tokyo",
         APP_ENV: props.envName,
         APP_DEBUG: String(props.appDebug),
+        AWS_BUCKET: uploadedFilesBucket.bucketName,
+        AWS_URL: `https://${uploadedFilesBucket.bucketRegionalDomainName}`,
       },
       secrets: {
         APP_KEY: ecs.Secret.fromSsmParameter(
@@ -768,7 +828,7 @@ export class MainStack extends Stack {
       deregistrationDelay: Duration.seconds(30),
     });
     appTargetGroup.configureHealthCheck({
-      path: "/api/hc",
+      path: props.healthCheckPath,
       enabled: true,
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
