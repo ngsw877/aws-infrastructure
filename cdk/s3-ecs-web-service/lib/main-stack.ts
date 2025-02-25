@@ -395,7 +395,7 @@ export class MainStack extends Stack {
     // WAF用ログバケット
     const albWafLogsBucket = new s3.Bucket(this, "AlbWafLogsBucket", {
       // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
-      bucketName: `aws-waf-logs-${albWebAcl.node.id.toLowerCase()}-${Date.now()}`,
+      bucketName: `aws-waf-logs-${this.stackName.toLowerCase()}-${albWebAcl.node.id.toLowerCase()}`,
       lifecycleRules: [
         {
           id: "alb-waf-log-expiration",

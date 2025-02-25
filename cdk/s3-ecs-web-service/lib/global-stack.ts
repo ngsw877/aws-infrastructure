@@ -103,7 +103,7 @@ export class GlobalStack extends Stack {
       "CloudFrontWafLogsBucket",
       {
         // WAFのログは"aws-waf-logs-"で始まるバケット名にする必要がある
-        bucketName: `aws-waf-logs-${this.cloudFrontWebAcl.node.id.toLowerCase()}-${Date.now()}`,
+        bucketName: `aws-waf-logs-${this.stackName.toLowerCase()}-${this.cloudFrontWebAcl.node.id.toLowerCase()}`,
         versioned: false,
         lifecycleRules: [
         {
