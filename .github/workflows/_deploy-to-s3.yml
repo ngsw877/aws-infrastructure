@@ -13,10 +13,15 @@ on:
         type: string
         required: false
         default: ${{ github.ref_name }}
+      frontend-dir:
+        description: フロントエンドディレクトリ
+        type: string
+        required: false
+        default: "demo-application/frontend"
 
 env:
   AWS_REGION: "ap-northeast-1"
-  WORKING_DIRECTORY: "demo-application/frontend/"
+  FRONTEND_DIR: ${{ inputs.frontend-dir }}
 
 defaults:
   run:
@@ -31,6 +36,11 @@ jobs:
     environment:
       name: ${{ inputs.deploy-to }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
       - name: Set GitHub Actions role ARN
         id: set-role-arn
         env:
@@ -74,41 +84,42 @@ jobs:
           echo "API_BASE_URL=${API_BASE_URL}" >> $GITHUB_OUTPUT
           echo "FRONTEND_BUCKET_NAME=${FRONTEND_BUCKET_NAME}" >> $GITHUB_OUTPUT
           echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_OUTPUT
-          
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-      
+
       # Node.jsのセットアップ
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: '${{ env.WORKING_DIRECTORY }}/package-lock.json'
+          cache-dependency-path: '${{ env.FRONTEND_DIR }}/package-lock.json'
       
       # パッケージのインストール
       - name: Install dependencies
-        working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm ci
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          set -x
+          npm ci
 
       # 静的ファイルの生成
       - name: Generate static files
-        working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run generate
+        working-directory: ${{ env.FRONTEND_DIR }}
         env:
           API_BASE_URL: ${{ steps.set-params.outputs.API_BASE_URL }}
+        run: |
+          set -x
+          npm run generate
 
       # S3へのデプロイ
       - name: Deploy to S3
-        working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: aws s3 sync dist/ s3://${{ steps.set-params.outputs.FRONTEND_BUCKET_NAME }}/ --delete
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          set -x
+          aws s3 sync dist/ s3://${{ steps.set-params.outputs.FRONTEND_BUCKET_NAME }}/ --delete
 
       # CloudFrontのキャッシュ削除
       - name: Invalidate CloudFront Cache
         run: |
-          set +x
+          set -x
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.set-params.outputs.DISTRIBUTION_ID }} \
             --paths "/*"
