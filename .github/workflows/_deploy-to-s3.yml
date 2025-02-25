@@ -29,9 +29,8 @@ jobs:
       id-token: write
       contents: read
     environment:
-      name: ${{ inputs.deploy_to }}
+      name: ${{ inputs.deploy-to }}
     steps:
-
       - name: Set GitHub Actions role ARN
         id: set-role-arn
         env:
