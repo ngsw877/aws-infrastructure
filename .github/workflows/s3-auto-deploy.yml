@@ -1,0 +1,20 @@
+name: S3 Auto Deploy
+run-name: Auto Deploy to 【${{ github.ref_name }}】
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      # - main
+      - staging
+      - develop
+    paths:
+      - demo-application/frontend/**
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  call-deploy-workflow:
+    uses: ./.github/workflows/_deploy-to-s3.yml

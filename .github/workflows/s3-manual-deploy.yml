@@ -1,0 +1,25 @@
+name: S3 Manual Deploy
+run-name: Manual Deploy to 【${{ inputs.deploy-to }}】
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy-to:
+        description: デプロイ先環境名
+        type: environment
+        default: development
+      branch:
+        description: デプロイブランチ名
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  call-deploy-workflow:
+    uses: ./.github/workflows/_deploy-to-s3.yml
+    with:
+      deploy-to: ${{ inputs.deploy-to }}
+      branch: ${{ inputs.branch }}

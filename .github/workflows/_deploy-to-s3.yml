@@ -1,0 +1,115 @@
+name: Deploy to S3
+
+on:
+  workflow_call:
+    inputs:
+      deploy-to:
+        description: デプロイ先環境
+        type: string
+        required: false
+        default: ${{ github.ref_name }}
+      branch:
+        description: デプロイ対象ブランチ名
+        type: string
+        required: false
+        default: ${{ github.ref_name }}
+
+env:
+  AWS_REGION: "ap-northeast-1"
+  WORKING_DIRECTORY: "demo-application/frontend/"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: ${{ inputs.deploy_to }}
+    steps:
+
+      - name: Set GitHub Actions role ARN
+        id: set-role-arn
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+        run: |
+          set -x
+          GITHUB_ACTIONS_ROLE_ARN=arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.CFN_STACK_NAME }}-GitHubActionsRole
+          echo "GITHUB_ACTIONS_ROLE_ARN=${GITHUB_ACTIONS_ROLE_ARN}" >> $GITHUB_OUTPUT
+          set +x
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume:  ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          mask-aws-account-id: false
+      
+      # 動的パラメータの解決
+      - name: Set deployment parameters
+        id: set-params
+        env:
+          CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
+          API_BASE_URL_OUTPUT_KEY: "ApiBaseUrl"
+          FRONTEND_BUCKET_NAME_OUTPUT_KEY: "FrontendBucketName"
+          DISTRIBUTION_ID_OUTPUT_KEY: "FrontendCloudFrontDistributionId"
+        run: |
+          set -x
+          # CloudFormationスタックからOutputsを一度に取得
+          CFN_OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.CFN_STACK_NAME }} \
+            --output json \
+            --query "Stacks[0].Outputs")
+          
+          # スタックのOutputsから各値を取得
+          API_BASE_URL=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.API_BASE_URL_OUTPUT_KEY }}\").OutputValue")
+          FRONTEND_BUCKET_NAME=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.FRONTEND_BUCKET_NAME_OUTPUT_KEY }}\").OutputValue")
+          DISTRIBUTION_ID=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.DISTRIBUTION_ID_OUTPUT_KEY }}\").OutputValue")
+
+          # stepのoutputsとして設定
+          echo "API_BASE_URL=${API_BASE_URL}" >> $GITHUB_OUTPUT
+          echo "FRONTEND_BUCKET_NAME=${FRONTEND_BUCKET_NAME}" >> $GITHUB_OUTPUT
+          echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_OUTPUT
+          
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      
+      # Node.jsのセットアップ
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '${{ env.WORKING_DIRECTORY }}/package-lock.json'
+      
+      # パッケージのインストール
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      # 静的ファイルの生成
+      - name: Generate static files
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run generate
+        env:
+          API_BASE_URL: ${{ steps.set-params.outputs.API_BASE_URL }}
+
+      # S3へのデプロイ
+      - name: Deploy to S3
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: aws s3 sync dist/ s3://${{ steps.set-params.outputs.FRONTEND_BUCKET_NAME }}/ --delete
+
+      # CloudFrontのキャッシュ削除
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.set-params.outputs.DISTRIBUTION_ID }} \
+            --paths "/*"
