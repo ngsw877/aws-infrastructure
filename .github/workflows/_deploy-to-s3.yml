@@ -40,7 +40,6 @@ jobs:
           set -x
           GITHUB_ACTIONS_ROLE_ARN=arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.CFN_STACK_NAME }}-GitHubActionsRole
           echo "GITHUB_ACTIONS_ROLE_ARN=${GITHUB_ACTIONS_ROLE_ARN}" >> $GITHUB_OUTPUT
-          set +x
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -109,6 +108,7 @@ jobs:
       # CloudFrontのキャッシュ削除
       - name: Invalidate CloudFront Cache
         run: |
+          set +x
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.set-params.outputs.DISTRIBUTION_ID }} \
             --paths "/*"
