@@ -79,7 +79,7 @@ jobs:
           WEB_IMAGE_TAG="web-${BUILD_VERSION}"
           LOG_ROUTER_IMAGE_TAG="log-router-${BUILD_VERSION}"
 
-          # ジョブのoutputsとして設定
+          # stepのoutputsとして設定
           echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_OUTPUT
           echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_OUTPUT
           echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_OUTPUT

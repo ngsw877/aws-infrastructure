@@ -1,5 +1,5 @@
 name: S3 Auto Deploy
-run-name: Auto Deploy to 【${{ github.ref_name }}】
+run-name: S3 Auto Deploy to 【${{ github.ref_name }}】
 
 on:
   workflow_dispatch:

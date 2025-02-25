@@ -1,5 +1,5 @@
 name: S3 Manual Deploy
-run-name: Manual Deploy to 【${{ inputs.deploy-to }}】
+run-name: S3 Manual Deploy to 【${{ inputs.deploy-to }}】
 
 on:
   workflow_dispatch:

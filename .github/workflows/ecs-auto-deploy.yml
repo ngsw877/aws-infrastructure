@@ -1,5 +1,5 @@
 name: ECS Auto Deploy
-run-name: Auto Deploy to 【${{ github.ref_name }}】
+run-name: ECS Auto Deploy to 【${{ github.ref_name }}】
 
 on:
   workflow_dispatch:
