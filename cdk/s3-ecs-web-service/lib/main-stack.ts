@@ -918,41 +918,24 @@ export class MainStack extends Stack {
         },
       );
 
-    // ECSタスク自動開始・停止設定 //
-    const ecsSchedulerExecutionRole = new iam.Role(
+    // ECSタスクを自動停止・開始設定するためのIAMロール
+    const autoScalingSchedulerExecutionRole = new iam.Role(
       this,
-      "EcsSchedulerExecutionRole",
+      "AutoScalingSchedulerExecutionRole",
       {
         assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
-      },
+      }
     );
-    ecsSchedulerExecutionRole.addToPolicy(
+    autoScalingSchedulerExecutionRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["ecs:UpdateService"],
-        resources: [backendEcsService.serviceArn],
-      }),
+        actions: ["application-autoscaling:RegisterScalableTarget"],
+        resources: ["*"], // CDKではARNを取得できないため"*"を指定
+      })
     );
-    // タスク開始スケジュール
-    new scheduler.CfnSchedule(this, "EcsStartSchedule", {
-      state: props.ecsStartSchedulerState,
-      scheduleExpression: "cron(0 8 ? * MON-FRI *)",
-      scheduleExpressionTimezone: "Asia/Tokyo",
-      flexibleTimeWindow: {
-        mode: "OFF",
-      },
-      target: {
-        arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
-        roleArn: ecsSchedulerExecutionRole.roleArn,
-        input: JSON.stringify({
-          Cluster: ecsCluster.clusterName,
-          Service: ecsServiceName,
-          DesiredCount: props.backendDesiredCount,
-        }),
-      },
-    });
-    // タスク停止スケジュール
-    new scheduler.CfnSchedule(this, "EcsStopSchedule", {
+
+    // ECSタスクを停止するスケジュール（スケーラブルターゲットの最小・最大タスク数を0に設定する）
+    new scheduler.CfnSchedule(this, "AutoScalingStopSchedule", {
       state: props.ecsStopSchedulerState,
       scheduleExpression: "cron(0 21 ? * MON-FRI *)",
       scheduleExpressionTimezone: "Asia/Tokyo",
@@ -960,12 +943,35 @@ export class MainStack extends Stack {
         mode: "OFF",
       },
       target: {
-        arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
-        roleArn: ecsSchedulerExecutionRole.roleArn,
+        arn: "arn:aws:scheduler:::aws-sdk:applicationautoscaling:registerScalableTarget",
+        roleArn: autoScalingSchedulerExecutionRole.roleArn,
         input: JSON.stringify({
-          Cluster: ecsCluster.clusterName,
-          Service: ecsServiceName,
-          DesiredCount: 0,
+          ServiceNamespace: "ecs",
+          ScalableDimension: "ecs:service:DesiredCount",
+          ResourceId: `service/${ecsCluster.clusterName}/${ecsServiceName}`,
+          MinCapacity: 0,
+          MaxCapacity: 0
+        }),
+      },
+    });
+
+    // ECSタスクを開始するスケジュール（スケーラブルターゲットの最小・最大タスク数を元に戻す）
+    new scheduler.CfnSchedule(this, "AutoScalingStartSchedule", {
+      state: props.ecsStartSchedulerState,
+      scheduleExpression: "cron(0 8 ? * MON-FRI *)",
+      scheduleExpressionTimezone: "Asia/Tokyo",
+      flexibleTimeWindow: {
+        mode: "OFF",
+      },
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:applicationautoscaling:registerScalableTarget",
+        roleArn: autoScalingSchedulerExecutionRole.roleArn,
+        input: JSON.stringify({
+          ServiceNamespace: "ecs",
+          ScalableDimension: "ecs:service:DesiredCount",
+          ResourceId: `service/${ecsCluster.clusterName}/${ecsServiceName}`,
+          MinCapacity: props.backendMinTaskCount, // 元の最小タスク数
+          MaxCapacity: props.backendMaxTaskCount  // 元の最大タスク数
         }),
       },
     });
