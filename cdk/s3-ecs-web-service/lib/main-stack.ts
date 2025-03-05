@@ -1069,6 +1069,7 @@ export class MainStack extends Stack {
     });
     new CfnOutput(this, "EcsClusterArn", {
       value: ecsCluster.clusterArn,
+      exportName: "EcsClusterArn",
     });
     new CfnOutput(this, "BackendEcsServiceName", {
       value: ecsServiceName,
