@@ -352,6 +352,7 @@ export class MainStack extends Stack {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       certificates: [albCertificate],
+      sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS,
     });
 
     // ALB用のエイリアスレコード
