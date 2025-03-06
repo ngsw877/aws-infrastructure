@@ -9,7 +9,7 @@ import gzip
 import boto3
 from botocore.exceptions import ClientError
 
-SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+SLACK_WEBHOOK_URL_PARAMETER_PATH = os.environ["SLACK_WEBHOOK_URL_PARAMETER_PATH"]
 LOG_GROUP_NAME = os.environ["LOG_GROUP_NAME"]
 ENVIRONMENT = os.environ["ENVIRONMENT"]
 REGION = os.environ["AWS_REGION"]
@@ -19,35 +19,47 @@ def lambda_handler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
 
     try:
+        # SecureStringパラメータストアからSlack Webhook URLを取得
+        slack_webhook_url = get_slack_webhook_url()
+
         # CloudWatch Logsイベントをデコード
         log_data = decode_cloudwatch_logs_event(event)
         print("Decoded awslogs_data: " + json.dumps(log_data, indent=2))
-        
+
         log_events = log_data["logEvents"]
         log_stream = log_data["logStream"]
 
         for log_event in log_events:
             # 実際のECSタスク停止イベントを取得
             detail = json.loads(log_event["message"])["detail"]
-            
             # タスク情報を抽出
             task_definition_arn, cluster_name, service_name = extract_task_info(detail)
-            
             # 通知をスキップすべきか判断
             if is_notification_skippable(task_definition_arn, log_event["timestamp"], ENVIRONMENT):
                 return {"statusCode": 200, "body": "通知スキップ"}
-            
             # 通知メッセージを作成
             message_content = create_notification_message(detail, cluster_name, service_name, log_stream)
-            
             # Slackに通知を送信
-            send_slack_notification(message_content)
+            send_slack_notification(message_content, slack_webhook_url)
 
-    except Exception as e:
+    except Exception as e: # SlackWebhookUrlNotFoundError の catch 処理を削除
         print(f"Error: {str(e)}")
         raise
 
-    return {"statusCode": 200, "body": "Slackへの通知の送信が成功しました。"} 
+    return {"statusCode": 200, "body": "Slackへの通知の送信が成功しました。"}
+
+def get_slack_webhook_url():
+    """SecureStringパラメータストアからSlack Webhook URLを取得する"""
+    ssm_client = boto3.client("ssm")
+    try:
+        response = ssm_client.get_parameter(
+            Name=SLACK_WEBHOOK_URL_PARAMETER_PATH,
+            WithDecryption=True # SecureStringを復号化
+        )
+        return response["Parameter"]["Value"]
+    except ClientError as e:
+        print(f"パラメータストアからのSlack Webhook URL取得エラー: {e}")
+        raise e
 
 def get_previous_task_definition_arn(log_group_name):
     """前回のタスク定義ARNとタイムスタンプを取得する"""
@@ -83,7 +95,7 @@ def get_previous_task_definition_arn(log_group_name):
         return previous_task_definition_arn, previous_timestamp
 
     except ClientError as e:
-        print(f"Error getting previous log: {e}")
+        print(f"前回のログ取得エラー: {e}")
         return None, None
 
 def decode_cloudwatch_logs_event(event):
@@ -148,14 +160,14 @@ def create_notification_message(detail, cluster_name, service_name, log_stream):
     
     return message_content
 
-def send_slack_notification(message_content):
+def send_slack_notification(message_content, slack_webhook_url):
     """Slackに通知を送信する"""
     request = urllib.request.Request(
-        SLACK_WEBHOOK_URL,
+        slack_webhook_url,
         headers={"Content-Type": "application/json"},
         data=json.dumps({"text": message_content}).encode("utf-8"),
     )
 
     with urllib.request.urlopen(request) as response:
         if response.getcode() != 200:
-            raise RuntimeError(f"Slackへの通知に失敗しました: {response.getcode()}, {response.read().decode("utf-8")}")
+            raise RuntimeError(f"Slack通知送信失敗: HTTPステータスコード={response.getcode()}, レスポンス={response.read().decode('utf-8')}")

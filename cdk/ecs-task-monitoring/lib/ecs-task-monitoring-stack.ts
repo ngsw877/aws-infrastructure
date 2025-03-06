@@ -5,10 +5,10 @@ import {
   aws_events_targets as events_targets,
   aws_lambda as lambda,
   aws_logs as logs,
-  aws_ssm as ssm,
   Duration,
   RemovalPolicy,
   aws_logs_destinations as logs_destinations,
+  aws_iam as iam,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 
@@ -35,15 +35,11 @@ export class EcsTaskMonitoringStack extends Stack {
       "TaskStopNotificationLambdaFunction",
       {
         runtime: lambda.Runtime.PYTHON_3_13,
-        // role: taskStopNotificationLambdaExecutionRole,
         handler: "task-stop-notification.lambda_handler",
         code: lambda.Code.fromAsset("lambda"),
         timeout: Duration.seconds(300),
         environment: {
-          SLACK_WEBHOOK_URL: ssm.StringParameter.valueForStringParameter(
-            this,
-            props.slackWebhookUrlParameterPath,
-          ),
+          SLACK_WEBHOOK_URL_PARAMETER_PATH: props.slackWebhookUrlParameterPath,
           LOG_GROUP_NAME: taskStopEventLogGroup.logGroupName,
           ENVIRONMENT: props.environment,
         },
@@ -55,6 +51,16 @@ export class EcsTaskMonitoringStack extends Stack {
           },
         ),
       },
+    );
+
+    // Lambda関数にパラメータストアのSecureStringの読み取り権限を付与
+    taskStopNotificationLambdaFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParameter"],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter${props.slackWebhookUrlParameterPath}`, // パラメータストアのパスを指定
+        ],
+      }),
     );
 
     taskStopEventLogGroup.grantRead(taskStopNotificationLambdaFunction);
