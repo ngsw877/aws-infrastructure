@@ -13,7 +13,6 @@ import {
 import type { Construct } from "constructs";
 
 export interface EcsTaskMonitoringStackProps extends StackProps {
-  clusterArn: string;
   logRetentionDays: logs.RetentionDays;
   slackWebhookUrlParameterPath: string;
   environment: string;
@@ -74,7 +73,6 @@ export class EcsTaskMonitoringStack extends Stack {
         detail: {
           desiredStatus: ["STOPPED"],
           lastStatus: ["STOPPED"],
-          clusterArn: [props.clusterArn],
           // 以下の2つの条件のいずれかを満たす場合に通知する ($orを使用)
           // 
           // 条件 A:
@@ -137,7 +135,6 @@ export class EcsTaskMonitoringStack extends Stack {
           source: ["aws.ecs"],
           detailType: ["ECS Task State Change"],
           detail: {
-            clusterArn: [props.clusterArn],
             lastStatus: ["STOPPED"],
           },
         },
