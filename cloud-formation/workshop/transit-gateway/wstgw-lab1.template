@@ -1,0 +1,494 @@
+# @see https://catalog.us-east-1.prod.workshops.aws/workshops/e0d1c19d-c80b-4695-a3fc-5c4a25132f47/ja-JP
+AWSTemplateFormatVersion: 2010-09-09
+Description: TGW hands-on lab1 template
+
+## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab1.tempalte --capabilities CAPABILITY_NAMED_IAM --stack-name tgw-hands-on-lab1
+
+Parameters:
+  wstgwBoundaryVpcCidr:
+    Type: String
+    Default: 192.168.0.0/16
+  wstgwPrivateVpc1Cidr:
+    Type: String
+    Default: 10.0.0.0/16
+  wstgwEc2Ami:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+#    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  wstgwEc2InstanceType:
+    Type: String
+    Default : t3.micro
+
+Resources:
+  ## Create IAM
+  wstgwEc2IAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement: 
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ec2.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+  wstgwEc2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - !Ref wstgwEc2IAMRole
+
+  ## BoundaryVPC
+  #### create VPC
+  wstgwBoundaryVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Sub ${wstgwBoundaryVpcCidr}
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: wstgwBoundaryVpc
+
+  #### create subnet
+  wstgwBoundaryVpcNatSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 0, !Cidr [ !GetAtt wstgwBoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwBoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwBoundaryVpcNatSubnet
+
+  wstgwBoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt wstgwBoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwBoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwBoundaryVpcPrivateSubnet
+
+  wstgwBoundaryVpcTgwSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 10, !Cidr [ !GetAtt wstgwBoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwBoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwBoundaryVpcTgwSubnet
+
+  #### create IGW
+  wstgwIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: wstgwIgw
+
+  wstgwIgwAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref wstgwIgw
+      VpcId: !Ref wstgwBoundaryVpc
+
+  #### Create NATGW
+  wstgwNatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  wstgwNatGW:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      SubnetId: !Ref wstgwBoundaryVpcNatSubnet
+      AllocationId: !GetAtt wstgwNatEIP.AllocationId
+      Tags:
+        - Key: Name
+          Value: NatGW
+
+  #### Route Table
+  wstgwRtbBoundaryVpcNatSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwBoundaryVpc
+      Tags:
+        - Key: Name
+          Value: wstgwRtbBoundaryVpcNatSubnet
+
+  wstgwRtbBoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwBoundaryVpc
+      Tags:
+        - Key: Name
+          Value: wstgwRtbBoundaryVpcPrivateSubnet
+
+  wstgwRtbBoundaryVpcTgwSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwBoundaryVpc
+      Tags:
+        - Key: Name
+          Value: wstgwRtbBoundaryVpcTgwSubnet
+
+  #### Create route
+  ###### Create route & Associsate NatSubnet
+  wstgwRouteBoundaryVpcNatSubnetDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbBoundaryVpcNatSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref wstgwIgw
+
+  wstgwRouteBoundaryVpcNatSubnetToTgw:
+    DependsOn: wstgwTgwVpcAttachmentBoundaryVpc
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbBoundaryVpcNatSubnet
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref wstgwTgw
+
+  wstgwRtbAssoBoundaryVpcNatSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwBoundaryVpcNatSubnet
+      RouteTableId: !Ref wstgwRtbBoundaryVpcNatSubnet
+
+  ###### Create route & Associsate PrivateSubnet
+  wstgwRouteBoundaryVpcPrivateSubnetToNat:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbBoundaryVpcPrivateSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref wstgwNatGW
+
+  wstgwRouteBoundaryVpcPrivateSubnetToTgw:
+    DependsOn: wstgwTgwVpcAttachmentBoundaryVpc
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbBoundaryVpcPrivateSubnet
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref wstgwTgw
+
+  wstgwRtbAssoBoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwBoundaryVpcPrivateSubnet
+      RouteTableId: !Ref wstgwRtbBoundaryVpcPrivateSubnet
+
+  ###### Create route & Associsate TgwSubnet
+  wstgwRouteBoundaryVpcTgwSubnetToNat:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbBoundaryVpcTgwSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref wstgwNatGW
+
+  wstgwRtbAssoBoundaryVpcTgwSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwBoundaryVpcTgwSubnet
+      RouteTableId: !Ref wstgwRtbBoundaryVpcTgwSubnet
+
+  #### Create Endpoint
+  wstgwSGSsmEndPoint0:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: wstgwSgSsmEndPoint0
+      GroupDescription: "for SSM Endpoint"
+      VpcId: !Ref wstgwBoundaryVpc
+      SecurityGroupIngress:
+        - Description: "Allow SSM Endpoint from Internal"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Sub ${wstgwBoundaryVpcCidr}
+      Tags:
+        - Key: Name
+          Value: wstgwSGSsmEndPoint0
+
+  wstgwSsmEndpoint0:
+    DependsOn: wstgwEc2Instance192x168x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref wstgwBoundaryVpc
+      SubnetIds:
+        - !Ref wstgwBoundaryVpcPrivateSubnet
+      SecurityGroupIds:
+        - !Ref wstgwSGSsmEndPoint0
+
+  wstgwSsmMessagesEndpoint0:
+    DependsOn: wstgwEc2Instance192x168x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref wstgwBoundaryVpc
+      SubnetIds:
+        - !Ref wstgwBoundaryVpcPrivateSubnet
+      SecurityGroupIds:
+        - !Ref wstgwSGSsmEndPoint0
+
+  #### Create Instace
+  wstgwSGEc2Instance0:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: wstgwSGEc2Instance0 
+      GroupDescription: "for EC2 instance"
+      VpcId: !Ref wstgwBoundaryVpc
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "10.0.0.0/8"
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "192.168.0.0/16"
+      Tags:
+        - Key: Name
+          Value: wstgwSGEc2Instance0
+
+  wstgwEc2Instance192x168x1x100: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref wstgwEc2Ami
+#      KeyName: !Ref wstgwKeyName
+      InstanceType: !Ref wstgwEc2InstanceType
+      IamInstanceProfile: !Ref wstgwEc2InstanceProfile
+      NetworkInterfaces: 
+        - DeviceIndex: "0"
+          SubnetId: !Ref wstgwBoundaryVpcPrivateSubnet
+          GroupSet:
+            - !Ref wstgwSGEc2Instance0
+          PrivateIpAddresses:
+            - PrivateIpAddress: "192.168.1.100"
+              Primary: true
+      Tags:
+          - Key: Name
+            Value: wstgwEc2Instance192-168-1-100
+
+  ## Create PrivateVpc1
+  #### Create VPC
+  wstgwPrivateVpc1:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Sub ${wstgwPrivateVpc1Cidr}
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: wstgwPrivateVpc1
+
+  #### create Subnet
+  wstgwPrivateVpc1PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt wstgwPrivateVpc1.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwPrivateVpc1
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwPrivateVpc1PrivateSubnet
+
+  wstgwPrivateVpc1TgwSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 10, !Cidr [ !GetAtt wstgwPrivateVpc1.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwPrivateVpc1
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwPrivateVpc1TgwSubnet
+
+  #### Route Table
+  wstgwRtbPrivateVpc1PrivateSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwPrivateVpc1
+      Tags:
+        - Key: Name
+          Value: wstgwRtbPrivateVpc1PrivateSubnet
+
+  #### Create route
+  ###### Create route & Associsate PrivateSubnet
+  wstgwRoutePrivateVpc1PrivateSubnetToTgw:
+    DependsOn: wstgwTgwVpcAttachmentPrivateVpc1
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbPrivateVpc1PrivateSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref wstgwTgw
+
+  wstgwRtbAssoPrivateVpc1PrivateSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwPrivateVpc1PrivateSubnet
+      RouteTableId: !Ref wstgwRtbPrivateVpc1PrivateSubnet
+
+  #### Create Endpoint
+  wstgwSGSsmEndPoint1:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: wstgwSgSsmEndPoint1
+      GroupDescription: "for SSM Endpoint"
+      VpcId: !Ref wstgwPrivateVpc1
+      SecurityGroupIngress:
+        - Description: "Allow SSM Endpoint from Internal"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Sub ${wstgwPrivateVpc1Cidr}
+      Tags:
+        - Key: Name
+          Value: wstgwSGSsmEndPoint1
+
+  wstgwSsmEndpoint1:
+    DependsOn: wstgwEc2Instance10x0x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref wstgwPrivateVpc1
+      SubnetIds:
+        - !Ref wstgwPrivateVpc1PrivateSubnet
+      SecurityGroupIds:
+        - !Ref wstgwSGSsmEndPoint1
+
+  wstgwSsmMessagesEndpoint1:
+    DependsOn: wstgwEc2Instance10x0x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref wstgwPrivateVpc1
+      SubnetIds:
+        - !Ref wstgwPrivateVpc1PrivateSubnet
+      SecurityGroupIds:
+        - !Ref wstgwSGSsmEndPoint1
+
+  #### Create Instace
+  wstgwSGEc2Instance1:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: wstgwSGEc2Instance1 
+      GroupDescription: "for EC2 instance"
+      VpcId: !Ref wstgwPrivateVpc1
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "10.0.0.0/8"
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "192.168.0.0/16"
+      Tags:
+        - Key: Name
+          Value: wstgwSGEc2Instance1
+
+  wstgwEc2Instance10x0x1x100: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref wstgwEc2Ami
+#      KeyName: !Ref wstgwKeyName
+      InstanceType: !Ref wstgwEc2InstanceType
+      IamInstanceProfile: !Ref wstgwEc2InstanceProfile
+      NetworkInterfaces: 
+        - DeviceIndex: "0"
+          SubnetId: !Ref wstgwPrivateVpc1PrivateSubnet
+          GroupSet:
+            - !Ref wstgwSGEc2Instance1
+          PrivateIpAddresses:
+            - PrivateIpAddress: "10.0.1.100"
+              Primary: true
+      Tags:
+          - Key: Name
+            Value: wstgwEc2Instance10-0-1-100
+
+  ## create TransitGW
+  wstgwTgw:
+    Type: AWS::EC2::TransitGateway
+    Properties:
+      AmazonSideAsn: 65000
+      AutoAcceptSharedAttachments: enable
+      DefaultRouteTableAssociation: enable
+      DefaultRouteTablePropagation: enable
+      Description: !Join ['-', [wstgwTgw, !Ref 'AWS::Region']]
+      DnsSupport: enable
+      VpnEcmpSupport: enable
+      MulticastSupport: disable
+      Tags: 
+        - Key: Name
+          Value: wstgwTgw
+
+  #### Attachment VPC TransitGW
+  wstgwTgwVpcAttachmentBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      SubnetIds: 
+        - !Ref wstgwBoundaryVpcTgwSubnet
+      TransitGatewayId: !Ref wstgwTgw
+      VpcId: !Ref wstgwBoundaryVpc
+      Tags:
+        - Key: Name
+          Value: wstgwTgwVpcAttachmentBoundaryVpc
+
+  wstgwTgwVpcAttachmentPrivateVpc1:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      SubnetIds: 
+        - !Ref wstgwPrivateVpc1TgwSubnet
+      TransitGatewayId: !Ref wstgwTgw
+      VpcId: !Ref wstgwPrivateVpc1
+      Tags:
+        - Key: Name
+          Value: wstgwTgwVpcAttachmentPrivateVpc1
+
+Outputs:
+  wstgwTgw:
+    Description: Tgw
+    Value: !Ref wstgwTgw
+    Export:
+      Name: wstgwTgw
+
+  wstgwBoundaryVpc:
+    Description: BoundaryVpc
+    Value: !Ref wstgwBoundaryVpc
+    Export:
+      Name: wstgwBoundaryVpc
+
+  wstgwPrivateVpc1:
+    Description: PrivateVpc1
+    Value: !Ref wstgwPrivateVpc1
+    Export:
+      Name: wstgwPrivateVpc1
+
+  wstgwEc2Instance192x168x1x100:
+    Description: wstgwEc2Instance192-168-1-100
+    Value: !Ref wstgwEc2Instance192x168x1x100
+    Export:
+      Name: wstgwEc2Instance192-168-1-100
+
+  wstgwEc2Instance10x0x1x100:
+    Description: wstgwEc2Instance10-0-1-100
+    Value: !Ref wstgwEc2Instance10x0x1x100
+    Export:
+      Name: wstgwEc2Instance10-0-1-100
+

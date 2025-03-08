@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: TGW hands-on lab5 template
+
+## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab5.tempalte --capabilities CAPABILITY_NAMED_IAM --stack-name tgw-hands-on-lab5
+
+Parameters:
+  wstgwSecurityVpcCidr:
+    Type: String
+    Default: 10.3.0.0/16
+
+Resources:
+  ## SecurityVpc
+  #### create VPC
+  wstgwSecurityVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Sub ${wstgwSecurityVpcCidr}
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: wstgwSecurityVpc
+
+  #### create subnet
+  wstgwSecurityVpcPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt wstgwSecurityVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwSecurityVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwSecurityVpcPrivateSubnet
+
+  wstgwSecurityVpcTgwSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 10, !Cidr [ !GetAtt wstgwSecurityVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref wstgwSecurityVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: wstgwSecurityVpcTgwSubnet
+
+  ## Create nfw  
+  wstgwNfwPolicy:
+    Type: AWS::NetworkFirewall::FirewallPolicy
+    Properties: 
+      Description: "deploy nfw firewall policy"
+      FirewallPolicyName: wstgwNfwPolicy
+      FirewallPolicy:
+        StatelessDefaultActions: 
+          - "aws:forward_to_sfe"
+        StatelessFragmentDefaultActions: 
+          - "aws:forward_to_sfe"
+        StatefulDefaultActions:
+          - "aws:drop_established"
+        StatefulEngineOptions:
+          RuleOrder: STRICT_ORDER
+        StatefulRuleGroupReferences:
+          - Priority: 1
+            ResourceArn: !Ref wstgwNfwRuleGroup
+      Tags:
+        - Key: Name
+          Value: wstgwNfwPolicy
+
+  wstgwNfwRuleGroup:
+    Type: AWS::NetworkFirewall::RuleGroup
+    Properties: 
+      Description: "deploy nfw firewall rule group"
+      RuleGroupName: wstgwNfwRuleGroup
+      Capacity: 1000
+      Type: STATEFUL
+      RuleGroup:
+        StatefulRuleOptions:
+          RuleOrder: STRICT_ORDER
+        RuleVariables: 
+          IPSets:
+            BoundaryVPC_NET: 
+              Definition: [ "192.168.0.0/16" ]
+            PrivateVPC1_NET: 
+              Definition: [ "10.0.0.0/16" ]
+            PrivateVPC2_NET: 
+              Definition: [ "10.1.0.0/16" ]
+            PrivateVPC3_NET: 
+              Definition: [ "10.2.0.0/16" ]
+        RulesSource:
+          RulesString: |
+            pass ip $BoundaryVPC_NET any <> any any (sid:1000000; rev:1;)
+            pass ip $PrivateVPC3_NET any <> any any (sid:1000001; rev:1;)
+            pass tls $PrivateVPC1_NET any -> any 443 (msg:"Allowed HTTPS domain"; tls.sni; content:"aws.amazon.com"; startswith; endswith; sid:1010001; rev:1;)
+            pass tls $PrivateVPC2_NET any -> any 443 (msg:"Allowed HTTPS domain"; tls.sni; content:"docs.aws.amazon.com"; startswith; endswith; sid:1010002; rev:1;)
+      Tags:
+        - Key: Name
+          Value: wstgwNfwRuleGroup
+
+  wstgwNfw:
+    Type: AWS::NetworkFirewall::Firewall
+    Properties: 
+      Description: "deploy nfw"
+      FirewallName: wstgwNfw
+      FirewallPolicyArn: !Ref wstgwNfwPolicy
+      SubnetMappings: 
+        - SubnetId: !Ref wstgwSecurityVpcPrivateSubnet
+      VpcId: !Ref wstgwSecurityVpc
+      Tags:
+        - Key: Name
+          Value: wstgwNfw
+
+  #### Route Table
+  wstgwRtbSecurityVpcPrivateSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwSecurityVpc
+      Tags:
+        - Key: Name
+          Value: wstgwRtbSecurityVpcPrivateSubnet
+
+  wstgwRtbSecurityVpcTgwSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref wstgwSecurityVpc
+      Tags:
+        - Key: Name
+          Value: wstgwRtbSecurityVpcTgwSubnet
+
+  #### Create route
+  ###### Create route & Associsate PrivateSubnet
+  wstgwRouteSecurityVpcPrivateSubnetToTgw:
+    DependsOn: wstgwTgwVpcAttachmentSecurityVpc
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbSecurityVpcPrivateSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Fn::ImportValue: wstgwTgw
+
+  wstgwRtbAssoSecurityVpcPrivateSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwSecurityVpcPrivateSubnet
+      RouteTableId: !Ref wstgwRtbSecurityVpcPrivateSubnet
+
+  ###### Create route & Associsate TgwSubnet
+  wstgwRouteSecurityVpcTgwSubnetToNfw:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref wstgwRtbSecurityVpcTgwSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      VpcEndpointId: !Select [ 1, !Split [":", !Join [ ",", !GetAtt wstgwNfw.EndpointIds ]]]
+
+  wstgwRtbAssoSecurityVpcTgwSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref wstgwSecurityVpcTgwSubnet
+      RouteTableId: !Ref wstgwRtbSecurityVpcTgwSubnet
+
+  #### Attachment VPC TransitGW
+  wstgwTgwVpcAttachmentSecurityVpc:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      SubnetIds: 
+        - !Ref wstgwSecurityVpcTgwSubnet
+      TransitGatewayId:
+        Fn::ImportValue: wstgwTgw
+      VpcId: !Ref wstgwSecurityVpc
+      Tags:
+        - Key: Name
+          Value: wstgwTgwVpcAttachmentSecurityVpc
+
+Outputs:
+  wstgwSecurityVpc:
+    Description: SecurityVpc
+    Value: !Ref wstgwSecurityVpc
+    Export:
+      Name: wstgwSecurityVpc
