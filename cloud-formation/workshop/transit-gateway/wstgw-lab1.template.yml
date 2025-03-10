@@ -1,8 +1,7 @@
 # @see https://catalog.us-east-1.prod.workshops.aws/workshops/e0d1c19d-c80b-4695-a3fc-5c4a25132f47/ja-JP
 AWSTemplateFormatVersion: 2010-09-09
 Description: TGW hands-on lab1 template
-
-## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab1.tempalte --capabilities CAPABILITY_NAMED_IAM --stack-name tgw-hands-on-lab1
+## aws cloudformation deploy --template-file cloud-formation/workshop/transit-gateway/wstgw-lab1.template.yml --capabilities CAPABILITY_NAMED_IAM --no-execute-changeset --stack-name wstgw-lab1
 
 Parameters:
   wstgwBoundaryVpcCidr:
@@ -13,7 +12,6 @@ Parameters:
     Default: 10.0.0.0/16
   wstgwEc2Ami:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-#    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
   wstgwEc2InstanceType:
     Type: String
@@ -407,7 +405,6 @@ Resources:
     Type: AWS::EC2::Instance
     Properties: 
       ImageId: !Ref wstgwEc2Ami
-#      KeyName: !Ref wstgwKeyName
       InstanceType: !Ref wstgwEc2InstanceType
       IamInstanceProfile: !Ref wstgwEc2InstanceProfile
       NetworkInterfaces: 

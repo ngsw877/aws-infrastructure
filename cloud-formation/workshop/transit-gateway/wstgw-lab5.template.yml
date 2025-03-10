@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: TGW hands-on lab5 template
 
-## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab5.tempalte --capabilities CAPABILITY_NAMED_IAM --stack-name tgw-hands-on-lab5
+## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab5.tempalte.yml --capabilities CAPABILITY_NAMED_IAM --stack-name wstgw-lab5
 
 Parameters:
   wstgwSecurityVpcCidr:
@@ -91,6 +91,10 @@ Resources:
             pass ip $PrivateVPC3_NET any <> any any (sid:1000001; rev:1;)
             pass tls $PrivateVPC1_NET any -> any 443 (msg:"Allowed HTTPS domain"; tls.sni; content:"aws.amazon.com"; startswith; endswith; sid:1010001; rev:1;)
             pass tls $PrivateVPC2_NET any -> any 443 (msg:"Allowed HTTPS domain"; tls.sni; content:"docs.aws.amazon.com"; startswith; endswith; sid:1010002; rev:1;)
+            
+            # 以下のルールを追加すると、PrivateVPC1とPrivateVPC2の間の通信が許可される
+            # pass ip $PrivateVPC1_NET any <> any any (sid:1000002; rev:1;)
+            # pass ip $PrivateVPC2_NET any <> any any (sid:1000003; rev:1;)
       Tags:
         - Key: Name
           Value: wstgwNfwRuleGroup
