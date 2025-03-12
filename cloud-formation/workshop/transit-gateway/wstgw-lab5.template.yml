@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: TGW hands-on lab5 template
 
-## aws cloudformation create-stack --template-body file://static/CFn/wstgw-lab5.tempalte.yml --capabilities CAPABILITY_NAMED_IAM --stack-name wstgw-lab5
+## aws cloudformation deploy --template-file cloud-formation/workshop/transit-gateway/wstgw-lab5.tempalte.yml --capabilities CAPABILITY_NAMED_IAM --no-execute-changeset --stack-name wstgw-lab5
 
 Parameters:
   wstgwSecurityVpcCidr:
