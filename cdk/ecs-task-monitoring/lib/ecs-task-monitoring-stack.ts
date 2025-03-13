@@ -15,7 +15,7 @@ import type { Construct } from "constructs";
 export interface EcsTaskMonitoringStackProps extends StackProps {
   logRetentionDays: logs.RetentionDays;
   slackWebhookUrlParameterPath: string;
-  environment: string;
+  isProduction: boolean;
   isDebug?: boolean;
 }
 
@@ -41,7 +41,7 @@ export class EcsTaskMonitoringStack extends Stack {
         environment: {
           SLACK_WEBHOOK_URL_PARAMETER_PATH: props.slackWebhookUrlParameterPath,
           LOG_GROUP_NAME: taskStopEventLogGroup.logGroupName,
-          ENVIRONMENT: props.environment,
+          IS_ALERT_ENABLED: props.isProduction.toString(),
         },
         logGroup: new logs.LogGroup(
           this, "TaskStopNotificationLambdaLogGroup",

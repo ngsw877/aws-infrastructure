@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 
 SLACK_WEBHOOK_URL_PARAMETER_PATH = os.environ["SLACK_WEBHOOK_URL_PARAMETER_PATH"]
 LOG_GROUP_NAME = os.environ["LOG_GROUP_NAME"]
-ENVIRONMENT = os.environ["ENVIRONMENT"]
+IS_ALERT_ENABLED = os.environ["IS_ALERT_ENABLED"].lower() == "true"
 REGION = os.environ["AWS_REGION"]
 
 def lambda_handler(event, context):
@@ -35,18 +35,20 @@ def lambda_handler(event, context):
             # タスク情報を抽出
             task_definition_arn, cluster_name, service_name = extract_task_info(detail)
             # 通知をスキップすべきか判断
-            if is_notification_skippable(task_definition_arn, log_event["timestamp"], ENVIRONMENT):
-                return {"statusCode": 200, "body": "通知スキップ"}
+            if is_notification_skippable(task_definition_arn, log_event["timestamp"]):
+                print("通知をスキップしました。")
+                return
             # 通知メッセージを作成
             message_content = create_notification_message(detail, cluster_name, service_name, log_stream)
             # Slackに通知を送信
             send_slack_notification(message_content, slack_webhook_url)
 
-    except Exception as e: # SlackWebhookUrlNotFoundError の catch 処理を削除
+    except Exception as e:
         print(f"Error: {str(e)}")
         raise
 
-    return {"statusCode": 200, "body": "Slackへの通知の送信が成功しました。"}
+    print("Slackへの通知が成功しました。")
+    return
 
 def get_slack_webhook_url():
     """SecureStringパラメータストアからSlack Webhook URLを取得する"""
@@ -74,7 +76,8 @@ def get_previous_task_definition_arn(log_group_name):
         )
 
         if len(response["logStreams"]) < 2:
-            return None  # 十分なログストリームがない場合
+            print("十分なログストリームがありません")
+            return None, None
 
         previous_log_stream = response["logStreams"][1]["logStreamName"]
 
@@ -87,14 +90,18 @@ def get_previous_task_definition_arn(log_group_name):
         )
 
         if not events["events"]:
-            return None, None  # イベントがない場合
+            print(f"ログストリーム {previous_log_stream} にイベントがありません")
+            return None, None
 
-        previous_task_definition_arn = json.loads(events["events"][0]["message"]).get("taskDefinitionArn")
+        message = events["events"][0]["message"]
+        message_json = json.loads(message)
+        
+        previous_task_definition_arn = message_json["detail"]["taskDefinitionArn"]
         previous_timestamp = events["events"][0].get("timestamp")
 
         return previous_task_definition_arn, previous_timestamp
 
-    except ClientError as e:
+    except Exception as e:
         print(f"前回のログ取得エラー: {e}")
         return None, None
 
@@ -119,18 +126,30 @@ def extract_task_info(detail):
     
     return task_definition_arn, cluster_name, service_name
 
-def is_notification_skippable(task_definition_arn, current_timestamp, environment):
+def is_notification_skippable(task_definition_arn, current_timestamp):
     """通知をスキップすべきかどうかを判断する"""
-    if environment != "test":  # 本番環境は常にアラートを発生させる
+    print(f"IS_ALERT_ENABLED: {IS_ALERT_ENABLED}")
+    
+    if IS_ALERT_ENABLED:
+        print("アラートが有効なため、スキップしません")
         return False
         
     previous_task_definition_arn, previous_timestamp = get_previous_task_definition_arn(LOG_GROUP_NAME)
+    print(f"前回のタスク定義ARN: {previous_task_definition_arn}")
+    print(f"今回のタスク定義ARN: {task_definition_arn}")
+    print(f"前回のタイムスタンプ: {previous_timestamp}")
+    print(f"今回のタイムスタンプ: {current_timestamp}")
     
-    if (previous_task_definition_arn == task_definition_arn
-        and previous_timestamp is not None
-        and (current_timestamp - previous_timestamp) <= 30 * 60 * 1000):  # 30分をミリ秒に変換: 30分 × 60秒 × 1000ミリ秒
-        print(f"同じタスク定義ARNが30分以内に繰り返されたため、通知をスキップします: {task_definition_arn}")
-        return True
+    if previous_task_definition_arn == task_definition_arn:
+        print("同じタスク定義ARNです")
+        if previous_timestamp is not None:
+            time_diff = current_timestamp - previous_timestamp
+            print(f"時間差: {time_diff} ミリ秒")
+            if time_diff <= 30 * 60 * 1000:
+                print("30分以内に繰り返されたため、通知をスキップします")
+                return True
+    
+    print("スキップ条件を満たさないため、通知します")
     return False
 
 def create_notification_message(detail, cluster_name, service_name, log_stream):

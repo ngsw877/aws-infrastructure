@@ -10,6 +10,6 @@ const app = new App();
 new EcsTaskMonitoringStack(app, "EcsTaskMonitoring", {
   slackWebhookUrlParameterPath: "/cdk/ecs-task-monitoring/slackWebhookUrl",
   logRetentionDays: logs.RetentionDays.THREE_MONTHS,
-  environment: "production",
+  isProduction: true,
   isDebug: true,
 });
