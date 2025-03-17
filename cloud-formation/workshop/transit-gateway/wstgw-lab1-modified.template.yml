@@ -444,34 +444,6 @@ Resources:
         - Key: Name
           Value: wstgwTgwRouteTable
 
-  # Boundary VPC との関連付け
-  wstgwTgwRouteTableAssociationBoundaryVpc:
-    Type: AWS::EC2::TransitGatewayRouteTableAssociation
-    Properties:
-      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentBoundaryVpc
-      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
-
-  # Private VPC1 との関連付け
-  wstgwTgwRouteTableAssociationPrivateVpc1:
-    Type: AWS::EC2::TransitGatewayRouteTableAssociation
-    Properties:
-      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentPrivateVpc1
-      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
-
-  # Boundary VPC からの経路伝搬
-  wstgwTgwRouteTablePropagationBoundaryVpc:
-    Type: AWS::EC2::TransitGatewayRouteTablePropagation
-    Properties:
-      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentBoundaryVpc
-      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
-
-  # Private VPC1 からの経路伝搬
-  wstgwTgwRouteTablePropagationPrivateVpc1:
-    Type: AWS::EC2::TransitGatewayRouteTablePropagation
-    Properties:
-      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentPrivateVpc1
-      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
-
   # インターネット向けのデフォルトルート
   wstgwTgwDefaultRoute:
     Type: AWS::EC2::TransitGatewayRoute
@@ -491,6 +463,34 @@ Resources:
       Tags:
         - Key: Name
           Value: wstgwTgwVpcAttachmentBoundaryVpc
+
+  # Boundary VPC との関連付け
+  wstgwTgwRouteTableAssociationBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
+      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentBoundaryVpc
+
+  # Boundary VPC からの経路伝搬
+  wstgwTgwRouteTablePropagationBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties:
+      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
+      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentBoundaryVpc
+
+  # Private VPC1 との関連付け
+  wstgwTgwRouteTableAssociationPrivateVpc1:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentPrivateVpc1
+      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
+
+  # Private VPC1 からの経路伝搬
+  wstgwTgwRouteTablePropagationPrivateVpc1:
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties:
+      TransitGatewayAttachmentId: !Ref wstgwTgwVpcAttachmentPrivateVpc1
+      TransitGatewayRouteTableId: !Ref wstgwTgwRouteTable
 
   wstgwTgwVpcAttachmentPrivateVpc1:
     Type: AWS::EC2::TransitGatewayAttachment
