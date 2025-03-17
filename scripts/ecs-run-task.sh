@@ -2,18 +2,30 @@
 set -e
 
 # 引数の解析
-if [ $# -lt 3 ]; then
-  echo "使用方法: $0 <クラスター名> <サービス名> <コンテナ名> [コマンド]"
-  echo "例: $0 Hoge-Ecs-Cluster Hoge-Ecs-Service app 'echo hello'"
+if [ $# -lt 2 ]; then
+  echo "使用方法: $0 <クラスター名> <コンテナ名> [コマンド]"
+  echo "例: $0 Hoge-Ecs-Cluster app 'echo hello'"
   exit 1
 fi
 
 CLUSTER_NAME=$1
-SERVICE_NAME=$2
-CONTAINER_NAME=$3
-COMMAND=${4:-'echo "デフォルトコマンドを実行しています"; sleep 5; echo "完了しました"'}
+CONTAINER_NAME=$2
+COMMAND=${3:-'echo "デフォルトコマンドを実行しています"; sleep 5; echo "完了しました"'}
 
 echo "🔍 サービス情報を取得中..."
+
+# クラスターから唯一のサービスを取得
+SERVICE_NAME=$(aws ecs list-services \
+  --cluster "$CLUSTER_NAME" \
+  --query 'serviceArns[0]' \
+  --output text | awk -F'/' '{print $NF}')
+
+if [ -z "$SERVICE_NAME" ]; then
+  echo "❌ クラスター '$CLUSTER_NAME' にサービスが見つかりません"
+  exit 1
+fi
+
+echo "🚀 サービス名: $SERVICE_NAME"
 
 # サービスからタスク定義を取得
 TASK_DEFINITION=$(aws ecs describe-services \
@@ -70,31 +82,28 @@ TASK_ARN=$(aws ecs run-task \
 
 echo "✅ タスクが開始されました: $TASK_ARN"
 
-# タスクの状態を監視するかどうか確認
-read -p "タスクの完了を待機しますか？ (y/n): " WAIT_RESPONSE
-if [[ "$WAIT_RESPONSE" =~ ^[Yy]$ ]]; then
-  echo "⏳ タスクの完了を待機中..."
-  aws ecs wait tasks-stopped \
-    --cluster "$CLUSTER_NAME" \
-    --tasks "$TASK_ARN"
+# タスクの完了を待機
+echo "⏳ タスクの完了を待機中..."
+aws ecs wait tasks-stopped \
+  --cluster "$CLUSTER_NAME" \
+  --tasks "$TASK_ARN"
+
+# タスクの詳細情報を取得
+TASK_DETAILS=$(aws ecs describe-tasks \
+  --cluster "$CLUSTER_NAME" \
+  --tasks "$TASK_ARN")
+
+# 指定したコンテナの終了コードを取得
+EXIT_CODE=$(echo "$TASK_DETAILS" | jq -r --arg CONTAINER_NAME "$CONTAINER_NAME" '.tasks[0].containers[] | select(.name == $CONTAINER_NAME) | .exitCode')
+
+if [ -z "$EXIT_CODE" ] || [ "$EXIT_CODE" = "null" ]; then
+  echo "❌ 指定したコンテナ '$CONTAINER_NAME' の終了コードが取得できませんでした"
   
-  # タスクの詳細情報を取得
-  TASK_DETAILS=$(aws ecs describe-tasks \
-    --cluster "$CLUSTER_NAME" \
-    --tasks "$TASK_ARN")
-  
-  # 指定したコンテナの終了コードを取得
-  EXIT_CODE=$(echo "$TASK_DETAILS" | jq -r --arg CONTAINER_NAME "$CONTAINER_NAME" '.tasks[0].containers[] | select(.name == $CONTAINER_NAME) | .exitCode')
-  
-  if [ -z "$EXIT_CODE" ] || [ "$EXIT_CODE" = "null" ]; then
-    echo "❌ 指定したコンテナ '$CONTAINER_NAME' の終了コードが取得できませんでした"
-    
-    # すべてのコンテナの状態を表示
-    echo "📊 タスク内のすべてのコンテナ:"
-    echo "$TASK_DETAILS" | jq -r '.tasks[0].containers[] | "  - \(.name): 終了コード \(.exitCode // "不明"), 状態 \(.lastStatus)"'
-  else
-    echo "🏁 コンテナ '$CONTAINER_NAME' が完了しました。終了コード: $EXIT_CODE"
-  fi
+  # すべてのコンテナの状態を表示
+  echo "📊 タスク内のすべてのコンテナ:"
+  echo "$TASK_DETAILS" | jq -r '.tasks[0].containers[] | "  - \(.name): 終了コード \(.exitCode // "不明"), 状態 \(.lastStatus)"'
+else
+  echo "🏁 コンテナ '$CONTAINER_NAME' が完了しました。終了コード: $EXIT_CODE"
 fi
 
 echo "🎉 完了"
