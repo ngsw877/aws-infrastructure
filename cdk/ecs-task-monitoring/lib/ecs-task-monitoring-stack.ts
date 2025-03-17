@@ -1,5 +1,4 @@
 import {
-  type StackProps,
   Stack,
   aws_events as events,
   aws_events_targets as events_targets,
@@ -11,13 +10,7 @@ import {
   aws_iam as iam,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
-
-export interface EcsTaskMonitoringStackProps extends StackProps {
-  logRetentionDays: logs.RetentionDays;
-  slackWebhookUrlParameterPath: string;
-  isProduction: boolean;
-  isDebug?: boolean;
-}
+import type { EcsTaskMonitoringStackProps } from "../props";
 
 export class EcsTaskMonitoringStack extends Stack {
   constructor(scope: Construct, id: string, props: EcsTaskMonitoringStackProps) {

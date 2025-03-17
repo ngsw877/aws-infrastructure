@@ -1,15 +1,12 @@
 #!/usr/bin/env node
-import {
-  App,
-  aws_logs as logs,
-} from "aws-cdk-lib";
+import { App } from "aws-cdk-lib";
 import { EcsTaskMonitoringStack } from "../lib/ecs-task-monitoring-stack";
+import { getEcsTaskMonitoringStackProps } from "../props";
 
 const app = new App();
 
-new EcsTaskMonitoringStack(app, "EcsTaskMonitoring", {
-  slackWebhookUrlParameterPath: "/cdk/ecs-task-monitoring/slackWebhookUrl",
-  logRetentionDays: logs.RetentionDays.THREE_MONTHS,
-  isProduction: true,
-  isDebug: true,
-});
+const accountName = app.node.tryGetContext('account');
+const stackProps = getEcsTaskMonitoringStackProps(accountName);
+
+// スタックを作成
+new EcsTaskMonitoringStack(app, "EcsTaskMonitoring", stackProps);
