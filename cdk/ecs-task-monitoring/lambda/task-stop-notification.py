@@ -5,11 +5,9 @@ import urllib.parse
 import urllib.request
 import base64
 import gzip
-
 import boto3
-from botocore.exceptions import ClientError
 
-SLACK_WEBHOOK_URL_PARAMETER_PATH = os.environ["SLACK_WEBHOOK_URL_PARAMETER_PATH"]
+SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 LOG_GROUP_NAME = os.environ["LOG_GROUP_NAME"]
 IS_ALERT_ENABLED = os.environ["IS_ALERT_ENABLED"].lower() == "true"
 REGION = os.environ["AWS_REGION"]
@@ -19,9 +17,6 @@ def lambda_handler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
 
     try:
-        # SecureStringパラメータストアからSlack Webhook URLを取得
-        slack_webhook_url = get_slack_webhook_url()
-
         # CloudWatch Logsイベントをデコード
         log_data = decode_cloudwatch_logs_event(event)
         print("Decoded awslogs_data: " + json.dumps(log_data, indent=2))
@@ -41,7 +36,7 @@ def lambda_handler(event, context):
             # 通知メッセージを作成
             message_content = create_notification_message(detail, cluster_name, service_name, log_stream)
             # Slackに通知を送信
-            send_slack_notification(message_content, slack_webhook_url)
+            send_slack_notification(message_content, SLACK_WEBHOOK_URL)
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -49,19 +44,6 @@ def lambda_handler(event, context):
 
     print("Slackへの通知が成功しました。")
     return
-
-def get_slack_webhook_url():
-    """SecureStringパラメータストアからSlack Webhook URLを取得する"""
-    ssm_client = boto3.client("ssm")
-    try:
-        response = ssm_client.get_parameter(
-            Name=SLACK_WEBHOOK_URL_PARAMETER_PATH,
-            WithDecryption=True # SecureStringを復号化
-        )
-        return response["Parameter"]["Value"]
-    except ClientError as e:
-        print(f"パラメータストアからのSlack Webhook URL取得エラー: {e}")
-        raise e
 
 def get_previous_task_definition_arn(log_group_name):
     """前回のタスク定義ARNとタイムスタンプを取得する"""

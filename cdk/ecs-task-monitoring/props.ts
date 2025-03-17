@@ -44,10 +44,10 @@ export const accountStackPropsMap: Record<string, EcsTaskMonitoringStackProps> =
   },
 
   // 必要に応じて他のアカウントも追加
-  
+
 };
 
-// アカウント名からスタックプロパティを取得する関数（アロー関数版）
+// アカウント名からスタックプロパティを取得する関数
 export const getEcsTaskMonitoringStackProps = (accountName: string): EcsTaskMonitoringStackProps => {
   // 指定されたアカウント名が存在するかチェック
   const stackProps = accountStackPropsMap[accountName];

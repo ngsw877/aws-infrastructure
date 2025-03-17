@@ -8,6 +8,7 @@ import {
   RemovalPolicy,
   aws_logs_destinations as logs_destinations,
   aws_iam as iam,
+  aws_ssm as ssm,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import type { EcsTaskMonitoringStackProps } from "../props";
@@ -15,6 +16,13 @@ import type { EcsTaskMonitoringStackProps } from "../props";
 export class EcsTaskMonitoringStack extends Stack {
   constructor(scope: Construct, id: string, props: EcsTaskMonitoringStackProps) {
     super(scope, id, props);
+
+    // パラメータストアの存在をチェックしつつ代入
+    // もし存在しない場合はcdk deploy実行時にエラーが発生する
+    const slackWebhookUrl = ssm.StringParameter.valueForStringParameter(
+      this,
+      props.slackWebhookUrlParameterPath,
+    )
 
     // CloudWatch Logsグループ（ログ保存用）
     const taskStopEventLogGroup = new logs.LogGroup(this, "TaskStopEventLogGroup", {
@@ -32,7 +40,7 @@ export class EcsTaskMonitoringStack extends Stack {
         code: lambda.Code.fromAsset("lambda"),
         timeout: Duration.seconds(300),
         environment: {
-          SLACK_WEBHOOK_URL_PARAMETER_PATH: props.slackWebhookUrlParameterPath,
+          SLACK_WEBHOOK_URL: slackWebhookUrl,
           LOG_GROUP_NAME: taskStopEventLogGroup.logGroupName,
           IS_ALERT_ENABLED: props.isProduction.toString(),
         },
@@ -44,16 +52,6 @@ export class EcsTaskMonitoringStack extends Stack {
           },
         ),
       },
-    );
-
-    // Lambda関数にパラメータストアのSecureStringの読み取り権限を付与
-    taskStopNotificationLambdaFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["ssm:GetParameter"],
-        resources: [
-          `arn:aws:ssm:${this.region}:${this.account}:parameter${props.slackWebhookUrlParameterPath}`, // パラメータストアのパスを指定
-        ],
-      }),
     );
 
     taskStopEventLogGroup.grantRead(taskStopNotificationLambdaFunction);
@@ -140,6 +138,5 @@ export class EcsTaskMonitoringStack extends Stack {
       });
       debugEventRule.addTarget(new events_targets.CloudWatchLogGroup(debugTaskStopEventLogGroup));
     }
-
   }
 }
