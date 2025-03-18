@@ -6,7 +6,6 @@ import type {
   aws_wafv2 as wafv2,
 } from "aws-cdk-lib";
 
-export type EnvName = "dev" | "stg" | "prod";
 type SchedulerState = "ENABLED" | "DISABLED";
 
 export interface AppDomainProps {
@@ -20,7 +19,7 @@ export interface GlobalStackProps extends StackProps, AppDomainProps {
 }
 
 export interface MainStackProps extends StackProps, AppDomainProps {
-  envName: EnvName;
+  envName: string;
   natGatewaysCount: number;
   logRetentionDays?: logs.RetentionDays;
   defaultTtl?: Duration;
