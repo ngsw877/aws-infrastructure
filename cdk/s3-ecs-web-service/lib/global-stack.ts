@@ -38,22 +38,17 @@ export class GlobalStack extends Stack {
       },
     );
 
-    // 許可IPアドレスが指定されている場合のみIPセットを作成
-    const allowedIpSet = props.allowedIpAddresses?.length
-      ? new wafv2.CfnIPSet(this, "AllowedIPSet", {
-          scope: "CLOUDFRONT",
-          ipAddressVersion: "IPV4",
-          addresses: props.allowedIpAddresses,
-          name: "AllowedIPs",
-        })
-      : undefined;
+    // 許可IPアドレスのIPSet
+    const allowedIpSet = new wafv2.CfnIPSet(this, "AllowedIpSet", {
+      scope: "CLOUDFRONT",
+      ipAddressVersion: "IPV4",
+      addresses: props.allowedIpAddresses || [],
+    });
 
     // CloudFront用WAF WebACL
     this.cloudFrontWebAcl = new wafv2.CfnWebACL(this, "CloudFrontWebACL", {
-      defaultAction: 
-        props.allowedIpAddresses?.length 
-          ? { block: {} }  // 許可IPアドレスが指定されている場合はブロック
-          : { allow: {} }, // 許可IPアドレスが指定されていない場合は許可
+      // デフォルトは常に許可
+      defaultAction: { allow: {} },
       scope: "CLOUDFRONT",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
@@ -61,26 +56,33 @@ export class GlobalStack extends Stack {
         sampledRequestsEnabled: true,
       },
       rules: [
-        // 許可IPアドレスが指定されている場合のみ、許可ルールを追加
-        ...(allowedIpSet ? [{
-          name: "AllowSpecificIPs",
+        // IPアドレス制限ルール
+        {
+          name: "BlockNonAllowedIPs",
           priority: 1,
-          action: { allow: {} },
+          // IPアドレス制限の設定
+          action: props.allowedIpAddresses && props.allowedIpAddresses.length > 0
+            ? { block: {} }  // 許可リストあり：リスト外のIPをブロック
+            : { count: {} }, // 許可リストなし：全IP許可（カウントのみ）
           statement: {
-            ipSetReferenceStatement: {
-              arn: allowedIpSet.attrArn,
-            },
+            notStatement: { // 許可リストのIPはブロックしない
+              statement: {
+                ipSetReferenceStatement: {
+                  arn: allowedIpSet.attrArn,
+                }
+              }
+            }
           },
           visibilityConfig: {
+            metricName: "BlockNonAllowedIPs",
             cloudWatchMetricsEnabled: true,
-            metricName: "AllowSpecificIPs",
             sampledRequestsEnabled: true,
           },
-        }] : []),
-        // AWSマネージドルールは常に追加
+        },
+        // AWSマネージドルール
         {
-          name: "AWSManagedRulesCommonRuleSet",
-          priority: allowedIpSet ? 2 : 1,
+          name: "CommonSecurityProtection",
+          priority: 2,
           overrideAction: { none: {} },
           statement: {
             managedRuleGroupStatement: {
@@ -89,8 +91,8 @@ export class GlobalStack extends Stack {
             },
           },
           visibilityConfig: {
+            metricName: "CommonSecurityProtection",
             cloudWatchMetricsEnabled: true,
-            metricName: "AWSManagedRulesCommonRuleSet",
             sampledRequestsEnabled: true,
           },
         },

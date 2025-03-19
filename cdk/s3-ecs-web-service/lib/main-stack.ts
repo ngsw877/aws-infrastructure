@@ -227,12 +227,12 @@ export class MainStack extends Stack {
         logFilePrefix: "FrontendCloudFront/",
         defaultRootObject: "index.html",
         errorResponses: [
-          {
-            httpStatus: 403,
-            responseHttpStatus: 200,
-            responsePagePath: "/",
-            ttl: Duration.seconds(0),
-          },
+          // {
+          //   httpStatus: 403,
+          //   responseHttpStatus: 200,
+          //   responsePagePath: "/",
+          //   ttl: Duration.seconds(0),
+          // },
           {
             httpStatus: 404,
             responseHttpStatus: 404,
