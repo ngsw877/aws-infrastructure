@@ -65,10 +65,39 @@ export class GlobalStack extends Stack {
             ? { block: {} }  // 許可リストあり：リスト外のIPをブロック
             : { count: {} }, // 許可リストなし：全IP許可（カウントのみ）
           statement: {
-            notStatement: { // 許可リストのIPはブロックしない
+            notStatement: {
               statement: {
-                ipSetReferenceStatement: {
-                  arn: allowedIpSet.attrArn,
+                orStatement: {
+                  statements: [
+                    {
+                      // 許可リストのIPはブロックしない
+                      ipSetReferenceStatement: {
+                        arn: allowedIpSet.attrArn,
+                      }
+                    },
+                    {
+                      // /sampleパスへのリクエストはブロックしない
+                      byteMatchStatement: {
+                        fieldToMatch: {
+                          uriPath: {}
+                        },
+                        positionalConstraint: "STARTS_WITH",
+                        searchString: "/sample",
+                        textTransformations: [{ priority: 1, type: "NONE" }]
+                      }
+                    },
+                    { 
+                      // /productパスへのリクエストはブロックしない
+                      byteMatchStatement: {
+                        fieldToMatch: {
+                          uriPath: {}
+                        },
+                        positionalConstraint: "STARTS_WITH",
+                        searchString: "/product",
+                        textTransformations: [{ priority: 1, type: "NONE" }]
+                      }
+                    }
+                  ]
                 }
               }
             }
