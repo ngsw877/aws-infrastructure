@@ -6,14 +6,16 @@ const appDomainProps: AppDomainProps = {
   appDomainName: "dev.s3-ecs-web-service.sample-app.click",
 };
 
+// スナップショットテスト用
+const dummyAccountId = "123456789012";
+
 const globalStackProps: GlobalStackProps = {
   env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
+    account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "us-east-1",
   },
   crossRegionReferences: true,
   ...appDomainProps,
-  // IPアドレス制限する場合は指定
   // allowedIpAddresses: [
   //   "192.0.2.1/32",
   //   "192.0.2.2/32"
@@ -22,7 +24,7 @@ const globalStackProps: GlobalStackProps = {
 
 const mainStackProps: MainStackProps = {
   env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
+    account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "ap-northeast-1",
   },
   crossRegionReferences: true,
