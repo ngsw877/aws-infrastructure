@@ -1,3 +1,7 @@
+# TypeScript の基礎から始める AWS CDK 開発入門
+
+https://catalog.workshops.aws/typescript-and-cdk-for-beginner/ja-JP/40-cdk-introduction
+
 # Welcome to your CDK TypeScript project
 
 You should explore the contents of this project. It demonstrates a CDK app with an instance of a stack (`CdkSampleStack`)
