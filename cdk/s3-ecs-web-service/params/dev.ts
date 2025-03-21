@@ -60,6 +60,8 @@ const mainStackProps: MainStackProps = {
   warningSlackChannelId: "C0xxxxxxxx",
   githubOrgName: "ngsw877",
   githubRepositoryName: "aws-infrastructure",
+  albDeletionProtection: false,
+  auroraDeletionProtection: false,
 };
 
 export const params: Params = {

@@ -289,6 +289,7 @@ export class MainStack extends Stack {
       vpcSubnets: vpc.selectSubnets({
         subnetGroupName: "Public",
       }),
+      deletionProtection: props.albDeletionProtection,
     });
 
     // logsBucketおよびバケットポリシーの作成が完了してからALBを作成する（でないと権限エラーになりスタックデプロイに失敗する）
@@ -1070,7 +1071,7 @@ export class MainStack extends Stack {
         preferredWindow: "16:00-17:00", // 日本時間の01:00-02:00に自動バックアップ実施
       },
       preferredMaintenanceWindow: "Sun:13:00-Sun:13:30", // 日本時間の日曜22:00-22:30にメンテナンス実施
-      deletionProtection: true,
+      deletionProtection: props.auroraDeletionProtection,
     });
 
     //ECSタスクロールにDBアクセス許可を追加

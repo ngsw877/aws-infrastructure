@@ -57,6 +57,9 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   // 以下は、GlobalStackからインポートする
   cloudfrontCertificate?: acm.ICertificate;
   cloudFrontWebAcl?: wafv2.CfnWebACL;
+  // 削除保護のプロパティ
+  albDeletionProtection: boolean;
+  auroraDeletionProtection: boolean;
 }
 
 export interface Params {
