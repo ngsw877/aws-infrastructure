@@ -962,7 +962,7 @@ export class MainStack extends Stack {
 
     // ECSタスクを停止するスケジュール（スケーラブルターゲットの最小・最大タスク数を0に設定する）
     new scheduler.CfnSchedule(this, "AutoScalingStopSchedule", {
-      state: props.ecsStopSchedulerState,
+      state: props.ecsSchedulerState,
       scheduleExpression: "cron(0 21 ? * MON-FRI *)",
       scheduleExpressionTimezone: "Asia/Tokyo",
       flexibleTimeWindow: {
@@ -983,7 +983,7 @@ export class MainStack extends Stack {
 
     // ECSタスクを開始するスケジュール（スケーラブルターゲットの最小・最大タスク数を元に戻す）
     new scheduler.CfnSchedule(this, "AutoScalingStartSchedule", {
-      state: props.ecsStartSchedulerState,
+      state: props.ecsSchedulerState,
       scheduleExpression: "cron(0 8 ? * MON-FRI *)",
       scheduleExpressionTimezone: "Asia/Tokyo",
       flexibleTimeWindow: {
@@ -1109,7 +1109,7 @@ export class MainStack extends Stack {
       this,
       "AuroraStartSchedule",
       {
-        state: props.auroraStartSchedulerState,
+        state: props.auroraSchedulerState,
         scheduleExpression: "cron(20 7 ? * MON-FRI *)", // DBの起動に時間がかかるため、ECSのタスク開始時刻より40分早める
         scheduleExpressionTimezone: "Asia/Tokyo",
         flexibleTimeWindow: {
@@ -1129,7 +1129,7 @@ export class MainStack extends Stack {
       this,
       "AuroraStopSchedule",
       {
-        state: props.auroraStopSchedulerState,
+        state: props.auroraSchedulerState,
         scheduleExpression: "cron(0 21 ? * MON-FRI *)",
         scheduleExpressionTimezone: "Asia/Tokyo",
         flexibleTimeWindow: {

@@ -39,18 +39,15 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   backendEcsScaleInEvaluationPeriods: number;
   // appコンテナ環境変数
   appDebug: boolean;
-  // ECSスケジューラ
-  ecsStartSchedulerState: SchedulerState;
-  ecsStopSchedulerState: SchedulerState;
   // DB関係
   postgresVersion: rds.AuroraPostgresEngineVersion;
   postgresClientVersion: number; // 踏み台サーバーにインストールするPostgreSQLのバージョン
   isReadReplicaEnabled?: boolean;
   auroraServerlessV2MinCapacity: number;
   auroraServerlessV2MaxCapacity: number;
-  // Auroraスケジューラ
-  auroraStartSchedulerState: SchedulerState;
-  auroraStopSchedulerState: SchedulerState;
+  // スケジューラ
+  ecsSchedulerState: SchedulerState;
+  auroraSchedulerState: SchedulerState;
   // アラート関係
   slackWorkspaceId: string;
   warningSlackChannelId: string;
