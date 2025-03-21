@@ -19,6 +19,7 @@ env:
   APP_DOCKER_CONTEXT: "./demo-application/backend"
   WEB_DOCKER_CONTEXT: "./demo-application/backend/docker/nginx"
   LOG_ROUTER_DOCKER_CONTEXT: "./demo-application/backend/docker/fluentbit"
+  MIGRATION_PATH: "./demo-application/backend/database/migrations/**"
 
 defaults:
   run:
@@ -58,7 +59,10 @@ jobs:
           CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
           ECR_REPO_URI_OUTPUT_KEY: "EcrRepositoryUri"
           ECS_CLUSTER_ARN_OUTPUT_KEY: "EcsClusterArn"
-          ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY: "BackendEcsServiceName"
+          ECS_SERVICE_NAME_OUTPUT_KEY: "BackendEcsServiceName"
+          ECS_TASK_DEFINITION_FAMILY_OUTPUT_KEY: "BackendTaskDefinitionFamily"
+          ECS_SG_ID_OUTPUT_KEY: "BackendEcsServiceSecurityGroupId"
+          PRIVATE_SUBNET_ID_OUTPUT_KEY: "PrivateSubnet1Id"
         run: |
           set -x
           # CloudFormationスタックからOutputsを一度に取得
@@ -70,7 +74,10 @@ jobs:
           # スタックのOutputsから各値を取得
           ECR_REPO_URI=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECR_REPO_URI_OUTPUT_KEY }}\").OutputValue")
           ECS_CLUSTER_ARN=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_CLUSTER_ARN_OUTPUT_KEY }}\").OutputValue")
-          ECS_BACKEND_SERVICE_NAME=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_BACKEND_SERVICE_NAME_OUTPUT_KEY }}\").OutputValue")
+          ECS_SERVICE_NAME=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_SERVICE_NAME_OUTPUT_KEY }}\").OutputValue")
+          ECS_TASK_DEFINITION_FAMILY=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_TASK_DEFINITION_FAMILY_OUTPUT_KEY }}\").OutputValue")
+          ECS_SG_ID=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.ECS_SG_ID_OUTPUT_KEY }}\").OutputValue")
+          PRIVATE_SUBNET_ID=$(echo $OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.PRIVATE_SUBNET_ID_OUTPUT_KEY }}\").OutputValue")
 
           # ビルドバージョンを生成
           BUILD_VERSION="${GITHUB_SHA}-${GITHUB_RUN_NUMBER}"
@@ -82,7 +89,10 @@ jobs:
           echo "ECR_REPO_URI=${ECR_REPO_URI}" >> $GITHUB_OUTPUT
           echo "ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}" >> $GITHUB_OUTPUT
           echo "ECS_CLUSTER_ARN=${ECS_CLUSTER_ARN}" >> $GITHUB_OUTPUT
-          echo "ECS_BACKEND_SERVICE_NAME=${ECS_BACKEND_SERVICE_NAME}" >> $GITHUB_OUTPUT
+          echo "ECS_SERVICE_NAME=${ECS_SERVICE_NAME}" >> $GITHUB_OUTPUT
+          echo "ECS_TASK_DEFINITION_FAMILY=${ECS_TASK_DEFINITION_FAMILY}" >> $GITHUB_OUTPUT
+          echo "ECS_SG_ID=${ECS_SG_ID}" >> $GITHUB_OUTPUT
+          echo "PRIVATE_SUBNET_ID=${PRIVATE_SUBNET_ID}" >> $GITHUB_OUTPUT
           
           echo "APP_IMAGE_TAG=${APP_IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "WEB_IMAGE_TAG=${WEB_IMAGE_TAG}" >> $GITHUB_OUTPUT
@@ -96,7 +106,10 @@ jobs:
       ECR_REPO_URI: ${{ steps.set-params.outputs.ECR_REPO_URI }}
       ECR_REPOSITORY_NAME: ${{ steps.set-params.outputs.ECR_REPOSITORY_NAME }}
       ECS_CLUSTER_ARN: ${{ steps.set-params.outputs.ECS_CLUSTER_ARN }}
-      ECS_BACKEND_SERVICE_NAME: ${{ steps.set-params.outputs.ECS_BACKEND_SERVICE_NAME }}
+      ECS_SERVICE_NAME: ${{ steps.set-params.outputs.ECS_SERVICE_NAME }}
+      ECS_TASK_DEFINITION_FAMILY: ${{ steps.set-params.outputs.ECS_TASK_DEFINITION_FAMILY }}
+      ECS_SG_ID: ${{ steps.set-params.outputs.ECS_SG_ID }}
+      PRIVATE_SUBNET_ID: ${{ steps.set-params.outputs.PRIVATE_SUBNET_ID }}
       APP_IMAGE_TAG: ${{ steps.set-params.outputs.APP_IMAGE_TAG }}
       WEB_IMAGE_TAG: ${{ steps.set-params.outputs.WEB_IMAGE_TAG }}
       LOG_ROUTER_IMAGE_TAG: ${{ steps.set-params.outputs.LOG_ROUTER_IMAGE_TAG }}
@@ -172,9 +185,157 @@ jobs:
           cache-scope: log-router
           platforms: linux/arm64
 
-  delivery:
+  detect-migration-changes:
     runs-on: ubuntu-latest
-    needs: [ "setup", "build-and-push-app-image", "build-and-push-web-image", "build-and-push-log-router-image" ]
+    permissions:
+      pull-requests: read
+      contents: read
+    outputs:
+      MIGRATION_REQUIRED: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - ${{ env.MIGRATION_PATH }}
+      - name: Output migration detection result
+        run: |
+          if [ "${{ steps.filter.outputs.migrations }}" == "true" ]; then
+            echo "::notice::マイグレーションの変更が検知されました"
+          else
+            echo "::notice::マイグレーションの変更はありません"
+          fi
+  
+  run-database-migration:
+    needs: [setup, build-and-push-app-image, detect-migration-changes]
+    if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: ${{ inputs.deploy-to }}
+    steps:
+      # AWS認証情報の設定
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          mask-aws-account-id: false
+  
+      # Amazon ECRへのログイン
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: true
+
+      # マイグレーション用の一時タスク定義を作成
+      - name: Register Migration Task Definition
+        id: register-migration-task
+        run: |
+          set -x
+          # 既存のECSサービス用のタスク定義を取得
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition ${{ needs.setup.outputs.ECS_TASK_DEFINITION_FAMILY }} \
+            --query 'taskDefinition' \
+            --output json)
+          
+          # 新しいタスク定義用にJSONを修正
+          # - 不要なフィールドを削除（webコンテナも、マイグレーション用のタスクには不要なので除外する）
+          # - appコンテナのイメージを一時タグに変更
+          # - familyをマイグレーション用に変更
+          MODIFIED_TASK_DEF=$(echo $TASK_DEF | jq --arg IMG "${{ needs.setup.outputs.ECR_REPO_URI }}:${{ needs.setup.outputs.APP_IMAGE_TAG }}" \
+            --arg FAMILY "${{ needs.setup.outputs.ECS_TASK_DEFINITION_FAMILY }}-migration" \
+            'del(
+              .taskDefinitionArn,
+              .revision,
+              .status,
+              .requiresAttributes,
+              .compatibilities,
+              .registeredAt,
+              .registeredBy
+            ) |
+            .containerDefinitions |= map(
+              select(.name != "web") |
+              if .name == "app" then .image = $IMG else . end
+            ) |
+            .family = $FAMILY')
+          
+          # マイグレーション用の一時タスク定義を登録
+          # - ECSサービス用のタスク定義とは別に登録する
+          # - 一時タスク用のタスク定義はCDK管理外
+          MIGRATION_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$MODIFIED_TASK_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          
+          echo "MIGRATION_TASK_DEF_ARN=$MIGRATION_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          set +x
+
+      # マイグレーションの実行
+      - name: Run Migration
+        id: migration
+        run: |
+          set -x
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+            --task-definition ${{ steps.register-migration-task.outputs.MIGRATION_TASK_DEF_ARN }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ needs.setup.outputs.PRIVATE_SUBNET_ID }}],securityGroups=[${{ needs.setup.outputs.ECS_SG_ID }}],assignPublicIp=DISABLED}" \
+            --overrides '{
+              "containerOverrides": [
+                {
+                  "name": "app",
+                  "command": ["/bin/sh", "-c", "php artisan migrate --force || (php artisan migrate:rollback --force && exit 1)"]
+                }
+              ]
+            }' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          echo "TASK_ARN=$TASK_ARN" >> $GITHUB_OUTPUT
+          set +x
+
+      # SlackチャンネルURLの出力
+      - name: Output Slack Channel URL
+        env:
+          APP_LOG_SLACK_CHANNEL_URL: ${{ vars.APP_LOG_SLACK_CHANNEL_URL }} 
+        run: echo "::notice::マイグレーションが実行されました。ログの出力先Slackチャンネル：${{ env.APP_LOG_SLACK_CHANNEL_URL }}"
+
+      # マイグレーションの完了を待機
+      - name: Wait for Migration to Complete
+        run: |
+          set -x
+          aws ecs wait tasks-stopped \
+            --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+            --tasks ${{ steps.migration.outputs.TASK_ARN }}
+          set +x
+
+      # マイグレーションの終了ステータスをチェック
+      - name: Check Migration Status
+        run: |
+          set -x
+          TASK_STATUS=$(aws ecs describe-tasks \
+            --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+            --tasks ${{ steps.migration.outputs.TASK_ARN }} \
+            --query 'tasks[0].containers[?name==`app`].exitCode' \
+            --output text)
+          
+          if [ "$TASK_STATUS" != "0" ]; then
+            echo "マイグレーションに失敗しました。終了コード: ${TASK_STATUS}"
+            exit 1
+          fi
+          set +x
+
+  deploy-to-ecs:
+    needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, run-database-migration]
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
@@ -194,7 +355,7 @@ jobs:
         with:
           mask-password: true
 
-      - name: Delivery
+      - name: Update Fixed Tags
         env:
           AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
         run: |
@@ -301,5 +462,5 @@ jobs:
           set -x
           aws ecs update-service \
             --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
-            --service ${{ needs.setup.outputs.ECS_BACKEND_SERVICE_NAME }} \
+            --service ${{ needs.setup.outputs.ECS_SERVICE_NAME }} \
             --force-new-deployment

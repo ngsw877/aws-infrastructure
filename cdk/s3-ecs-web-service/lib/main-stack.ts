@@ -1403,6 +1403,40 @@ export class MainStack extends Stack {
                 `arn:${this.partition}:cloudfront::${this.account}:distribution/${frontendCloudFront.cloudFrontWebDistribution.distributionId}`
               ],
             }),
+            // ECSタスク関連の権限を追加
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "ecs:RunTask",
+                "ecs:DescribeTasks",
+                "ecs:ListTasks",
+              ],
+              resources: [
+                // タスク定義に対する権限
+                `arn:${this.partition}:ecs:${this.region}:${this.account}:task-definition/${this.stackName}-backend*`,
+                // タスクに対する権限
+                `arn:${this.partition}:ecs:${this.region}:${this.account}:task/${ecsCluster.clusterName}/*`
+              ]
+            }),
+            // タスク定義関連の権限
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "ecs:DescribeTaskDefinition",
+                "ecs:RegisterTaskDefinition",
+                "ecs:DeregisterTaskDefinition"
+              ],
+              resources: ["*"]  // これらのアクションはリソースレベルの制限をサポートしていない
+            }),
+            // タスク実行に必要なIAMロールのPassRole権限
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["iam:PassRole"],
+              resources: [
+                taskRole.roleArn,           // 既存のタスクロール
+                taskExecutionRole.roleArn    // 既存のタスク実行ロール
+              ]
+            })
           ],
         }),
       },
@@ -1419,10 +1453,19 @@ export class MainStack extends Stack {
     new CfnOutput(this, "BackendEcsServiceName", {
       value: ecsServiceName,
     });
+    new CfnOutput(this, "BackendTaskDefinitionFamily", {
+      value: backendEcsTask.family,
+    });
+    new CfnOutput(this, "BackendEcsServiceSecurityGroupId", {
+      value: backendEcsServiceSecurityGroup.securityGroupId,
+    });
+    new CfnOutput(this, 'PrivateSubnet1Id', {
+      value: vpc.privateSubnets[0].subnetId,
+    });
 
     // GitHub Actions用のOutputs（フロントエンドアプリ用）
     new CfnOutput(this, "ApiBaseUrl", {
-      value: `https://${apiDomainName}/api`,
+      value: `${backendApiUrl}/api`,
     });
     new CfnOutput(this, "FrontendBucketName", {
       value: frontendBucket.bucketName,
