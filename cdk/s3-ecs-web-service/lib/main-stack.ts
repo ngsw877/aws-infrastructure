@@ -13,7 +13,8 @@ import {
   aws_s3 as s3,
   aws_iam as iam,
   aws_applicationautoscaling as applicationautoscaling,
-  aws_cloudwatch as cloudwatch,
+  aws_cloudwatch as cw,
+  aws_cloudwatch_actions as cw_actions,
   aws_ecr as ecr,
   aws_logs as logs,
   region_info as ri,
@@ -25,6 +26,8 @@ import {
   aws_rds as rds,
   CfnOutput,
   aws_wafv2 as wafv2,
+  aws_sns as sns,
+  aws_chatbot as chatbot,
   Fn,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
@@ -893,7 +896,7 @@ export class MainStack extends Stack {
             { lower: 0, upper: 80, change: 0 }, // CPU使用率が80%未満の場合、スケールインは行わない
             { lower: 80, change: 50 }, // CPU使用率が80%を超えた場合、タスク数を50%増加させる
           ],
-          metric: new cloudwatch.Metric({
+          metric: new cw.Metric({
             namespace: "AWS/ECS",
             metricName: "CPUUtilization",
             dimensionsMap: {
@@ -927,7 +930,7 @@ export class MainStack extends Stack {
             { upper: 60, change: -20 }, // CPU使用率が60%未満の場合、タスク数を20%減少させる
             { lower: 60, change: 0 }, // CPU使用率が60%以上80%未満の場合、タスク数は変更しない
           ],
-          metric: new cloudwatch.Metric({
+          metric: new cw.Metric({
             namespace: "AWS/ECS",
             metricName: "CPUUtilization",
             dimensionsMap: {
@@ -1174,6 +1177,149 @@ export class MainStack extends Stack {
       ec2.Port.tcp(5432),
       "Allow access from Backend ECS Service",
     );
+
+    /*************************************
+     * SNSトピック・Chatbot
+     *************************************/
+    const warningSnsTopic = new sns.Topic(this, "WarningSnsTopic", {});
+
+    // Chatbot用IAMロール
+    const slackChatbotRole = new iam.Role(
+      this,
+      "SlackChatbotRole",
+      {
+        assumedBy: new iam.ServicePrincipal("chatbot.amazonaws.com"),
+        inlinePolicies: {
+          SlackNotificationChatBotPolicy: new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                  "cloudwatch:Describe*",
+                  "cloudwatch:Get*",
+                  "cloudwatch:List*",
+                ],
+                resources: ["*"],
+              }),
+            ],
+          }),
+        },
+      },
+    );
+
+    // Slackチャネル構成の作成
+    new chatbot.SlackChannelConfiguration(
+      this,
+      "WarningSlackChannelConfig",
+      {
+        slackChannelConfigurationName: `${this.stackName}-${this.node.id}`,
+        slackChannelId: props.warningSlackChannelId,
+        slackWorkspaceId: props.slackWorkspaceId,
+        notificationTopics: [warningSnsTopic],
+        loggingLevel: chatbot.LoggingLevel.ERROR,
+        guardrailPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
+        ],
+        role: slackChatbotRole,
+      },
+    );
+
+    /*************************************
+     * CloudWatchアラーム
+     *************************************/
+    // CPUUtilization
+    const auroraCpuUtilizationAlarm = new cw.Alarm(
+      this,
+      "AuroraCpuUtilizationAlarm",
+      {
+        alarmDescription: "Aurora CPU Utilization exceeds 80%",
+        metric: new cw.Metric({
+          namespace: "AWS/RDS",
+          metricName: "CPUUtilization",
+          dimensionsMap: {
+            DBClusterIdentifier: dbCluster.clusterIdentifier,
+          },
+          statistic: "Average",
+          period: Duration.seconds(300),
+        }),
+        evaluationPeriods: 1,
+        threshold: 80,
+        comparisonOperator:
+          cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        treatMissingData: cw.TreatMissingData.BREACHING,
+      },
+    );
+    // アラームアクションの設定
+    auroraCpuUtilizationAlarm.addAlarmAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+    auroraCpuUtilizationAlarm.addOkAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+
+    // FreeableMemory
+    const auroraFreeableMemoryAlarm = new cw.Alarm(
+      this,
+      "AuroraFreeableMemoryAlarm",
+      {
+        alarmDescription: "Aurora FreeableMemory exceeds 95%",
+        metric: new cw.Metric({
+          namespace: "AWS/RDS",
+          metricName: "FreeableMemory",
+          dimensionsMap: {
+            DBClusterIdentifier: dbCluster.clusterIdentifier,
+          },
+          statistic: "Average",
+          period: Duration.seconds(300),
+        }),
+        evaluationPeriods: 1,
+        // メモリ空き容量の閾値を設定...最大メモリ容量の5%
+        // - 最大ACU数 × 2GB = 最大メモリ容量 (1ACUあたり2GBのメモリ)
+        // - メモリ空き容量が最大メモリ容量の5%以下になったらアラート（メモリ使用量が95%以上になったらアラート）
+        threshold: (props.auroraServerlessV2MaxCapacity * 2 * 0.05),
+        comparisonOperator:
+          cw.ComparisonOperator.LESS_THAN_THRESHOLD,
+        treatMissingData: cw.TreatMissingData.BREACHING,
+      },
+    );
+    // アラームアクションの設定
+    auroraFreeableMemoryAlarm.addAlarmAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+    auroraFreeableMemoryAlarm.addOkAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+
+    // ACUUtilization
+    const auroraAcuUtilizationAlarm = new cw.Alarm(
+      this,
+      "AuroraAcuUtilizationAlarm",
+      {
+        alarmDescription: "Aurora ACUUtilization exceeds 80%",
+        metric: new cw.Metric({
+          namespace: "AWS/RDS",
+          metricName: "ACUUtilization",
+          dimensionsMap: {
+            DBClusterIdentifier: dbCluster.clusterIdentifier,
+          },
+          statistic: "Average",
+          period: Duration.seconds(300),
+        }),
+        evaluationPeriods: 1,
+        threshold: 80,
+        comparisonOperator:
+          cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        treatMissingData: cw.TreatMissingData.BREACHING,
+      },
+    );
+    // アラームアクションの設定
+    auroraAcuUtilizationAlarm.addAlarmAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+    auroraAcuUtilizationAlarm.addOkAction(
+      new cw_actions.SnsAction(warningSnsTopic),
+    );
+
     // GitHub Actions用のOIDCプロバイダー
     const githubActionsOidcProviderArn = Fn.importValue("GitHubActionsOidcProviderArn");
 

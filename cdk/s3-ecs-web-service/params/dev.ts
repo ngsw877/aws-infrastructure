@@ -58,6 +58,8 @@ const mainStackProps: MainStackProps = {
   auroraServerlessV2MaxCapacity: 4,
   auroraStartSchedulerState: "DISABLED",
   auroraStopSchedulerState: "DISABLED",
+  slackWorkspaceId: "T0xxxxxxxx",
+  warningSlackChannelId: "C0xxxxxxxx",
   githubOrgName: "ngsw877",
   githubRepositoryName: "aws-infrastructure",
 };

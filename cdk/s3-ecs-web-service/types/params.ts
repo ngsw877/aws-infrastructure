@@ -51,6 +51,9 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   // Auroraスケジューラ
   auroraStartSchedulerState: SchedulerState;
   auroraStopSchedulerState: SchedulerState;
+  // アラート関係
+  slackWorkspaceId: string;
+  warningSlackChannelId: string;
   // GitHub Actions
   githubOrgName: string;
   githubRepositoryName: string;
