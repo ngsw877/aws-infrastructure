@@ -21,6 +21,8 @@ import {
   aws_kinesisfirehose as firehose,
   aws_ssm as ssm,
   aws_scheduler as scheduler,
+  aws_secretsmanager as secretsmanager,
+  aws_rds as rds,
   CfnOutput,
   aws_wafv2 as wafv2,
   Fn,
@@ -61,7 +63,6 @@ export class MainStack extends Stack {
         zoneName: appDomainName,
       },
     );
-
     // 集約ログ用S3バケット
     const logsBucket = new s3.Bucket(this, "LogsBucket", {
       lifecycleRules: [
@@ -589,7 +590,7 @@ export class MainStack extends Stack {
     // ECR
     const backendEcrRepository = new ecr.Repository(
       this,
-      "BackendNginxECRRepository",
+      "BackendEcrRepository",
       {
         removalPolicy: RemovalPolicy.DESTROY,
         lifecycleRules: [
@@ -687,6 +688,7 @@ export class MainStack extends Stack {
             }),
           ],
         }),
+        
         // S3アップロード用の権限を追加
         s3UploadPolicy: new iam.PolicyDocument({
           statements: [
@@ -707,6 +709,19 @@ export class MainStack extends Stack {
             }),
           ],
         }),
+      },
+    });
+
+    // Secrets Manager（DB認証情報を設定）
+    const dbSecret = new secretsmanager.Secret(this, 'AuroraSecret', {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({
+          username: 'webapp',
+          dbname: 'sample_app',
+        }),
+        generateStringKey: 'password',
+        excludeCharacters: '"@/\\',
+        excludePunctuation: true,
       },
     });
 
@@ -744,6 +759,13 @@ export class MainStack extends Stack {
         AWS_URL: `https://${uploadedFilesBucket.bucketRegionalDomainName}`,
       },
       secrets: {
+        // SecretsManagerから取得した値
+        DB_HOST: ecs.Secret.fromSecretsManager(dbSecret, "host"),
+        DB_PORT: ecs.Secret.fromSecretsManager(dbSecret, "port"),
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecret, "username"),
+        DB_DATABASE: ecs.Secret.fromSecretsManager(dbSecret, "dbname"),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, "password"),
+        // SSMパラメータストアから取得した値
         APP_KEY: ecs.Secret.fromSsmParameter(
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this,
@@ -793,7 +815,7 @@ export class MainStack extends Stack {
     });
 
     // ECSサービス用セキュリティグループ
-    const appSecurityGroup = new ec2.SecurityGroup(this, "AppSecurityGroup", {
+    const backendEcsServiceSecurityGroup = new ec2.SecurityGroup(this, "BackendEcsServiceSecurityGroup", {
       vpc,
       description: "Security group for Backend ECS Service",
       allowAllOutbound: true, // for AWS APIs
@@ -816,7 +838,7 @@ export class MainStack extends Stack {
             weight: 1,
           },
         ],
-        securityGroups: [appSecurityGroup],
+        securityGroups: [backendEcsServiceSecurityGroup],
         serviceName: PhysicalName.GENERATE_IF_NEEDED,
       },
     );
@@ -977,6 +999,181 @@ export class MainStack extends Stack {
       },
     });
 
+    /*************************************
+     * DB関係
+     *************************************/
+
+    // AuroraのPostgreSQLバージョンを指定
+    const PostgresVersion = props.postgresVersion;
+
+    // パラメータグループ
+    const parameterGroup = new rds.ParameterGroup(this, "ParameterGroup", {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: PostgresVersion,
+      }),
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // サブネットグループ
+    const subnetGroup = new rds.SubnetGroup(this, "SubnetGroup", {
+      description: "Subnet group for Aurora database",
+      vpc: vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // KMSキー
+    const auroraEncryptionKey = new kms.Key(this, "AuroraStorageEncryptionKey", {
+      enableKeyRotation: true,
+      description: "KMS key for Aurora storage encryption",
+    });
+
+    // Aurora Serverless cluster
+    const dbCluster = new rds.DatabaseCluster(this, "AuroraServerlessCluster", {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: PostgresVersion,
+      }),
+      credentials: rds.Credentials.fromSecret(dbSecret),
+      writer: rds.ClusterInstance.serverlessV2("Writer", {
+        performanceInsightRetention: rds.PerformanceInsightRetention.DEFAULT, // Performance Insightsを7日間有効化
+        autoMinorVersionUpgrade: false, // マイナーバージョンアップグレードを無効化
+        preferredMaintenanceWindow: "Sun:13:30-Sun:14:00", // 日本時間の日曜22:30-23:00にメンテナンス実施
+      }),
+      readers: props.isReadReplicaEnabled
+        ? [
+            rds.ClusterInstance.serverlessV2("Reader", {
+              performanceInsightRetention:
+                rds.PerformanceInsightRetention.DEFAULT,
+              autoMinorVersionUpgrade: false, // マイナーバージョンアップグレードを無効化
+              preferredMaintenanceWindow: "Sun:14:00-Sun:14:30", // 日本時間の日曜23:00-23:30にメンテナンス実施
+            }),
+          ]
+        : undefined,
+      vpc,
+      parameterGroup,
+      subnetGroup,
+      serverlessV2MinCapacity: props.auroraServerlessV2MinCapacity,
+      serverlessV2MaxCapacity: props.auroraServerlessV2MaxCapacity,
+      iamAuthentication: true, // IAMデータベース認証を有効にする
+      enableDataApi: true, // Data APIを有効にする
+      storageEncryptionKey: auroraEncryptionKey, // ストレージの暗号化キーを指定
+      storageEncrypted: true, // ストレージの暗号化を有効化
+      cloudwatchLogsExports: ["postgresql"], // PostgreSQLログをCloudWatch Logsにエクスポート
+      cloudwatchLogsRetention: props.logRetentionDays, // CloudWatch Logsの保持期間を指定
+      backup: {
+        retention: Duration.days(7), // バックアップ保持期間を7日に設定
+        preferredWindow: "16:00-17:00", // 日本時間の01:00-02:00に自動バックアップ実施
+      },
+      preferredMaintenanceWindow: "Sun:13:00-Sun:13:30", // 日本時間の日曜22:00-22:30にメンテナンス実施
+      deletionProtection: true,
+    });
+
+    //ECSタスクロールにDBアクセス許可を追加
+    taskExecutionRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["rds-db:connect", "rds:DescribeDBInstances"],
+        resources: [dbCluster.clusterArn],
+      }),
+    );
+
+    // DBパスワードのローテーションを有効化
+    dbCluster.addRotationSingleUser({
+      automaticallyAfter: Duration.days(30),
+      excludeCharacters: '"@/\\',
+    });
+
+    // DBの自動定期開始・停止設定
+    // EventBridge Schedulerの実行ロール
+    const auroraSchedulerExecutionRole = new iam.Role(
+      this,
+      "AuroraSchedulerExecutionRole",
+      {
+        assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
+      },
+    );
+    auroraSchedulerExecutionRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["rds:StopDBCluster", "rds:StartDBCluster"],
+        resources: [dbCluster.clusterArn],
+      }),
+    );
+    // 開始スケジュール
+    new scheduler.CfnSchedule(
+      this,
+      "AuroraStartSchedule",
+      {
+        state: props.auroraStartSchedulerState,
+        scheduleExpression: "cron(20 7 ? * MON-FRI *)", // DBの起動に時間がかかるため、ECSのタスク開始時刻より40分早める
+        scheduleExpressionTimezone: "Asia/Tokyo",
+        flexibleTimeWindow: {
+          mode: "OFF",
+        },
+        target: {
+          arn: "arn:aws:scheduler:::aws-sdk:rds:startDBCluster",
+          roleArn: auroraSchedulerExecutionRole.roleArn,
+          input: JSON.stringify({
+            DbClusterIdentifier: dbCluster.clusterIdentifier,
+          }),
+        },
+      },
+    );
+    // 停止スケジュール
+    new scheduler.CfnSchedule(
+      this,
+      "AuroraStopSchedule",
+      {
+        state: props.auroraStopSchedulerState,
+        scheduleExpression: "cron(0 21 ? * MON-FRI *)",
+        scheduleExpressionTimezone: "Asia/Tokyo",
+        flexibleTimeWindow: {
+          mode: "OFF",
+        },
+        target: {
+          arn: "arn:aws:scheduler:::aws-sdk:rds:stopDBCluster",
+          roleArn: auroraSchedulerExecutionRole.roleArn,
+          input: JSON.stringify({
+            DbClusterIdentifier: dbCluster.clusterIdentifier,
+          }),
+        },
+      },
+    );
+
+    // 踏み台サーバー
+    const bastionHost = new ec2.BastionHostLinux(this, "BastionHost", {
+      vpc,
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.NANO,
+      ),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023({
+        cpuType: ec2.AmazonLinuxCpuType.X86_64,
+      }),
+      subnetSelection: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+    });
+
+    bastionHost.instance.userData.addCommands(
+      "sudo dnf update -y",
+      `sudo dnf install -y postgresql${props.postgresClientVersion}`,
+    );
+
+    // 踏み台サーバーからAuroraへのアクセスを許可
+    dbCluster.connections.allowFrom(
+      bastionHost,
+      ec2.Port.tcp(5432),
+      "Allow access from Bastion host",
+    );
+    // Backend ECS ServiceからAuroraへのアクセスを許可
+    dbCluster.connections.allowFrom(
+      backendEcsServiceSecurityGroup,
+      ec2.Port.tcp(5432),
+      "Allow access from Backend ECS Service",
+    );
     // GitHub Actions用のOIDCプロバイダー
     const githubActionsOidcProviderArn = Fn.importValue("GitHubActionsOidcProviderArn");
 

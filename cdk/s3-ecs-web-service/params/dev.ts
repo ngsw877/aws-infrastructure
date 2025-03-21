@@ -1,4 +1,8 @@
-import { Aws, Duration, aws_logs as logs } from "aws-cdk-lib";
+import { 
+  Duration,
+  aws_logs as logs,
+  aws_rds as rds
+} from "aws-cdk-lib";
 import type { AppDomainProps, GlobalStackProps, MainStackProps, Params } from "../types/params";
 
 const appDomainProps: AppDomainProps = {
@@ -48,6 +52,12 @@ const mainStackProps: MainStackProps = {
   appDebug: true,
   ecsStartSchedulerState: "ENABLED",
   ecsStopSchedulerState: "ENABLED",
+  postgresVersion: rds.AuroraPostgresEngineVersion.VER_16_3,
+  postgresClientVersion: 16,
+  auroraServerlessV2MinCapacity: 0.5,
+  auroraServerlessV2MaxCapacity: 4,
+  auroraStartSchedulerState: "DISABLED",
+  auroraStopSchedulerState: "DISABLED",
   githubOrgName: "ngsw877",
   githubRepositoryName: "aws-infrastructure",
 };

@@ -3,6 +3,7 @@ import type {
   Duration,
   aws_certificatemanager as acm,
   aws_logs as logs,
+  aws_rds as rds,
   aws_wafv2 as wafv2,
 } from "aws-cdk-lib";
 
@@ -38,9 +39,18 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   backendEcsScaleInEvaluationPeriods: number;
   // appコンテナ環境変数
   appDebug: boolean;
-  // スケジューラ
+  // ECSスケジューラ
   ecsStartSchedulerState: SchedulerState;
   ecsStopSchedulerState: SchedulerState;
+  // DB関係
+  postgresVersion: rds.AuroraPostgresEngineVersion;
+  postgresClientVersion: number; // 踏み台サーバーにインストールするPostgreSQLのバージョン
+  isReadReplicaEnabled?: boolean;
+  auroraServerlessV2MinCapacity: number;
+  auroraServerlessV2MaxCapacity: number;
+  // Auroraスケジューラ
+  auroraStartSchedulerState: SchedulerState;
+  auroraStopSchedulerState: SchedulerState;
   // GitHub Actions
   githubOrgName: string;
   githubRepositoryName: string;
