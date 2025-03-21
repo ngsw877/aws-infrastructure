@@ -12,6 +12,14 @@ on:
         description: デプロイブランチ名
         type: string
         required: true
+      migration-mode:
+        description: マイグレーション実行モード
+        type: choice
+        default: 'auto'
+        options:
+          - 'auto'    # 変更検知時のみ実行
+          - 'force'   # 強制実行
+          - 'skip'    # 実行しない
 
 permissions:
   id-token: write
@@ -24,3 +32,4 @@ jobs:
     with:
       deploy-to: ${{ inputs.deploy-to }}
       branch: ${{ inputs.branch }}
+      migration-mode: ${{ inputs.migration-mode }}
