@@ -26,6 +26,7 @@ import {
   aws_rds as rds,
   CfnOutput,
   aws_wafv2 as wafv2,
+  aws_ses as ses,
   aws_sns as sns,
   aws_chatbot as chatbot,
   Fn,
@@ -708,8 +709,22 @@ export class MainStack extends Stack {
               ],
               resources: [
                 uploadedFilesBucket.bucketArn,
-                `${uploadedFilesBucket.bucketArn}/*`
+                `${uploadedFilesBucket.bucketArn}/*`,
               ],
+            }),
+          ],
+        }),
+        // Eメール送信用の権限
+        sesPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "ses:SendEmail",
+                "ses:SendRawEmail",
+                "ses:SendTemplatedEmail",
+              ],
+              resources: ["*"],
             }),
           ],
         }),
@@ -761,6 +776,7 @@ export class MainStack extends Stack {
         APP_DEBUG: String(props.appDebug),
         AWS_BUCKET: uploadedFilesBucket.bucketName,
         AWS_URL: `https://${uploadedFilesBucket.bucketRegionalDomainName}`,
+        MAIL_MAILER: "ses",
       },
       secrets: {
         // SecretsManagerから取得した値
@@ -1179,6 +1195,24 @@ export class MainStack extends Stack {
       "Allow access from Backend ECS Service",
     );
 
+    /*************************************
+     * メール送信機能
+     *************************************/
+    // SES ID
+    new ses.EmailIdentity(this, 'EmailIdentity', {
+      identity: ses.Identity.publicHostedZone(hostedZone),
+      mailFromDomain: `bounce.${appDomainName}`, // SPF設定
+    });
+
+    // DMARC設定
+    new route53.TxtRecord(this, "DmarcRecord", {
+      zone: hostedZone,
+      recordName: `_dmarc.${appDomainName}`,
+      values: [
+        `v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`,
+      ],
+      ttl: Duration.hours(1),
+    });
     /*************************************
      * SNSトピック・Chatbot
      *************************************/

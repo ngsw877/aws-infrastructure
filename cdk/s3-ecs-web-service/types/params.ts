@@ -48,6 +48,8 @@ export interface MainStackProps extends StackProps, AppDomainProps {
   // スケジューラ
   ecsSchedulerState: SchedulerState;
   auroraSchedulerState: SchedulerState;
+  // メール関係
+  dmarcReportEmail: string;
   // アラート関係
   slackWorkspaceId: string;
   warningSlackChannelId: string;

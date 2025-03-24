@@ -56,6 +56,7 @@ const mainStackProps: MainStackProps = {
   auroraServerlessV2MaxCapacity: 4,
   ecsSchedulerState: "DISABLED",
   auroraSchedulerState: "DISABLED",
+  dmarcReportEmail: "dmarc-report@example.com",
   slackWorkspaceId: "T0xxxxxxxx",
   warningSlackChannelId: "C0xxxxxxxx",
   githubOrgName: "ngsw877",
