@@ -4,24 +4,28 @@ import {
   aws_rds as rds
 } from "aws-cdk-lib";
 import type { GlobalStackProps, MainStackProps, Params, Tenant } from "../types/params";
+import { devSecrets } from './secrets';
 // スナップショットテスト用
 const dummyAccountId = "123456789012";
 
 // マルチドメイン対応のテナント設定
 const tenants: Tenant[] = [
   { 
-    route53HostedZoneId: "Z0201048170ZNG2QS3LN1", 
-    appDomainName: "dev.s3-ecs-web-service.sample-app.click",
+    route53HostedZoneId: devSecrets.domains.sample.route53HostedZoneId,
+    appDomainName: devSecrets.domains.sample.appDomainName,
     // IP制限あり
-    allowedIpAddresses: [
-      "192.0.2.1/32",
-      "192.0.2.2/32"
-    ] 
+    allowedIpAddresses: devSecrets.allowedIpAddresses.sample,
   },
   { 
-    route53HostedZoneId: "Z01140211URKT1J60WTA5", 
-    appDomainName: "dev.s3-ecs-web-service.hoge-app.click"
+    route53HostedZoneId: devSecrets.domains.hoge.route53HostedZoneId,
+    appDomainName: devSecrets.domains.hoge.appDomainName
     // IP制限なし
+  },
+  { 
+    route53HostedZoneId: devSecrets.domains.study.route53HostedZoneId,
+    appDomainName: devSecrets.domains.study.appDomainName,
+    // IP制限あり
+    allowedIpAddresses: devSecrets.allowedIpAddresses.study,
   },
 ];
 
@@ -64,9 +68,9 @@ const mainStackProps: MainStackProps = {
   auroraServerlessV2MaxCapacity: 4,
   ecsSchedulerState: "ENABLED",
   auroraSchedulerState: "ENABLED",
-  dmarcReportEmail: "dmarc-report@example.com",
-  slackWorkspaceId: "T0xxxxxxxx",
-  warningSlackChannelId: "C0xxxxxxxx",
+  dmarcReportEmail: devSecrets.dmarcReportEmail,
+  slackWorkspaceId: devSecrets.slack.workspaceId,
+  warningSlackChannelId: devSecrets.slack.warningChannelId,
   githubOrgName: "ngsw877",
   githubRepositoryName: "aws-infrastructure",
   albDeletionProtection: false,

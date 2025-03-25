@@ -6,4 +6,5 @@ node_modules
 .cdk.staging
 cdk.out
 
+params/secrets.ts
 test/__snapshots__
