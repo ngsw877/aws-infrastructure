@@ -9,17 +9,23 @@ import type {
 
 type SchedulerState = "ENABLED" | "DISABLED";
 
-export interface AppDomainProps {
+// テナント情報
+export interface Tenant {
   route53HostedZoneId: string;
   appDomainName: string;
+  allowedIpAddresses?: string[]; // IP制限を適用する場合の許可IPアドレス一覧
 }
 
-export interface GlobalStackProps extends StackProps, AppDomainProps {
+export interface GlobalStackProps extends StackProps {
+  tenants: Tenant[];
   logRetentionDays?: logs.RetentionDays;
   allowedIpAddresses?: string[];
-}
+} 
 
-export interface MainStackProps extends StackProps, AppDomainProps {
+export interface MainStackProps extends StackProps {
+  // マルチテナント設定
+  tenants: Tenant[];
+  
   envName: string;
   natGatewaysCount: number;
   logRetentionDays?: logs.RetentionDays;

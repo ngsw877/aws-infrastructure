@@ -17,115 +17,152 @@ export class GlobalStack extends Stack {
   constructor(scope: Construct, id: string, props: GlobalStackProps) {
     super(scope, id, props);
 
-    // Route53ホストゾーンの取得
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
-      this,
-      "HostedZone",
-      {
-        hostedZoneId: props.route53HostedZoneId,
-        zoneName: props.appDomainName,
-      },
-    );
+    // マルチドメイン対応のDNS検証用ホストゾーンマッピング
+    const hostedZoneMap: Record<string, route53.IHostedZone> = {};
+    
+    // 各テナントのホストゾーンをマッピング
+    for (const tenant of props.tenants) {
+      hostedZoneMap[tenant.appDomainName] = route53.HostedZone.fromHostedZoneAttributes(
+        this,
+        `HostedZone-${tenant.appDomainName.replace(/\./g, '-')}`,
+        {
+          hostedZoneId: tenant.route53HostedZoneId,
+          zoneName: tenant.appDomainName,
+        }
+      );
+    }
 
-    // CloudFront用のACM証明書
+    // CloudFront用のACM証明書（複数ドメイン対応）
     this.cloudfrontCertificate = new acm.Certificate(
       this,
       "CloudFrontCertificate",
       {
         certificateName: `${this.stackName}-cloudfront-certificate`,
-        domainName: props.appDomainName,
-        validation: acm.CertificateValidation.fromDns(hostedZone),
+        domainName: props.tenants[0].appDomainName, // プライマリドメイン
+        subjectAlternativeNames: props.tenants.slice(1).map(d => d.appDomainName), // 追加ドメイン
+        validation: acm.CertificateValidation.fromDnsMultiZone(hostedZoneMap),
       },
     );
 
-    // 許可IPアドレスのIPSet
-    const allowedIpSet = new wafv2.CfnIPSet(this, "AllowedIpSet", {
-      scope: "CLOUDFRONT",
-      ipAddressVersion: "IPV4",
-      addresses: props.allowedIpAddresses || [],
+    // WAF用のルール配列を作成
+    const wafRules: wafv2.CfnWebACL.RuleProperty[] = [
+      // AWSマネージドルール
+      {
+        name: "CommonSecurityProtection",
+        priority: 1,
+        overrideAction: { none: {} },
+        statement: {
+          managedRuleGroupStatement: {
+            name: "AWSManagedRulesCommonRuleSet",
+            vendorName: "AWS",
+          },
+        },
+        visibilityConfig: {
+          metricName: "CommonSecurityProtection",
+          cloudWatchMetricsEnabled: true,
+          sampledRequestsEnabled: true,
+        },
+      },
+    ];
+
+    // テナントごとのIP制限ルールを追加 - 修正後のコード
+    props.tenants.forEach((tenant, index) => {
+      if (tenant.allowedIpAddresses && tenant.allowedIpAddresses.length > 0) {
+        // IPセットを直接作成
+        const ipSet = new wafv2.CfnIPSet(
+          this,
+          `AllowedIpSet-${tenant.appDomainName.replace(/\./g, '-')}`,
+          {
+            scope: "CLOUDFRONT",
+            ipAddressVersion: "IPV4",
+            addresses: tenant.allowedIpAddresses,
+          }
+        );
+
+        // IP制限がある場合のルール
+        const rule: wafv2.CfnWebACL.RuleProperty = {
+          name: `IPRestriction-${tenant.appDomainName.replace(/\./g, '-')}`,
+          priority: 10 + index,
+          action: { block: {} },
+          statement: {
+            andStatement: {
+              statements: [
+                // 特定のドメインへのリクエストを識別
+                {
+                  byteMatchStatement: {
+                    fieldToMatch: {
+                      singleHeader: { name: "host" }
+                    },
+                    positionalConstraint: "EXACTLY",
+                    searchString: tenant.appDomainName,
+                    textTransformations: [{ priority: 0, type: "NONE" }]
+                  }
+                },
+                // 許可IPリスト以外からのアクセスを制限
+                {
+                  notStatement: {
+                    statement: {
+                      ipSetReferenceStatement: {
+                        arn: ipSet.attrArn
+                      }
+                    }
+                  }
+                },
+                // /sampleまたは/productで始まるパスではない
+                {
+                  notStatement: {
+                    statement: {
+                      orStatement: {
+                        statements: [
+                          {
+                            byteMatchStatement: {
+                              fieldToMatch: {
+                                uriPath: {}
+                              },
+                              positionalConstraint: "STARTS_WITH",
+                              searchString: "/sample",
+                              textTransformations: [{ priority: 1, type: "NONE" }]
+                            }
+                          },
+                          { 
+                            byteMatchStatement: {
+                              fieldToMatch: {
+                                uriPath: {}
+                              },
+                              positionalConstraint: "STARTS_WITH",
+                              searchString: "/product",
+                              textTransformations: [{ priority: 1, type: "NONE" }]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          visibilityConfig: {
+            metricName: `IPRestriction-${tenant.appDomainName.replace(/\./g, '-')}`,
+            cloudWatchMetricsEnabled: true,
+            sampledRequestsEnabled: true,
+          },
+        };
+        
+        wafRules.push(rule);
+      }
     });
 
     // CloudFront用WAF WebACL
     this.cloudFrontWebAcl = new wafv2.CfnWebACL(this, "CloudFrontWebACL", {
-      // デフォルトは常に許可
-      defaultAction: { allow: {} },
+      defaultAction: { allow: {} }, // デフォルトは許可
       scope: "CLOUDFRONT",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
         metricName: "CloudFrontWebACL",
         sampledRequestsEnabled: true,
       },
-      rules: [
-        // IPアドレス制限ルール
-        {
-          name: "BlockNonAllowedIPs",
-          priority: 1,
-          // IPアドレス制限の設定
-          action: props.allowedIpAddresses && props.allowedIpAddresses.length > 0
-            ? { block: {} }  // 許可リストあり：リスト外のIPをブロック
-            : { count: {} }, // 許可リストなし：全IP許可（カウントのみ）
-          statement: {
-            notStatement: {
-              statement: {
-                orStatement: {
-                  statements: [
-                    {
-                      // 許可リストのIPはブロックしない
-                      ipSetReferenceStatement: {
-                        arn: allowedIpSet.attrArn,
-                      }
-                    },
-                    {
-                      // /sampleパスへのリクエストはブロックしない
-                      byteMatchStatement: {
-                        fieldToMatch: {
-                          uriPath: {}
-                        },
-                        positionalConstraint: "STARTS_WITH",
-                        searchString: "/sample",
-                        textTransformations: [{ priority: 1, type: "NONE" }]
-                      }
-                    },
-                    { 
-                      // /productパスへのリクエストはブロックしない
-                      byteMatchStatement: {
-                        fieldToMatch: {
-                          uriPath: {}
-                        },
-                        positionalConstraint: "STARTS_WITH",
-                        searchString: "/product",
-                        textTransformations: [{ priority: 1, type: "NONE" }]
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          visibilityConfig: {
-            metricName: "BlockNonAllowedIPs",
-            cloudWatchMetricsEnabled: true,
-            sampledRequestsEnabled: true,
-          },
-        },
-        // AWSマネージドルール
-        {
-          name: "CommonSecurityProtection",
-          priority: 2,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              name: "AWSManagedRulesCommonRuleSet",
-              vendorName: "AWS",
-            },
-          },
-          visibilityConfig: {
-            metricName: "CommonSecurityProtection",
-            cloudWatchMetricsEnabled: true,
-            sampledRequestsEnabled: true,
-          },
-        },
-      ],
+      rules: wafRules,
     });
 
     // WAF用ログバケット
@@ -137,21 +174,21 @@ export class GlobalStack extends Stack {
         bucketName: `aws-waf-logs-${this.stackName.toLowerCase()}-${this.cloudFrontWebAcl.node.id.toLowerCase()}`,
         versioned: false,
         lifecycleRules: [
-        {
-          id: "cloudfront-waf-log-expiration",
-          enabled: true,
-          expiration: Duration.days(props?.logRetentionDays ?? 90),
-        },
-      ],
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-    });
+          {
+            id: "cloudfront-waf-log-expiration",
+            enabled: true,
+            expiration: Duration.days(props?.logRetentionDays ?? 90),
+          },
+        ],
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+        encryption: s3.BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+      }
+    );
 
-    // WAFログ出力設定
-    // Blockしたリクエストのみログ出力する
+    // WAFログ出力設定（Blockしたリクエストのみログ出力）
     const wafLogConfig = new wafv2.CfnLoggingConfiguration(
       this,
       "CloudFrontWafLogConfig",
@@ -160,7 +197,6 @@ export class GlobalStack extends Stack {
         resourceArn: this.cloudFrontWebAcl.attrArn,
         loggingFilter: {
           DefaultBehavior: "DROP",
-          // BLOCKした場合のみKEEPの設定とする
           Filters: [
             {
               Behavior: "KEEP",
@@ -171,11 +207,11 @@ export class GlobalStack extends Stack {
                   },
                 },
               ],
-              Requirement: "MEETS_ALL", // 条件全てに合致した場合
+              Requirement: "MEETS_ALL",
             },
           ],
         },
-      },
+      }
     );
 
     // ログバケットの作成が完了してからWAFログ出力設定を作成する（でないとバケットポリシー関連のエラーが発生してスタックデプロイに失敗することがある）

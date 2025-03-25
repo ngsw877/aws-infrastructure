@@ -3,15 +3,27 @@ import {
   aws_logs as logs,
   aws_rds as rds
 } from "aws-cdk-lib";
-import type { AppDomainProps, GlobalStackProps, MainStackProps, Params } from "../types/params";
-
-const appDomainProps: AppDomainProps = {
-  route53HostedZoneId: "Z0201048170ZNG2QS3LN1",
-  appDomainName: "dev.s3-ecs-web-service.sample-app.click",
-};
-
+import type { GlobalStackProps, MainStackProps, Params, Tenant } from "../types/params";
 // スナップショットテスト用
 const dummyAccountId = "123456789012";
+
+// マルチドメイン対応のテナント設定
+const tenants: Tenant[] = [
+  { 
+    route53HostedZoneId: "Z0201048170ZNG2QS3LN1", 
+    appDomainName: "dev.s3-ecs-web-service.sample-app.click",
+    // IP制限あり
+    allowedIpAddresses: [
+      "192.0.2.1/32",
+      "192.0.2.2/32"
+    ] 
+  },
+  { 
+    route53HostedZoneId: "Z01140211URKT1J60WTA5", 
+    appDomainName: "dev.s3-ecs-web-service.hoge-app.click"
+    // IP制限なし
+  },
+];
 
 const globalStackProps: GlobalStackProps = {
   env: {
@@ -19,11 +31,7 @@ const globalStackProps: GlobalStackProps = {
     region: "us-east-1",
   },
   crossRegionReferences: true,
-  ...appDomainProps,
-  // allowedIpAddresses: [
-  //   "192.0.2.1/32",
-  //   "192.0.2.2/32"
-  // ],
+  tenants: tenants,
 };
 
 const mainStackProps: MainStackProps = {
@@ -32,7 +40,7 @@ const mainStackProps: MainStackProps = {
     region: "ap-northeast-1",
   },
   crossRegionReferences: true,
-  ...appDomainProps,
+  tenants: tenants,
   envName: "dev",
   natGatewaysCount: 1,
   logRetentionDays: logs.RetentionDays.ONE_MONTH,
@@ -54,8 +62,8 @@ const mainStackProps: MainStackProps = {
   postgresClientVersion: 16,
   auroraServerlessV2MinCapacity: 0.5,
   auroraServerlessV2MaxCapacity: 4,
-  ecsSchedulerState: "DISABLED",
-  auroraSchedulerState: "DISABLED",
+  ecsSchedulerState: "ENABLED",
+  auroraSchedulerState: "ENABLED",
   dmarcReportEmail: "dmarc-report@example.com",
   slackWorkspaceId: "T0xxxxxxxx",
   warningSlackChannelId: "C0xxxxxxxx",
