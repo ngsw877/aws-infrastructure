@@ -744,12 +744,40 @@ export class MainStack extends Stack {
       },
     });
 
+    const dbName = "sample_app";
+
     // Secrets Manager（DB認証情報を設定）
     const dbSecret = new secretsmanager.Secret(this, 'AuroraSecret', {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
           username: 'webapp',
-          dbname: 'sample_app',
+          dbname: dbName,
+        }),
+        generateStringKey: 'password',
+        excludeCharacters: '"@/\\',
+        excludePunctuation: true,
+      },
+    });
+
+    // ReadOnlyユーザー用シークレット
+    new secretsmanager.Secret(this, 'AuroraReadOnlySecret', {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({
+          username: 'readonly_user',
+          dbname: dbName,
+        }),
+        generateStringKey: 'password',
+        excludeCharacters: '"@/\\',
+        excludePunctuation: true,
+      },
+    });
+
+    // ReadWriteユーザー用シークレット
+    new secretsmanager.Secret(this, 'AuroraReadWriteSecret', {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({
+          username: 'readwrite_user',
+          dbname: dbName,
         }),
         generateStringKey: 'password',
         excludeCharacters: '"@/\\',
