@@ -121,7 +121,7 @@ export class GlobalStack extends Stack {
                               },
                               positionalConstraint: "STARTS_WITH",
                               searchString: "/sample",
-                              textTransformations: [{ priority: 1, type: "NONE" }]
+                              textTransformations: [{ priority: 0, type: "NONE" }]
                             }
                           },
                           { 
@@ -131,7 +131,15 @@ export class GlobalStack extends Stack {
                               },
                               positionalConstraint: "STARTS_WITH",
                               searchString: "/product",
-                              textTransformations: [{ priority: 1, type: "NONE" }]
+                              textTransformations: [{ priority: 0, type: "NONE" }]
+                            }
+                          },
+                          {
+                            byteMatchStatement: {
+                              fieldToMatch: { uriPath: {} },
+                              positionalConstraint: "STARTS_WITH",
+                              searchString: "/_nuxt/",
+                              textTransformations: [{ priority: 0, type: "NONE" }]
                             }
                           }
                         ]
