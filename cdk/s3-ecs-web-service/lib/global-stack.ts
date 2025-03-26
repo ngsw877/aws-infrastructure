@@ -108,40 +108,28 @@ export class GlobalStack extends Stack {
                     }
                   }
                 },
-                // /sampleまたは/productで始まるパスではない
+                // IP制限の対象外のパス
                 {
                   notStatement: {
                     statement: {
                       orStatement: {
                         statements: [
-                          {
+                          ...[
+                            '/sample',
+                            '/product',
+                            "/login",
+                            "/register",
+                            '/_nuxt/',
+                          ].map(path => ({
                             byteMatchStatement: {
                               fieldToMatch: {
                                 uriPath: {}
                               },
                               positionalConstraint: "STARTS_WITH",
-                              searchString: "/sample",
+                              searchString: path,
                               textTransformations: [{ priority: 0, type: "NONE" }]
                             }
-                          },
-                          { 
-                            byteMatchStatement: {
-                              fieldToMatch: {
-                                uriPath: {}
-                              },
-                              positionalConstraint: "STARTS_WITH",
-                              searchString: "/product",
-                              textTransformations: [{ priority: 0, type: "NONE" }]
-                            }
-                          },
-                          {
-                            byteMatchStatement: {
-                              fieldToMatch: { uriPath: {} },
-                              positionalConstraint: "STARTS_WITH",
-                              searchString: "/_nuxt/",
-                              textTransformations: [{ priority: 0, type: "NONE" }]
-                            }
-                          }
+                          }))
                         ]
                       }
                     }

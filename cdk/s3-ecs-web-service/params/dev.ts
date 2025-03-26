@@ -64,6 +64,7 @@ const mainStackProps: MainStackProps = {
   appDebug: true,
   postgresVersion: rds.AuroraPostgresEngineVersion.VER_16_3,
   postgresClientVersion: 16,
+  isReadReplicaEnabled: false,
   auroraServerlessV2MinCapacity: 0.5,
   auroraServerlessV2MaxCapacity: 4,
   ecsSchedulerState: "ENABLED",
