@@ -238,12 +238,14 @@ export class MainStack extends Stack {
         logFilePrefix: "FrontendCloudFront/",
         defaultRootObject: "index.html",
         errorResponses: [
-          // {
-          //   httpStatus: 403,
-          //   responseHttpStatus: 200,
-          //   responsePagePath: "/",
-          //   ttl: Duration.seconds(0),
-          // },
+          // /hoge/3 のような動的ルーティングに対して403エラーが返される場合の対応
+          // 参考 https://dev.classmethod.jp/articles/s3-cloudfront-spa-angular-403-access-denied/
+          {
+            httpStatus: 403,
+            responseHttpStatus: 200,
+            responsePagePath: "/",
+            ttl: Duration.seconds(0),
+          },
           {
             httpStatus: 404,
             responseHttpStatus: 404,
