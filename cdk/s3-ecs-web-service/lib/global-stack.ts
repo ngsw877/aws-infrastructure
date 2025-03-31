@@ -39,7 +39,7 @@ export class GlobalStack extends Stack {
       {
         certificateName: `${this.stackName}-cloudfront-certificate`,
         domainName: props.tenants[0].appDomainName, // プライマリドメイン
-        subjectAlternativeNames: props.tenants.slice(1).map(d => d.appDomainName), // 追加ドメイン
+        subjectAlternativeNames: props.tenants.slice(1).map(tenant => tenant.appDomainName), // 追加ドメイン
         validation: acm.CertificateValidation.fromDnsMultiZone(hostedZoneMap),
       },
     );

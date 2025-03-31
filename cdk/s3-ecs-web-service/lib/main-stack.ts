@@ -45,25 +45,10 @@ export class MainStack extends Stack {
       );
     }
 
-    // 共通変数
-    const primaryAppDomainName = props.tenants[0].appDomainName;
-    const primaryApiDomainName = `api.${primaryAppDomainName}`;
-    
-    // フロントエンドとバックエンドのエンドポイント（出力用）
-    const primaryFrontendUrl = `https://${primaryAppDomainName}`;
-    const primaryBackendUrl = `https://${primaryApiDomainName}`;
-
-    new CfnOutput(this, "FrontendAppUrl", {
-      value: primaryFrontendUrl,
-    });
-    new CfnOutput(this, "BackendApiUrl", {
-      value: primaryBackendUrl,
-    });
-
-    // ホストゾーンの取得
-    const hostedZones: Record<string, route53.IHostedZone> = {};
+    // ベースドメインとホストゾーンのマッピング
+    const baseDomainZoneMap: Record<string, route53.IHostedZone> = {};
     for (const tenant of props.tenants) {
-      hostedZones[tenant.appDomainName] = route53.HostedZone.fromHostedZoneAttributes(
+      baseDomainZoneMap[tenant.appDomainName] = route53.HostedZone.fromHostedZoneAttributes(
         this,
         `HostedZone-${tenant.appDomainName.replace(/\./g, '-')}`,
         {
@@ -71,6 +56,14 @@ export class MainStack extends Stack {
           zoneName: tenant.appDomainName,
         }
       );
+    }
+
+    // APIドメインとホストゾーンのマッピング
+    const apiDomainZoneMap: Record<string, route53.IHostedZone> = {};
+    for (const tenant of props.tenants) {
+      // 各テナントのAPIドメインをキーとして、対応するホストゾーンを設定
+      const apiDomain = `api.${tenant.appDomainName}`;
+      apiDomainZoneMap[apiDomain] = baseDomainZoneMap[tenant.appDomainName];
     }
 
     // 集約ログ用S3バケット
@@ -138,7 +131,8 @@ export class MainStack extends Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET],
-          allowedOrigins: props.tenants.map(d => `https://${d.appDomainName}`), // 全テナントドメイン
+          // 全テナントドメイン
+          allowedOrigins: props.tenants.map(tenant => `https://${tenant.appDomainName}`), // 全テナントドメイン
           allowedHeaders: ["*"],
           maxAge: 3600,
         },
@@ -195,6 +189,7 @@ export class MainStack extends Stack {
       existingBucketObj: frontendBucket,
       cloudFrontDistributionProps: {
         certificate: props.cloudfrontCertificate,
+        // 全テナントドメイン
         domainNames: props.tenants.map(tenant => tenant.appDomainName),
         webAclId: props.cloudFrontWebAcl?.attrArn,
         defaultBehavior: {
@@ -259,7 +254,7 @@ export class MainStack extends Stack {
     // 各テナントドメインにCloudFrontエイリアスレコードを作成
     for (const tenant of props.tenants) {
       new route53.ARecord(this, `CloudFrontAliasRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: hostedZones[tenant.appDomainName],
+        zone: baseDomainZoneMap[tenant.appDomainName],
         recordName: tenant.appDomainName,
         target: route53.RecordTarget.fromAlias(
           new targets.CloudFrontTarget(frontendCloudFront.cloudFrontWebDistribution)
@@ -271,17 +266,15 @@ export class MainStack extends Stack {
      * バックエンド用リソース
      *************************************/
 
-    // ALB用ACM証明書（全テナントドメインに対応）
+    // ALB用ACM証明書（全テナントのAPIドメインに対応）
     const albCertificate = new acm.Certificate(this, "AlbCertificate", {
       certificateName: `${this.stackName}-alb-certificate`,
-      domainName: `api.${props.tenants[0].appDomainName}`, // プライマリドメインのAPI
+      domainName: `api.${props.tenants[0].appDomainName}`, // プライマリドメインのAPIドメイン
       subjectAlternativeNames: [
-        ...props.tenants.slice(1).map(tenant => tenant.appDomainName), // 他テナントのapexドメイン
-        ...props.tenants.map(tenant => `*.${tenant.appDomainName}`)  // 全テナントのワイルドカード
+        ...props.tenants.slice(1).map(tenant => `api.${tenant.appDomainName}`), // 他テナントのAPIドメイン
       ],
-      validation: acm.CertificateValidation.fromDnsMultiZone(hostedZones),
+      validation: acm.CertificateValidation.fromDnsMultiZone(apiDomainZoneMap),
     });
-    
 
     // ALBセキュリティグループ
     const backendAlbSecurityGroup = new ec2.SecurityGroup(
@@ -309,7 +302,7 @@ export class MainStack extends Stack {
     // 各テナントドメインにALBエイリアスレコードを作成
     for (const tenant of props.tenants) {
       new route53.ARecord(this, `AlbAliasRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: hostedZones[tenant.appDomainName],
+        zone: baseDomainZoneMap[tenant.appDomainName],
         recordName: `api.${tenant.appDomainName}`,
         target: route53.RecordTarget.fromAlias(
           new targets.LoadBalancerTarget(backendAlb)
@@ -1245,13 +1238,13 @@ export class MainStack extends Stack {
     for (const tenant of props.tenants) {
       // SES ID
       new ses.EmailIdentity(this, `EmailIdentity-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        identity: ses.Identity.publicHostedZone(hostedZones[tenant.appDomainName]),
+        identity: ses.Identity.publicHostedZone(baseDomainZoneMap[tenant.appDomainName]),
         mailFromDomain: `bounce.${tenant.appDomainName}`,
       });
 
       // DMARC設定
       new route53.TxtRecord(this, `DmarcRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: hostedZones[tenant.appDomainName],
+        zone: baseDomainZoneMap[tenant.appDomainName],
         recordName: `_dmarc.${tenant.appDomainName}`,
         values: [
           `v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`,
@@ -1545,9 +1538,6 @@ export class MainStack extends Stack {
     });
 
     // GitHub Actions用のOutputs（フロントエンドアプリ用）
-    new CfnOutput(this, "ApiBaseUrl", {
-      value: `${primaryBackendUrl}/api`,
-    });
     new CfnOutput(this, "FrontendBucketName", {
       value: frontendBucket.bucketName,
     });
