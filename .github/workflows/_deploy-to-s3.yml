@@ -64,7 +64,6 @@ jobs:
         id: set-params
         env:
           CFN_STACK_NAME: ${{ vars.CFN_STACK_NAME }}
-          API_BASE_URL_OUTPUT_KEY: "ApiBaseUrl"
           FRONTEND_BUCKET_NAME_OUTPUT_KEY: "FrontendBucketName"
           DISTRIBUTION_ID_OUTPUT_KEY: "FrontendCloudFrontDistributionId"
         run: |
@@ -76,12 +75,10 @@ jobs:
             --query "Stacks[0].Outputs")
           
           # スタックのOutputsから各値を取得
-          API_BASE_URL=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.API_BASE_URL_OUTPUT_KEY }}\").OutputValue")
           FRONTEND_BUCKET_NAME=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.FRONTEND_BUCKET_NAME_OUTPUT_KEY }}\").OutputValue")
           DISTRIBUTION_ID=$(echo $CFN_OUTPUTS | jq -r ".[] | select(.OutputKey==\"${{ env.DISTRIBUTION_ID_OUTPUT_KEY }}\").OutputValue")
 
           # stepのoutputsとして設定
-          echo "API_BASE_URL=${API_BASE_URL}" >> $GITHUB_OUTPUT
           echo "FRONTEND_BUCKET_NAME=${FRONTEND_BUCKET_NAME}" >> $GITHUB_OUTPUT
           echo "DISTRIBUTION_ID=${DISTRIBUTION_ID}" >> $GITHUB_OUTPUT
 
