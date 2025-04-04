@@ -14,6 +14,7 @@ function handler(event) {
       "media-src 'self' https:; " +
       "connect-src 'self' https:; " +
       "frame-src 'self' https:; " +
+      "frame-ancestors 'none'; " +
       "object-src 'none';",
   };
   headers["x-content-type-options"] = { value: "nosniff" };
