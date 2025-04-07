@@ -91,7 +91,7 @@ export class GlobalStack extends Stack {
                 {
                   byteMatchStatement: {
                     fieldToMatch: {
-                      singleHeader: { name: "host" }
+                      singleHeader: { Name: "host" }
                     },
                     positionalConstraint: "EXACTLY",
                     searchString: tenant.appDomainName,
