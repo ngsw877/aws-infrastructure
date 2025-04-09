@@ -15,7 +15,6 @@ const mainStack = new MainStack(app, 'TestMainStack', {
 const template = Template.fromStack(mainStack);
 
 describe('MainStack', () => {
-  // 必須のインフラ要素が正しく作成されているか確認
   test('基本インフラストラクチャが正しく作成されている', () => {
     // VPCとネットワーク
     template.resourceCountIs('AWS::EC2::VPC', 1);
@@ -26,6 +25,7 @@ describe('MainStack', () => {
 
     // バックエンド用リソース
     template.resourceCountIs('AWS::ElasticLoadBalancingV2::LoadBalancer', 1);
+    template.resourceCountIs('AWS::CertificateManager::Certificate', 1);
     template.resourceCountIs('AWS::ECS::Cluster', 1);
     template.resourceCountIs('AWS::ECS::Service', 1);
     template.resourceCountIs('AWS::ECS::TaskDefinition', 1);
@@ -53,7 +53,6 @@ describe('MainStack', () => {
     });
   });
 
-  // ループや動的生成テスト: ECSタスク定義のコンテナ
   test('ECSタスク定義に必要なコンテナが含まれている', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
@@ -72,7 +71,6 @@ describe('MainStack', () => {
     });
   });
 
-  // 重要な設定テスト: S3バケットのセキュリティ設定
   test('S3バケットは安全に構成されている', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
       PublicAccessBlockConfiguration: {
@@ -93,7 +91,6 @@ describe('MainStack', () => {
     });
   });
 
-  // フロントエンドのデプロイアーキテクチャテスト
   test('フロントエンドがS3+CloudFrontのアーキテクチャになっている', () => {
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: Match.objectLike({
@@ -106,7 +103,6 @@ describe('MainStack', () => {
     });
   });
 
-  // ECSサービスのCapacityProviderStrategyを確認
   test('ECSサービスがFARGATEを使用している', () => {
     template.hasResourceProperties('AWS::ECS::Service', {
       CapacityProviderStrategy: [
@@ -118,31 +114,137 @@ describe('MainStack', () => {
     });
   });
 
-  // ドメイン名とURLの伝播テスト
-  test('ドメイン名がCloudFrontとALBに正しく伝播されている', () => {
-    const appDomainName = params.mainStackProps.appDomainName;
-    const apiDomainName = `api.${appDomainName}`;
-
-    // CloudFrontのドメイン設定
+  test('各テナントのドメイン名がCloudFrontに正しく伝播されている', () => {
+    // CloudFrontが1つだけ存在することを確認
+    template.resourceCountIs('AWS::CloudFront::Distribution', 1);
+    
+    // CloudFrontリソースのLogicalID取得
+    const cfResources = template.findResources('AWS::CloudFront::Distribution');
+    const cloudFrontId = Object.keys(cfResources)[0];
+    
+    // 各テナントのドメイン名を取得
+    const tenantDomains = params.mainStackProps.tenants.map(tenant => tenant.appDomainName);
+    
+    // CloudFrontのドメイン設定 - 全テナントが含まれているか確認
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: Match.objectLike({
-        Aliases: Match.arrayWith([appDomainName]),
+        Aliases: Match.arrayWith(tenantDomains),
       }),
     });
 
-    // Route53のALBレコード
-    template.hasResourceProperties('AWS::Route53::RecordSet', {
-      Name: Match.stringLikeRegexp(`${apiDomainName}\\.`),
-      Type: 'A',
+    // Route53レコード設定の確認
+    for (const tenant of params.mainStackProps.tenants) {
+      template.hasResourceProperties('AWS::Route53::RecordSet', {
+        Name: `${tenant.appDomainName}.`,
+        Type: 'A',
+        HostedZoneId: tenant.route53HostedZoneId,
+        // CloudFrontドメインの参照確認
+        AliasTarget: Match.objectLike({
+          DNSName: {
+            'Fn::GetAtt': [
+              cloudFrontId,
+              'DomainName'
+            ]
+          },
+        }),
+      });
+    }
+  });
+
+  test('各テナントのドメイン名がALBに正しく伝播されている', () => {
+    // ALBが1つだけ存在することを確認
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::LoadBalancer', 1);
+    
+    // ALBリソースのLogicalID取得
+    const albResources = template.findResources('AWS::ElasticLoadBalancingV2::LoadBalancer');
+    const albId = Object.keys(albResources)[0];
+    
+    // 各テナントのAPIドメインに対するRoute53レコードを確認
+    for (const tenant of params.mainStackProps.tenants) {
+      const apiDomainName = `api.${tenant.appDomainName}`;
+      
+      // ALBドメインとRoute53レコードの設定確認
+      template.hasResourceProperties('AWS::Route53::RecordSet', {
+        Name: `${apiDomainName}.`,
+        Type: 'A',
+        HostedZoneId: tenant.route53HostedZoneId,
+        // ALBのドメイン参照パターン確認
+        AliasTarget: Match.objectLike({
+          // dualstack形式のDNS名参照を確認
+          DNSName: Match.objectLike({
+            'Fn::Join': Match.arrayEquals([
+              '',
+              Match.arrayWith([
+                'dualstack.',
+                {
+                  'Fn::GetAtt': [
+                    albId,
+                    'DNSName'
+                  ]
+                }
+              ])
+            ])
+          })
+        }),
+      });
+    }
+  });
+
+  test('ALB用のACM証明書が正しく設定されている', () => {
+    // ACM証明書のリソース取得とLogicalID取得
+    const acmResources = template.findResources('AWS::CertificateManager::Certificate');
+    const acmCertId = Object.keys(acmResources)[0];
+    
+    // 各テナントのAPIドメインを取得
+    const apiDomains = params.mainStackProps.tenants.map(tenant => `api.${tenant.appDomainName}`);
+    
+    // ACM証明書の設定を確認
+    template.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName: apiDomains[0], // プライマリドメイン
+      SubjectAlternativeNames: apiDomains.slice(1), // 代替ドメイン
+      ValidationMethod: 'DNS',
+    });
+
+    // ALBリスナーに証明書が設定されていることを確認
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::Listener', {
+      Protocol: 'HTTPS',
+      Port: 443,
+      Certificates: Match.arrayWith([
+        Match.objectLike({
+          CertificateArn: {
+            'Ref': acmCertId
+          }
+        })
+      ]),
     });
   });
 
-  // セキュリティテスト: WAF連携
+  test('各テナントのメール設定が正しく構成されている', () => {
+    for (const tenant of params.mainStackProps.tenants) {
+      // SESのドメイン検証設定
+      template.hasResourceProperties('AWS::SES::EmailIdentity', {
+        EmailIdentity: tenant.appDomainName,
+        MailFromAttributes: {
+          MailFromDomain: `bounce.${tenant.appDomainName}`,
+        },
+      });
+      
+      // DMARCレコードの設定
+      template.hasResourceProperties('AWS::Route53::RecordSet', {
+        Name: `_dmarc.${tenant.appDomainName}.`,
+        Type: 'TXT',
+        TTL: '3600',
+        ResourceRecords: [
+          `"v=DMARC1; p=none; rua=mailto:${params.mainStackProps.dmarcReportEmail}"`,
+        ],
+      });
+    }
+  });
+
   test('ALBにWAFが関連付けられている', () => {
     template.resourceCountIs('AWS::WAFv2::WebACLAssociation', 1);
   });
 
-  // Auroraのプロパティテスト
   test('Auroraのプロパティが正しく設定されている', () => {
     template.hasResourceProperties('AWS::RDS::DBCluster', {
       // エンジンバージョン
@@ -170,5 +272,4 @@ describe('MainStack', () => {
       EnableHttpEndpoint: true,
     });
   });
-
 }); 
