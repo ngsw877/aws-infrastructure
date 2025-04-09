@@ -19,7 +19,8 @@ export interface Tenant {
 export interface GlobalStackProps extends StackProps {
   tenants: Tenant[];
   logRetentionDays?: logs.RetentionDays;
-  allowedIpAddresses?: string[];
+  // IP制限の対象外とするパスのリスト
+  ipRestrictionExcludedPaths?: string[];
 } 
 
 export interface MainStackProps extends StackProps {

@@ -114,13 +114,7 @@ export class GlobalStack extends Stack {
                     statement: {
                       orStatement: {
                         statements: [
-                          ...[
-                            '/sample',
-                            '/product',
-                            "/login",
-                            "/register",
-                            '/_nuxt/',
-                          ].map(path => ({
+                          ...(props.ipRestrictionExcludedPaths || []).map(path => ({
                             byteMatchStatement: {
                               fieldToMatch: {
                                 uriPath: {}

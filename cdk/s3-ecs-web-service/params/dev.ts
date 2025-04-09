@@ -36,6 +36,13 @@ const globalStackProps: GlobalStackProps = {
   },
   crossRegionReferences: true,
   tenants: tenants,
+  ipRestrictionExcludedPaths: [
+    '/sample',
+    '/product',
+    '/login',
+    '/register',
+    '/_nuxt/'
+  ],
 };
 
 const mainStackProps: MainStackProps = {
