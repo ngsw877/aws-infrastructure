@@ -71,8 +71,8 @@ describe('MainStack', () => {
     });
   });
 
-  test('S3バケットは安全に構成されている', () => {
-    template.hasResourceProperties('AWS::S3::Bucket', {
+  test('全てのS3バケットは安全に構成されている', () => {
+    template.allResourcesProperties('AWS::S3::Bucket', {
       PublicAccessBlockConfiguration: {
         BlockPublicAcls: true,
         BlockPublicPolicy: true,
@@ -83,7 +83,7 @@ describe('MainStack', () => {
         ServerSideEncryptionConfiguration: Match.arrayWith([
           Match.objectLike({
             ServerSideEncryptionByDefault: Match.objectLike({
-              SSEAlgorithm: Match.anyValue(),
+              SSEAlgorithm: "AES256",
             }),
           }),
         ]),
