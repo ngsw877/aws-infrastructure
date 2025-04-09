@@ -215,9 +215,6 @@ describe("MainStack", () => {
   });
 
   test("各テナントのドメイン名がCloudFrontに正しく伝播されている", () => {
-    // CloudFrontが1つだけ存在することを確認
-    template.resourceCountIs("AWS::CloudFront::Distribution", 1);
-
     // CloudFrontリソースのLogicalID取得
     const cfResources = template.findResources("AWS::CloudFront::Distribution");
     const cloudFrontId = Object.keys(cfResources)[0];

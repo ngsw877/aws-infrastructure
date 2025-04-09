@@ -15,7 +15,7 @@ describe("GlobalStack", () => {
       tenant.allowedIpAddresses && tenant.allowedIpAddresses.length > 0,
   );
 
-  test("必要なリソースが作成される", () => {
+  test("各リソースの個数が正しいこと", () => {
     // ACM証明書は1つだけ作成される
     template.resourceCountIs("AWS::CertificateManager::Certificate", 1);
 
