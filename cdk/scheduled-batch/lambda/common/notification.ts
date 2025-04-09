@@ -1,6 +1,6 @@
 import axios from "axios";
-import { getParameterStoreValue } from "./ssm";
 import type { SendNotificationParams } from "../../types/lambda";
+import { getParameterStoreValue } from "./ssm";
 
 const LAMBDA_FUNCTION_NAME = process.env.AWS_LAMBDA_FUNCTION_NAME as string;
 

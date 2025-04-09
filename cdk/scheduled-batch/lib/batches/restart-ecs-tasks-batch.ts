@@ -1,12 +1,12 @@
-import * as cdk from "aws-cdk-lib";
 import * as path from "node:path";
+import * as cdk from "aws-cdk-lib";
 import { Stack } from "aws-cdk-lib";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as logs from "aws-cdk-lib/aws-logs";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 import type { RestartEcsTasksBatchProps } from "../../types/params";
 

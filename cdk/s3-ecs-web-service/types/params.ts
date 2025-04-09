@@ -1,6 +1,6 @@
 import type {
-  StackProps,
   Duration,
+  StackProps,
   aws_certificatemanager as acm,
   aws_logs as logs,
   aws_rds as rds,
@@ -21,12 +21,12 @@ export interface GlobalStackProps extends StackProps {
   logRetentionDays?: logs.RetentionDays;
   // IP制限の対象外とするパスのリスト
   ipRestrictionExcludedPaths?: string[];
-} 
+}
 
 export interface MainStackProps extends StackProps {
   // マルチテナント設定
   tenants: Tenant[];
-  
+
   envName: string;
   natGatewaysCount: number;
   logRetentionDays?: logs.RetentionDays;

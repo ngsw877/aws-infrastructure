@@ -1,20 +1,24 @@
 import {
-  Stack,
   aws_events as events,
-  aws_events_targets as events_targets,
-  aws_lambda as lambda,
-  aws_logs as logs,
   Duration,
   RemovalPolicy,
-  aws_logs_destinations as logs_destinations,
+  Stack,
+  aws_events_targets as events_targets,
   aws_iam as iam,
+  aws_lambda as lambda,
+  aws_logs as logs,
+  aws_logs_destinations as logs_destinations,
   aws_ssm as ssm,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import type { EcsTaskMonitoringStackProps } from "../props";
 
 export class EcsTaskMonitoringStack extends Stack {
-  constructor(scope: Construct, id: string, props: EcsTaskMonitoringStackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: EcsTaskMonitoringStackProps,
+  ) {
     super(scope, id, props);
 
     // パラメータストアの存在をチェックしつつ代入
@@ -22,13 +26,17 @@ export class EcsTaskMonitoringStack extends Stack {
     const slackWebhookUrl = ssm.StringParameter.valueForStringParameter(
       this,
       props.slackWebhookUrlParameterPath,
-    )
+    );
 
     // CloudWatch Logsグループ（ログ保存用）
-    const taskStopEventLogGroup = new logs.LogGroup(this, "TaskStopEventLogGroup", {
-      retention: props.logRetentionDays,
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
+    const taskStopEventLogGroup = new logs.LogGroup(
+      this,
+      "TaskStopEventLogGroup",
+      {
+        retention: props.logRetentionDays,
+        removalPolicy: RemovalPolicy.DESTROY,
+      },
+    );
 
     // タスク異常終了を通知するLambda
     const taskStopNotificationLambdaFunction = new lambda.Function(
@@ -45,7 +53,8 @@ export class EcsTaskMonitoringStack extends Stack {
           IS_ALERT_ENABLED: props.isProduction.toString(),
         },
         logGroup: new logs.LogGroup(
-          this, "TaskStopNotificationLambdaLogGroup",
+          this,
+          "TaskStopNotificationLambdaLogGroup",
           {
             retention: props.logRetentionDays,
             removalPolicy: RemovalPolicy.DESTROY,
@@ -57,8 +66,10 @@ export class EcsTaskMonitoringStack extends Stack {
     taskStopEventLogGroup.grantRead(taskStopNotificationLambdaFunction);
 
     // CloudWatch LogsからLambdaへのサブスクリプションフィルターを作成
-    taskStopEventLogGroup.addSubscriptionFilter('TaskStopEventSubscription', {
-      destination: new logs_destinations.LambdaDestination(taskStopNotificationLambdaFunction),
+    taskStopEventLogGroup.addSubscriptionFilter("TaskStopEventSubscription", {
+      destination: new logs_destinations.LambdaDestination(
+        taskStopNotificationLambdaFunction,
+      ),
       filterPattern: logs.FilterPattern.allEvents(), // すべてのログイベントを対象とする
     });
 
@@ -71,7 +82,7 @@ export class EcsTaskMonitoringStack extends Stack {
           desiredStatus: ["STOPPED"],
           lastStatus: ["STOPPED"],
           // 以下の2つの条件のいずれかを満たす場合に通知する ($orを使用)
-          // 
+          //
           // 条件 A:
           //   - コンテナの exitCode が 0 ではない、または exitCode が存在しない
           //   - かつ、タスクの停止理由が以下のいずれでもない
@@ -85,10 +96,7 @@ export class EcsTaskMonitoringStack extends Stack {
             // 条件 Aのフィルター
             {
               containers: {
-                exitCode: [
-                  { "anything-but": [0] },
-                  { exists: false },
-                ],
+                exitCode: [{ "anything-but": [0] }, { exists: false }],
               },
               stoppedReason: [
                 {
@@ -117,15 +125,21 @@ export class EcsTaskMonitoringStack extends Stack {
     });
 
     // ターゲット: CloudWatch Logs（タスク終了イベントをログに保存）
-    eventRule.addTarget(new events_targets.CloudWatchLogGroup(taskStopEventLogGroup));
+    eventRule.addTarget(
+      new events_targets.CloudWatchLogGroup(taskStopEventLogGroup),
+    );
 
     // デバッグ用のEventBridgeルールを作成
     if (props.isDebug) {
       // CloudWatch Logsグループ（すべてのタスク停止イベントを保存）
-      const debugTaskStopEventLogGroup = new logs.LogGroup(this, "DebugTaskStopEventLogGroup", {
-        retention: props.logRetentionDays,
-        removalPolicy: RemovalPolicy.DESTROY,
-      });
+      const debugTaskStopEventLogGroup = new logs.LogGroup(
+        this,
+        "DebugTaskStopEventLogGroup",
+        {
+          retention: props.logRetentionDays,
+          removalPolicy: RemovalPolicy.DESTROY,
+        },
+      );
       // EventBridgeルール（すべてのタスク停止イベントをCloudWatch Logsに送信）
       const debugEventRule = new events.Rule(this, "DebugTaskStopEventRule", {
         eventPattern: {
@@ -136,7 +150,9 @@ export class EcsTaskMonitoringStack extends Stack {
           },
         },
       });
-      debugEventRule.addTarget(new events_targets.CloudWatchLogGroup(debugTaskStopEventLogGroup));
+      debugEventRule.addTarget(
+        new events_targets.CloudWatchLogGroup(debugTaskStopEventLogGroup),
+      );
     }
   }
 }

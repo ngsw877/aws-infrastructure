@@ -1,9 +1,9 @@
 import {
-  Stack,
   Duration,
+  RemovalPolicy,
+  Stack,
   aws_s3 as s3,
   aws_wafv2 as wafv2,
-  RemovalPolicy,
 } from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
@@ -19,17 +19,18 @@ export class GlobalStack extends Stack {
 
     // マルチドメイン対応のDNS検証用ホストゾーンマッピング
     const hostedZoneMap: Record<string, route53.IHostedZone> = {};
-    
+
     // 各テナントのホストゾーンをマッピング
     for (const tenant of props.tenants) {
-      hostedZoneMap[tenant.appDomainName] = route53.HostedZone.fromHostedZoneAttributes(
-        this,
-        `HostedZone-${tenant.appDomainName.replace(/\./g, '-')}`,
-        {
-          hostedZoneId: tenant.route53HostedZoneId,
-          zoneName: tenant.appDomainName,
-        }
-      );
+      hostedZoneMap[tenant.appDomainName] =
+        route53.HostedZone.fromHostedZoneAttributes(
+          this,
+          `HostedZone-${tenant.appDomainName.replace(/\./g, "-")}`,
+          {
+            hostedZoneId: tenant.route53HostedZoneId,
+            zoneName: tenant.appDomainName,
+          },
+        );
     }
 
     // CloudFront用のACM証明書（複数ドメイン対応）
@@ -39,7 +40,9 @@ export class GlobalStack extends Stack {
       {
         certificateName: `${this.stackName}-cloudfront-certificate`,
         domainName: props.tenants[0].appDomainName, // プライマリドメイン
-        subjectAlternativeNames: props.tenants.slice(1).map(tenant => tenant.appDomainName), // 追加ドメイン
+        subjectAlternativeNames: props.tenants
+          .slice(1)
+          .map((tenant) => tenant.appDomainName), // 追加ドメイン
         validation: acm.CertificateValidation.fromDnsMultiZone(hostedZoneMap),
       },
     );
@@ -71,17 +74,17 @@ export class GlobalStack extends Stack {
         // IPセットを直接作成
         const ipSet = new wafv2.CfnIPSet(
           this,
-          `AllowedIpSet-${tenant.appDomainName.replace(/\./g, '-')}`,
+          `AllowedIpSet-${tenant.appDomainName.replace(/\./g, "-")}`,
           {
             scope: "CLOUDFRONT",
             ipAddressVersion: "IPV4",
             addresses: tenant.allowedIpAddresses,
-          }
+          },
         );
 
         // IP制限がある場合のルール
         const rule: wafv2.CfnWebACL.RuleProperty = {
-          name: `IPRestriction-${tenant.appDomainName.replace(/\./g, '-')}`,
+          name: `IPRestriction-${tenant.appDomainName.replace(/\./g, "-")}`,
           priority: 10 + index,
           action: { block: {} },
           statement: {
@@ -91,22 +94,22 @@ export class GlobalStack extends Stack {
                 {
                   byteMatchStatement: {
                     fieldToMatch: {
-                      singleHeader: { Name: "host" }
+                      singleHeader: { Name: "host" },
                     },
                     positionalConstraint: "EXACTLY",
                     searchString: tenant.appDomainName,
-                    textTransformations: [{ priority: 0, type: "NONE" }]
-                  }
+                    textTransformations: [{ priority: 0, type: "NONE" }],
+                  },
                 },
                 // 許可IPリスト以外からのアクセスを制限
                 {
                   notStatement: {
                     statement: {
                       ipSetReferenceStatement: {
-                        arn: ipSet.attrArn
-                      }
-                    }
-                  }
+                        arn: ipSet.attrArn,
+                      },
+                    },
+                  },
                 },
                 // IP制限の対象外のパス
                 {
@@ -114,31 +117,35 @@ export class GlobalStack extends Stack {
                     statement: {
                       orStatement: {
                         statements: [
-                          ...(props.ipRestrictionExcludedPaths || []).map(path => ({
-                            byteMatchStatement: {
-                              fieldToMatch: {
-                                uriPath: {}
+                          ...(props.ipRestrictionExcludedPaths || []).map(
+                            (path) => ({
+                              byteMatchStatement: {
+                                fieldToMatch: {
+                                  uriPath: {},
+                                },
+                                positionalConstraint: "STARTS_WITH",
+                                searchString: path,
+                                textTransformations: [
+                                  { priority: 0, type: "NONE" },
+                                ],
                               },
-                              positionalConstraint: "STARTS_WITH",
-                              searchString: path,
-                              textTransformations: [{ priority: 0, type: "NONE" }]
-                            }
-                          }))
-                        ]
-                      }
-                    }
-                  }
-                }
-              ]
-            }
+                            }),
+                          ),
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
           },
           visibilityConfig: {
-            metricName: `IPRestriction-${tenant.appDomainName.replace(/\./g, '-')}`,
+            metricName: `IPRestriction-${tenant.appDomainName.replace(/\./g, "-")}`,
             cloudWatchMetricsEnabled: true,
             sampledRequestsEnabled: true,
           },
         };
-        
+
         wafRules.push(rule);
       }
     });
@@ -175,7 +182,7 @@ export class GlobalStack extends Stack {
         enforceSSL: true,
         removalPolicy: RemovalPolicy.DESTROY,
         autoDeleteObjects: true,
-      }
+      },
     );
 
     // WAFログ出力設定（Blockしたリクエストのみログ出力）
@@ -201,7 +208,7 @@ export class GlobalStack extends Stack {
             },
           ],
         },
-      }
+      },
     );
 
     // ログバケットの作成が完了してからWAFログ出力設定を作成する（でないとバケットポリシー関連のエラーが発生してスタックデプロイに失敗することがある）

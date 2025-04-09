@@ -1,8 +1,8 @@
 import * as cdk from "aws-cdk-lib";
 import type { Construct } from "constructs";
+import type { ScheduledBatchStackParams } from "../types/params";
 import { HelloWorldBatch } from "./batches/hello-world";
 import { RestartEcsTasksBatch } from "./batches/restart-ecs-tasks-batch";
-import type { ScheduledBatchStackParams } from "../types/params";
 
 export class ScheduledBatchStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ScheduledBatchStackParams) {

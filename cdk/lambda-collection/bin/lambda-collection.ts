@@ -4,5 +4,4 @@ import * as cdk from "aws-cdk-lib";
 import { LambdaCollectionStack } from "../lib/lambda-collection-stack";
 
 const app = new cdk.App();
-new LambdaCollectionStack(app, "LambdaCollection", {
-});
+new LambdaCollectionStack(app, "LambdaCollection", {});

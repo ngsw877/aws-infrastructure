@@ -9,7 +9,9 @@ const app = new cdk.App();
 const envName = app.node.tryGetContext("env");
 
 if (!envName) {
-  console.error( "-cオプションでデプロイ先環境を指定してください。\n 例: cdk deploy -c env=<環境名>");
+  console.error(
+    "-cオプションでデプロイ先環境を指定してください。\n 例: cdk deploy -c env=<環境名>",
+  );
   process.exit(1);
 }
 
@@ -24,22 +26,21 @@ const globalStack = new GlobalStack(
 );
 
 // 東京リージョン用のスタック
-new MainStack(
-  app,
-  `${envName}-S3EcsWebServiceMain`,
-  {
-    ...params.mainStackProps,
-    cloudfrontCertificate: globalStack.cloudfrontCertificate,
-    cloudFrontWebAcl: globalStack.cloudFrontWebAcl,
-  },
-);
+new MainStack(app, `${envName}-S3EcsWebServiceMain`, {
+  ...params.mainStackProps,
+  cloudfrontCertificate: globalStack.cloudfrontCertificate,
+  cloudFrontWebAcl: globalStack.cloudFrontWebAcl,
+});
 
 function getParams(envName: string) {
   try {
     const params = require(`../params/${envName}`).params;
     return params;
   } catch (error) {
-    console.error(`環境 "${envName}" のパラメータ読み込みに失敗しました:`, error);
+    console.error(
+      `環境 "${envName}" のパラメータ読み込みに失敗しました:`,
+      error,
+    );
     process.exit(1);
   }
 }

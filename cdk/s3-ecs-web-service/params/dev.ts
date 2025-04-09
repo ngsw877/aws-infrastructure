@@ -1,27 +1,28 @@
-import { 
-  Duration,
-  aws_logs as logs,
-  aws_rds as rds
-} from "aws-cdk-lib";
-import type { GlobalStackProps, MainStackProps, Params, Tenant } from "../types/params";
-import { devSecrets } from './secrets';
+import { Duration, aws_logs as logs, aws_rds as rds } from "aws-cdk-lib";
+import type {
+  GlobalStackProps,
+  MainStackProps,
+  Params,
+  Tenant,
+} from "../types/params";
+import { devSecrets } from "./secrets";
 // スナップショットテスト用
 const dummyAccountId = "123456789012";
 
 // マルチドメイン対応のテナント設定
 const tenants: Tenant[] = [
-  { 
+  {
     route53HostedZoneId: devSecrets.domains.sample.route53HostedZoneId,
     appDomainName: devSecrets.domains.sample.appDomainName,
     // IP制限あり
     allowedIpAddresses: devSecrets.allowedIpAddresses.sample,
   },
-  { 
+  {
     route53HostedZoneId: devSecrets.domains.hoge.route53HostedZoneId,
-    appDomainName: devSecrets.domains.hoge.appDomainName
+    appDomainName: devSecrets.domains.hoge.appDomainName,
     // IP制限なし
   },
-  { 
+  {
     route53HostedZoneId: devSecrets.domains.study.route53HostedZoneId,
     appDomainName: devSecrets.domains.study.appDomainName,
     // IP制限あり
@@ -37,11 +38,11 @@ const globalStackProps: GlobalStackProps = {
   crossRegionReferences: true,
   tenants: tenants,
   ipRestrictionExcludedPaths: [
-    '/sample',
-    '/product',
-    '/login',
-    '/register',
-    '/_nuxt/'
+    "/sample",
+    "/product",
+    "/login",
+    "/register",
+    "/_nuxt/",
   ],
 };
 

@@ -1,38 +1,38 @@
+import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
 import {
+  CfnOutput,
   Duration,
-  Stack,
+  Fn,
   PhysicalName,
   RemovalPolicy,
-  aws_ec2 as ec2,
-  aws_cloudfront as cloudfront,
-  aws_route53 as route53,
-  aws_route53_targets as targets,
+  Stack,
   aws_certificatemanager as acm,
-  aws_elasticloadbalancingv2 as elbv2,
-  aws_ecs as ecs,
-  aws_s3 as s3,
-  aws_iam as iam,
   aws_applicationautoscaling as applicationautoscaling,
+  aws_chatbot as chatbot,
+  aws_cloudfront as cloudfront,
   aws_cloudwatch as cw,
   aws_cloudwatch_actions as cw_actions,
+  aws_ec2 as ec2,
   aws_ecr as ecr,
-  aws_logs as logs,
-  region_info as ri,
-  aws_kms as kms,
+  aws_ecs as ecs,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_kinesisfirehose as firehose,
-  aws_ssm as ssm,
+  aws_iam as iam,
+  aws_kms as kms,
+  aws_logs as logs,
+  aws_rds as rds,
+  region_info as ri,
+  aws_route53 as route53,
+  aws_s3 as s3,
   aws_scheduler as scheduler,
   aws_secretsmanager as secretsmanager,
-  aws_rds as rds,
-  CfnOutput,
-  aws_wafv2 as wafv2,
   aws_ses as ses,
   aws_sns as sns,
-  aws_chatbot as chatbot,
-  Fn,
+  aws_ssm as ssm,
+  aws_route53_targets as targets,
+  aws_wafv2 as wafv2,
 } from "aws-cdk-lib";
 import type { Construct } from "constructs";
-import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
 import type { MainStackProps } from "../types/params";
 
 export class MainStack extends Stack {
@@ -48,14 +48,15 @@ export class MainStack extends Stack {
     // ベースドメインとホストゾーンのマッピング
     const baseDomainZoneMap: Record<string, route53.IHostedZone> = {};
     for (const tenant of props.tenants) {
-      baseDomainZoneMap[tenant.appDomainName] = route53.HostedZone.fromHostedZoneAttributes(
-        this,
-        `HostedZone-${tenant.appDomainName.replace(/\./g, '-')}`,
-        {
-          hostedZoneId: tenant.route53HostedZoneId,
-          zoneName: tenant.appDomainName,
-        }
-      );
+      baseDomainZoneMap[tenant.appDomainName] =
+        route53.HostedZone.fromHostedZoneAttributes(
+          this,
+          `HostedZone-${tenant.appDomainName.replace(/\./g, "-")}`,
+          {
+            hostedZoneId: tenant.route53HostedZoneId,
+            zoneName: tenant.appDomainName,
+          },
+        );
     }
 
     // APIドメインとホストゾーンのマッピング
@@ -132,7 +133,9 @@ export class MainStack extends Stack {
         {
           allowedMethods: [s3.HttpMethods.GET],
           // 全テナントドメイン
-          allowedOrigins: props.tenants.map(tenant => `https://${tenant.appDomainName}`), // 全テナントドメイン
+          allowedOrigins: props.tenants.map(
+            (tenant) => `https://${tenant.appDomainName}`,
+          ), // 全テナントドメイン
           allowedHeaders: ["*"],
           maxAge: 3600,
         },
@@ -179,7 +182,8 @@ export class MainStack extends Stack {
         functionName: `${this.stackName}-FrontendHttpSecurityHeaderFunction`,
         runtime: cloudfront.FunctionRuntime.JS_2_0,
         code: cloudfront.FunctionCode.fromFile({
-          filePath: "cloudfront-functions/FrontendHttpSecurityHeaderFunction.js",
+          filePath:
+            "cloudfront-functions/FrontendHttpSecurityHeaderFunction.js",
         }),
       },
     );
@@ -190,7 +194,7 @@ export class MainStack extends Stack {
       cloudFrontDistributionProps: {
         certificate: props.cloudfrontCertificate,
         // 全テナントドメイン
-        domainNames: props.tenants.map(tenant => tenant.appDomainName),
+        domainNames: props.tenants.map((tenant) => tenant.appDomainName),
         webAclId: props.cloudFrontWebAcl?.attrArn,
         defaultBehavior: {
           viewerProtocolPolicy:
@@ -253,13 +257,19 @@ export class MainStack extends Stack {
 
     // 各テナントドメインにCloudFrontエイリアスレコードを作成
     for (const tenant of props.tenants) {
-      new route53.ARecord(this, `CloudFrontAliasRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: baseDomainZoneMap[tenant.appDomainName],
-        recordName: tenant.appDomainName,
-        target: route53.RecordTarget.fromAlias(
-          new targets.CloudFrontTarget(frontendCloudFront.cloudFrontWebDistribution)
-        ),
-      });
+      new route53.ARecord(
+        this,
+        `CloudFrontAliasRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
+        {
+          zone: baseDomainZoneMap[tenant.appDomainName],
+          recordName: tenant.appDomainName,
+          target: route53.RecordTarget.fromAlias(
+            new targets.CloudFrontTarget(
+              frontendCloudFront.cloudFrontWebDistribution,
+            ),
+          ),
+        },
+      );
     }
 
     /*************************************
@@ -271,7 +281,9 @@ export class MainStack extends Stack {
       certificateName: `${this.stackName}-alb-certificate`,
       domainName: `api.${props.tenants[0].appDomainName}`, // プライマリドメインのAPIドメイン
       subjectAlternativeNames: [
-        ...props.tenants.slice(1).map(tenant => `api.${tenant.appDomainName}`), // 他テナントのAPIドメイン
+        ...props.tenants
+          .slice(1)
+          .map((tenant) => `api.${tenant.appDomainName}`), // 他テナントのAPIドメイン
       ],
       validation: acm.CertificateValidation.fromDnsMultiZone(apiDomainZoneMap),
     });
@@ -301,13 +313,17 @@ export class MainStack extends Stack {
 
     // 各テナントドメインにALBエイリアスレコードを作成
     for (const tenant of props.tenants) {
-      new route53.ARecord(this, `AlbAliasRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: baseDomainZoneMap[tenant.appDomainName],
-        recordName: `api.${tenant.appDomainName}`,
-        target: route53.RecordTarget.fromAlias(
-          new targets.LoadBalancerTarget(backendAlb)
-        ),
-      });
+      new route53.ARecord(
+        this,
+        `AlbAliasRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
+        {
+          zone: baseDomainZoneMap[tenant.appDomainName],
+          recordName: `api.${tenant.appDomainName}`,
+          target: route53.RecordTarget.fromAlias(
+            new targets.LoadBalancerTarget(backendAlb),
+          ),
+        },
+      );
     }
 
     // logsBucketおよびバケットポリシーの作成が完了してからALBを作成する（でないと権限エラーになりスタックデプロイに失敗する）
@@ -380,7 +396,7 @@ export class MainStack extends Stack {
 
     // ALB用WAF WebACL
     const albWebAcl = new wafv2.CfnWebACL(this, "AlbWebACL", {
-      defaultAction: { allow: {} },  // デフォルトで許可
+      defaultAction: { allow: {} }, // デフォルトで許可
       scope: "REGIONAL",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
@@ -426,26 +442,30 @@ export class MainStack extends Stack {
     });
 
     // WAFログ出力設定
-    const wafLogConfig = new wafv2.CfnLoggingConfiguration(this, "AlbWafLogConfig", {
-      logDestinationConfigs: [albWafLogsBucket.bucketArn],
-      resourceArn: albWebAcl.attrArn,
-      loggingFilter: {
-        DefaultBehavior: "DROP",
-        Filters: [
-          {
-            Behavior: "KEEP",
-            Conditions: [
-              {
-                ActionCondition: {
-                  Action: "BLOCK",
+    const wafLogConfig = new wafv2.CfnLoggingConfiguration(
+      this,
+      "AlbWafLogConfig",
+      {
+        logDestinationConfigs: [albWafLogsBucket.bucketArn],
+        resourceArn: albWebAcl.attrArn,
+        loggingFilter: {
+          DefaultBehavior: "DROP",
+          Filters: [
+            {
+              Behavior: "KEEP",
+              Conditions: [
+                {
+                  ActionCondition: {
+                    Action: "BLOCK",
+                  },
                 },
-              },
-            ],
-            Requirement: "MEETS_ALL",
-          },
-        ],
+              ],
+              Requirement: "MEETS_ALL",
+            },
+          ],
+        },
       },
-    });
+    );
 
     // バケットポリシーが完全に作成された後にWAFログ設定を行うように依存関係を追加
     wafLogConfig.node.addDependency(albWafLogsBucket);
@@ -466,13 +486,13 @@ export class MainStack extends Stack {
         resources: [albWafLogsBucket.bucketArn],
         conditions: {
           StringEquals: {
-            "aws:SourceAccount": [this.account]
+            "aws:SourceAccount": [this.account],
           },
           ArnLike: {
-            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`]
-          }
-        }
-      })
+            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`],
+          },
+        },
+      }),
     );
     albWafLogsBucket.addToResourcePolicy(
       new iam.PolicyStatement({
@@ -484,13 +504,13 @@ export class MainStack extends Stack {
         conditions: {
           StringEquals: {
             "s3:x-amz-acl": "bucket-owner-full-control",
-            "aws:SourceAccount": [this.account]
+            "aws:SourceAccount": [this.account],
           },
           ArnLike: {
-            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`]
-          }
-        }
-      })
+            "aws:SourceArn": [`arn:aws:logs:${this.region}:${this.account}:*`],
+          },
+        },
+      }),
     );
 
     // Data Firehose関係
@@ -701,7 +721,7 @@ export class MainStack extends Stack {
             }),
           ],
         }),
-        
+
         // S3アップロード用の権限を追加
         s3UploadPolicy: new iam.PolicyDocument({
           statements: [
@@ -713,7 +733,7 @@ export class MainStack extends Stack {
                 "s3:DeleteObject",
                 "s3:ListBucket",
                 "s3:GetObjectAcl",
-                "s3:PutObjectAcl"
+                "s3:PutObjectAcl",
               ],
               resources: [
                 uploadedFilesBucket.bucketArn,
@@ -742,39 +762,39 @@ export class MainStack extends Stack {
     const dbName = "sample_app";
 
     // Secrets Manager（DB認証情報を設定）
-    const dbSecret = new secretsmanager.Secret(this, 'AuroraSecret', {
+    const dbSecret = new secretsmanager.Secret(this, "AuroraSecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: 'webapp',
+          username: "webapp",
           dbname: dbName,
         }),
-        generateStringKey: 'password',
+        generateStringKey: "password",
         excludeCharacters: '"@/\\',
         excludePunctuation: true,
       },
     });
 
     // ReadOnlyユーザー用シークレット
-    new secretsmanager.Secret(this, 'AuroraReadOnlySecret', {
+    new secretsmanager.Secret(this, "AuroraReadOnlySecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: 'readonly_user',
+          username: "readonly_user",
           dbname: dbName,
         }),
-        generateStringKey: 'password',
+        generateStringKey: "password",
         excludeCharacters: '"@/\\',
         excludePunctuation: true,
       },
     });
 
     // ReadWriteユーザー用シークレット
-    new secretsmanager.Secret(this, 'AuroraReadWriteSecret', {
+    new secretsmanager.Secret(this, "AuroraReadWriteSecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: 'readwrite_user',
+          username: "readwrite_user",
           dbname: dbName,
         }),
-        generateStringKey: 'password',
+        generateStringKey: "password",
         excludeCharacters: '"@/\\',
         excludePunctuation: true,
       },
@@ -826,7 +846,9 @@ export class MainStack extends Stack {
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this,
             "AppContainerDefAppKeyParam",
-            { parameterName: `/${this.stackName}/ecs-task-def/app/env-vars/app-key` },
+            {
+              parameterName: `/${this.stackName}/ecs-task-def/app/env-vars/app-key`,
+            },
           ),
         ),
       },
@@ -836,7 +858,10 @@ export class MainStack extends Stack {
 
     // log-routerコンテナ
     backendEcsTask.addFirelensLogRouter("log-router", {
-      image: ecs.ContainerImage.fromEcrRepository(backendEcrRepository, "log-router"),
+      image: ecs.ContainerImage.fromEcrRepository(
+        backendEcrRepository,
+        "log-router",
+      ),
       environment: {
         KINESIS_APP_DELIVERY_STREAM: backendAppLogDeliveryStream.ref,
         KINESIS_WEB_DELIVERY_STREAM: backendWebLogDeliveryStream.ref,
@@ -847,7 +872,9 @@ export class MainStack extends Stack {
           ssm.StringParameter.fromSecureStringParameterAttributes(
             this,
             "LogRouterContainerDefAppLogSlackWebhookUrlParam",
-            { parameterName: `/${this.stackName}/ecs-task-def/log-router/env-vars/app-log-slack-webhook-url` },
+            {
+              parameterName: `/${this.stackName}/ecs-task-def/log-router/env-vars/app-log-slack-webhook-url`,
+            },
           ),
         ),
       },
@@ -871,11 +898,15 @@ export class MainStack extends Stack {
     });
 
     // ECSサービス用セキュリティグループ
-    const backendEcsServiceSecurityGroup = new ec2.SecurityGroup(this, "BackendEcsServiceSecurityGroup", {
-      vpc,
-      description: "Security group for Backend ECS Service",
-      allowAllOutbound: true, // for AWS APIs
-    });
+    const backendEcsServiceSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "BackendEcsServiceSecurityGroup",
+      {
+        vpc,
+        description: "Security group for Backend ECS Service",
+        allowAllOutbound: true, // for AWS APIs
+      },
+    );
 
     // ECSサービス
     const backendEcsService = new ecs.FargateService(
@@ -1003,14 +1034,14 @@ export class MainStack extends Stack {
       "AutoScalingSchedulerExecutionRole",
       {
         assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
-      }
+      },
     );
     autoScalingSchedulerExecutionRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["application-autoscaling:RegisterScalableTarget"],
         resources: ["*"], // CDKではARNを取得できないため"*"を指定
-      })
+      }),
     );
 
     // ECSタスクを停止するスケジュール（スケーラブルターゲットの最小・最大タスク数を0に設定する）
@@ -1029,7 +1060,7 @@ export class MainStack extends Stack {
           ScalableDimension: "ecs:service:DesiredCount",
           ResourceId: `service/${ecsCluster.clusterName}/${ecsServiceName}`,
           MinCapacity: 0,
-          MaxCapacity: 0
+          MaxCapacity: 0,
         }),
       },
     });
@@ -1050,7 +1081,7 @@ export class MainStack extends Stack {
           ScalableDimension: "ecs:service:DesiredCount",
           ResourceId: `service/${ecsCluster.clusterName}/${ecsServiceName}`,
           MinCapacity: props.backendMinTaskCount, // 元の最小タスク数
-          MaxCapacity: props.backendMaxTaskCount  // 元の最大タスク数
+          MaxCapacity: props.backendMaxTaskCount, // 元の最大タスク数
         }),
       },
     });
@@ -1081,10 +1112,14 @@ export class MainStack extends Stack {
     });
 
     // KMSキー
-    const auroraEncryptionKey = new kms.Key(this, "AuroraStorageEncryptionKey", {
-      enableKeyRotation: true,
-      description: "KMS key for Aurora storage encryption",
-    });
+    const auroraEncryptionKey = new kms.Key(
+      this,
+      "AuroraStorageEncryptionKey",
+      {
+        enableKeyRotation: true,
+        description: "KMS key for Aurora storage encryption",
+      },
+    );
 
     // Aurora Serverless cluster
     const dbCluster = new rds.DatabaseCluster(this, "AuroraServerlessCluster", {
@@ -1158,45 +1193,37 @@ export class MainStack extends Stack {
       }),
     );
     // 開始スケジュール
-    new scheduler.CfnSchedule(
-      this,
-      "AuroraStartSchedule",
-      {
-        state: props.auroraSchedulerState,
-        scheduleExpression: "cron(20 7 ? * MON-FRI *)", // DBの起動に時間がかかるため、ECSのタスク開始時刻より40分早める
-        scheduleExpressionTimezone: "Asia/Tokyo",
-        flexibleTimeWindow: {
-          mode: "OFF",
-        },
-        target: {
-          arn: "arn:aws:scheduler:::aws-sdk:rds:startDBCluster",
-          roleArn: auroraSchedulerExecutionRole.roleArn,
-          input: JSON.stringify({
-            DbClusterIdentifier: dbCluster.clusterIdentifier,
-          }),
-        },
+    new scheduler.CfnSchedule(this, "AuroraStartSchedule", {
+      state: props.auroraSchedulerState,
+      scheduleExpression: "cron(20 7 ? * MON-FRI *)", // DBの起動に時間がかかるため、ECSのタスク開始時刻より40分早める
+      scheduleExpressionTimezone: "Asia/Tokyo",
+      flexibleTimeWindow: {
+        mode: "OFF",
       },
-    );
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:rds:startDBCluster",
+        roleArn: auroraSchedulerExecutionRole.roleArn,
+        input: JSON.stringify({
+          DbClusterIdentifier: dbCluster.clusterIdentifier,
+        }),
+      },
+    });
     // 停止スケジュール
-    new scheduler.CfnSchedule(
-      this,
-      "AuroraStopSchedule",
-      {
-        state: props.auroraSchedulerState,
-        scheduleExpression: "cron(0 21 ? * MON-FRI *)",
-        scheduleExpressionTimezone: "Asia/Tokyo",
-        flexibleTimeWindow: {
-          mode: "OFF",
-        },
-        target: {
-          arn: "arn:aws:scheduler:::aws-sdk:rds:stopDBCluster",
-          roleArn: auroraSchedulerExecutionRole.roleArn,
-          input: JSON.stringify({
-            DbClusterIdentifier: dbCluster.clusterIdentifier,
-          }),
-        },
+    new scheduler.CfnSchedule(this, "AuroraStopSchedule", {
+      state: props.auroraSchedulerState,
+      scheduleExpression: "cron(0 21 ? * MON-FRI *)",
+      scheduleExpressionTimezone: "Asia/Tokyo",
+      flexibleTimeWindow: {
+        mode: "OFF",
       },
-    );
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:rds:stopDBCluster",
+        roleArn: auroraSchedulerExecutionRole.roleArn,
+        input: JSON.stringify({
+          DbClusterIdentifier: dbCluster.clusterIdentifier,
+        }),
+      },
+    });
 
     // 踏み台サーバー
     const bastionHost = new ec2.BastionHostLinux(this, "BastionHost", {
@@ -1237,20 +1264,28 @@ export class MainStack extends Stack {
     // 各テナントドメインのSES設定
     for (const tenant of props.tenants) {
       // SES ID
-      new ses.EmailIdentity(this, `EmailIdentity-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        identity: ses.Identity.publicHostedZone(baseDomainZoneMap[tenant.appDomainName]),
-        mailFromDomain: `bounce.${tenant.appDomainName}`,
-      });
+      new ses.EmailIdentity(
+        this,
+        `EmailIdentity-${tenant.appDomainName.replace(/\./g, "-")}`,
+        {
+          identity: ses.Identity.publicHostedZone(
+            baseDomainZoneMap[tenant.appDomainName],
+          ),
+          mailFromDomain: `bounce.${tenant.appDomainName}`,
+        },
+      );
 
       // DMARC設定
-      new route53.TxtRecord(this, `DmarcRecord-${tenant.appDomainName.replace(/\./g, '-')}`, {
-        zone: baseDomainZoneMap[tenant.appDomainName],
-        recordName: `_dmarc.${tenant.appDomainName}`,
-        values: [
-          `v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`,
-        ],
-        ttl: Duration.hours(1),
-      });
+      new route53.TxtRecord(
+        this,
+        `DmarcRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
+        {
+          zone: baseDomainZoneMap[tenant.appDomainName],
+          recordName: `_dmarc.${tenant.appDomainName}`,
+          values: [`v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`],
+          ttl: Duration.hours(1),
+        },
+      );
     }
 
     /*************************************
@@ -1259,45 +1294,37 @@ export class MainStack extends Stack {
     const warningSnsTopic = new sns.Topic(this, "WarningSnsTopic", {});
 
     // Chatbot用IAMロール
-    const slackChatbotRole = new iam.Role(
-      this,
-      "SlackChatbotRole",
-      {
-        assumedBy: new iam.ServicePrincipal("chatbot.amazonaws.com"),
-        inlinePolicies: {
-          SlackNotificationChatBotPolicy: new iam.PolicyDocument({
-            statements: [
-              new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                actions: [
-                  "cloudwatch:Describe*",
-                  "cloudwatch:Get*",
-                  "cloudwatch:List*",
-                ],
-                resources: ["*"],
-              }),
-            ],
-          }),
-        },
+    const slackChatbotRole = new iam.Role(this, "SlackChatbotRole", {
+      assumedBy: new iam.ServicePrincipal("chatbot.amazonaws.com"),
+      inlinePolicies: {
+        SlackNotificationChatBotPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "cloudwatch:Describe*",
+                "cloudwatch:Get*",
+                "cloudwatch:List*",
+              ],
+              resources: ["*"],
+            }),
+          ],
+        }),
       },
-    );
+    });
 
     // Slackチャネル構成の作成
-    new chatbot.SlackChannelConfiguration(
-      this,
-      "WarningSlackChannelConfig",
-      {
-        slackChannelConfigurationName: `${this.stackName}-${this.node.id}`,
-        slackChannelId: props.warningSlackChannelId,
-        slackWorkspaceId: props.slackWorkspaceId,
-        notificationTopics: [warningSnsTopic],
-        loggingLevel: chatbot.LoggingLevel.ERROR,
-        guardrailPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
-        ],
-        role: slackChatbotRole,
-      },
-    );
+    new chatbot.SlackChannelConfiguration(this, "WarningSlackChannelConfig", {
+      slackChannelConfigurationName: `${this.stackName}-${this.node.id}`,
+      slackChannelId: props.warningSlackChannelId,
+      slackWorkspaceId: props.slackWorkspaceId,
+      notificationTopics: [warningSnsTopic],
+      loggingLevel: chatbot.LoggingLevel.ERROR,
+      guardrailPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
+      ],
+      role: slackChatbotRole,
+    });
 
     /*************************************
      * CloudWatchアラーム
@@ -1319,8 +1346,7 @@ export class MainStack extends Stack {
         }),
         evaluationPeriods: 1,
         threshold: 80,
-        comparisonOperator:
-          cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
         treatMissingData: cw.TreatMissingData.BREACHING,
       },
     );
@@ -1351,9 +1377,8 @@ export class MainStack extends Stack {
         // メモリ空き容量の閾値を設定...最大メモリ容量の5%
         // - 最大ACU数 × 2GB = 最大メモリ容量 (1ACUあたり2GBのメモリ)
         // - メモリ空き容量が最大メモリ容量の5%以下になったらアラート（メモリ使用量が95%以上になったらアラート）
-        threshold: (props.auroraServerlessV2MaxCapacity * 2 * 0.05),
-        comparisonOperator:
-          cw.ComparisonOperator.LESS_THAN_THRESHOLD,
+        threshold: props.auroraServerlessV2MaxCapacity * 2 * 0.05,
+        comparisonOperator: cw.ComparisonOperator.LESS_THAN_THRESHOLD,
         treatMissingData: cw.TreatMissingData.BREACHING,
       },
     );
@@ -1382,8 +1407,7 @@ export class MainStack extends Stack {
         }),
         evaluationPeriods: 1,
         threshold: 80,
-        comparisonOperator:
-          cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
         treatMissingData: cw.TreatMissingData.BREACHING,
       },
     );
@@ -1396,19 +1420,18 @@ export class MainStack extends Stack {
     );
 
     // GitHub Actions用のOIDCプロバイダー
-    const githubActionsOidcProviderArn = Fn.importValue("GitHubActionsOidcProviderArn");
+    const githubActionsOidcProviderArn = Fn.importValue(
+      "GitHubActionsOidcProviderArn",
+    );
 
     //GitHub Actions用のIAMロールとポリシー
     new iam.Role(this, "GitHubActionsRole", {
       roleName: `${this.stackName}-GitHubActionsRole`,
-      assumedBy: new iam.WebIdentityPrincipal(
-        githubActionsOidcProviderArn,
-        {
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${props.githubOrgName}/${props.githubRepositoryName}:*`
-          }
-        }
-      ),
+      assumedBy: new iam.WebIdentityPrincipal(githubActionsOidcProviderArn, {
+        StringLike: {
+          "token.actions.githubusercontent.com:sub": `repo:${props.githubOrgName}/${props.githubRepositoryName}:*`,
+        },
+      }),
       inlinePolicies: {
         GitHubActionsPolicy: new iam.PolicyDocument({
           // --- バックエンドアプリ用 ---
@@ -1459,11 +1482,11 @@ export class MainStack extends Stack {
                 "s3:PutObject",
                 "s3:GetObject",
                 "s3:ListBucket",
-                "s3:DeleteObject"
+                "s3:DeleteObject",
               ],
               resources: [
                 frontendBucket.bucketArn,
-                `${frontendBucket.bucketArn}/*`
+                `${frontendBucket.bucketArn}/*`,
               ],
             }),
             // CloudFrontのキャッシュ無効化権限
@@ -1471,26 +1494,22 @@ export class MainStack extends Stack {
               effect: iam.Effect.ALLOW,
               actions: [
                 "cloudfront:CreateInvalidation",
-                "cloudfront:GetInvalidation"
+                "cloudfront:GetInvalidation",
               ],
               resources: [
-                `arn:${this.partition}:cloudfront::${this.account}:distribution/${frontendCloudFront.cloudFrontWebDistribution.distributionId}`
+                `arn:${this.partition}:cloudfront::${this.account}:distribution/${frontendCloudFront.cloudFrontWebDistribution.distributionId}`,
               ],
             }),
             // ECSタスク関連の権限を追加
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
-              actions: [
-                "ecs:RunTask",
-                "ecs:DescribeTasks",
-                "ecs:ListTasks",
-              ],
+              actions: ["ecs:RunTask", "ecs:DescribeTasks", "ecs:ListTasks"],
               resources: [
                 // タスク定義に対する権限
                 `arn:${this.partition}:ecs:${this.region}:${this.account}:task-definition/${this.stackName}-backend*`,
                 // タスクに対する権限
-                `arn:${this.partition}:ecs:${this.region}:${this.account}:task/${ecsCluster.clusterName}/*`
-              ]
+                `arn:${this.partition}:ecs:${this.region}:${this.account}:task/${ecsCluster.clusterName}/*`,
+              ],
             }),
             // タスク定義関連の権限
             new iam.PolicyStatement({
@@ -1498,19 +1517,19 @@ export class MainStack extends Stack {
               actions: [
                 "ecs:DescribeTaskDefinition",
                 "ecs:RegisterTaskDefinition",
-                "ecs:DeregisterTaskDefinition"
+                "ecs:DeregisterTaskDefinition",
               ],
-              resources: ["*"]  // これらのアクションはリソースレベルの制限をサポートしていない
+              resources: ["*"], // これらのアクションはリソースレベルの制限をサポートしていない
             }),
             // タスク実行に必要なIAMロールのPassRole権限
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ["iam:PassRole"],
               resources: [
-                taskRole.roleArn,           // 既存のタスクロール
-                taskExecutionRole.roleArn    // 既存のタスク実行ロール
-              ]
-            })
+                taskRole.roleArn, // 既存のタスクロール
+                taskExecutionRole.roleArn, // 既存のタスク実行ロール
+              ],
+            }),
           ],
         }),
       },
@@ -1533,7 +1552,7 @@ export class MainStack extends Stack {
     new CfnOutput(this, "BackendEcsServiceSecurityGroupId", {
       value: backendEcsServiceSecurityGroup.securityGroupId,
     });
-    new CfnOutput(this, 'PrivateSubnet1Id', {
+    new CfnOutput(this, "PrivateSubnet1Id", {
       value: vpc.privateSubnets[0].subnetId,
     });
 
@@ -1544,6 +1563,5 @@ export class MainStack extends Stack {
     new CfnOutput(this, "FrontendCloudFrontDistributionId", {
       value: frontendCloudFront.cloudFrontWebDistribution.distributionId,
     });
-
   }
 }

@@ -5,7 +5,7 @@ import { getEcsTaskMonitoringStackProps } from "../props";
 
 const app = new App();
 
-const accountName = app.node.tryGetContext('account');
+const accountName = app.node.tryGetContext("account");
 const stackProps = getEcsTaskMonitoringStackProps(accountName);
 
 // スタックを作成

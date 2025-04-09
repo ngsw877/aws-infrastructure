@@ -1,9 +1,9 @@
 import type { ScheduledEvent } from "aws-lambda";
+import { throwErrorIfForceErrorEnabled } from "../common/debug";
 import {
   createLambdaResultMessage,
   notifyLambdaResult,
 } from "../common/notification";
-import { throwErrorIfForceErrorEnabled } from "../common/debug";
 
 const TEST_MESSAGE = process.env.TEST_MESSAGE as string;
 const BATCH_SUCCESS_WEBHOOK_PARAMETER_STORE_NAME = process.env
