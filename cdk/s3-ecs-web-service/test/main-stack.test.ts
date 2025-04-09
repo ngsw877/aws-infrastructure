@@ -15,7 +15,7 @@ const mainStack = new MainStack(app, 'TestMainStack', {
 const template = Template.fromStack(mainStack);
 
 describe('MainStack', () => {
-  test('基本インフラストラクチャが正しく作成されている', () => {
+  test('各リソースの個数が正しいこと', () => {
     // VPCとネットワーク
     template.resourceCountIs('AWS::EC2::VPC', 1);
     template.resourceCountIs('AWS::EC2::Subnet', 4); // 2つのAZにPublicとPrivateのサブネット
@@ -29,6 +29,7 @@ describe('MainStack', () => {
     template.resourceCountIs('AWS::ECS::Cluster', 1);
     template.resourceCountIs('AWS::ECS::Service', 1);
     template.resourceCountIs('AWS::ECS::TaskDefinition', 1);
+    template.resourceCountIs('AWS::ECR::Repository', 1);
 
     // データベース関連
     template.resourceCountIs('AWS::RDS::DBCluster', 1);
@@ -68,6 +69,98 @@ describe('MainStack', () => {
           Name: 'log-router',
         }),
       ]),
+    });
+  });
+
+  test('ECSタスク定義に環境変数とシークレットが適切に設定されていること', () => {
+    // appコンテナの環境変数とシークレットを確認
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'app',
+          Environment: [
+            {
+              Name: 'TZ',
+              Value: 'Asia/Tokyo'
+            },
+            {
+              Name: 'APP_ENV',
+              Value: params.mainStackProps.envName
+            },
+            {
+              Name: 'APP_DEBUG',
+              Value: String(params.mainStackProps.appDebug)
+            },
+            {
+              Name: 'AWS_BUCKET',
+              Value: Match.anyValue()
+            },
+            {
+              Name: 'AWS_URL',
+              Value: Match.anyValue()
+            },
+            {
+              Name: 'MAIL_MAILER',
+              Value: 'ses'
+            }
+          ],
+          Secrets: [
+            {
+              Name: 'DB_HOST',
+              ValueFrom: Match.anyValue()
+            },
+            {
+              Name: 'DB_PORT',
+              ValueFrom: Match.anyValue()
+            },
+            {
+              Name: 'DB_USERNAME',
+              ValueFrom: Match.anyValue()
+            },
+            {
+              Name: 'DB_DATABASE',
+              ValueFrom: Match.anyValue()
+            },
+            {
+              Name: 'DB_PASSWORD',
+              ValueFrom: Match.anyValue()
+            },
+            {
+              Name: 'APP_KEY',
+              ValueFrom: Match.anyValue()
+            }
+          ]
+        })
+      ])
+    });
+
+    // log-routerコンテナの環境変数とシークレットを確認
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Name: 'log-router',
+          Environment: [
+            {
+              Name: 'KINESIS_APP_DELIVERY_STREAM',
+              Value: Match.anyValue()
+            },
+            {
+              Name: 'KINESIS_WEB_DELIVERY_STREAM',
+              Value: Match.anyValue()
+            },
+            {
+              Name: 'AWS_REGION',
+              Value: Match.anyValue()
+            }
+          ],
+          Secrets: [
+            {
+              Name: 'APP_LOG_SLACK_WEBHOOK_URL',
+              ValueFrom: Match.anyValue()
+            }
+          ]
+        })
+      ])
     });
   });
 
@@ -270,6 +363,14 @@ describe('MainStack', () => {
 
       // Data APIの設定
       EnableHttpEndpoint: true,
+    });
+  });
+
+  test('ECRリポジトリのライフサイクルルールが定義されている', () => {
+    template.hasResourceProperties('AWS::ECR::Repository', {
+      LifecyclePolicy: Match.objectLike({
+        LifecyclePolicyText: Match.anyValue(),
+      }),
     });
   });
 }); 
