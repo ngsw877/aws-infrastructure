@@ -1,9 +1,14 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $0 [-t TEMPLATE_FILE] [-s STACK_NAME] [-p PARAMETER_FILE] [-e] [-P AWS_PROFILE]" >&2
+  echo "Usage: $0 [-t TEMPLATE_FILE] [-s STACK_NAME] [-p PARAMETER_FILE] [-P AWS_PROFILE] [-e]" >&2
   exit 1
 }
+
+if [ $# -eq 0 ]; then
+  echo "エラー: 引数が指定されていません。" >&2
+  usage
+fi
 
 # オプション解析
 while getopts "t:s:p:eP:" opt; do
@@ -17,11 +22,11 @@ while getopts "t:s:p:eP:" opt; do
     p)
       PARAMETER_FILE="${OPTARG}"
       ;;
-    e)
-      EXECUTE_CHANGES="true"
-      ;;
     P)
       AWS_PROFILE="${OPTARG}"
+      ;;
+    e)
+      EXECUTE_CHANGES="true"
       ;;
     *)
       usage
