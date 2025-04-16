@@ -1,0 +1,371 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  AccountBId:
+    Type: String
+    Description: "Account B ID to share TGW with"
+    Default: "xxxxxxxxxxxx"
+  BoundaryVpcCidr:
+    Type: String
+    Default: 192.168.0.0/16
+  Ec2Ami:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  Ec2InstanceType:
+    Type: String
+    Default : t3.micro
+
+Resources:
+  ## Create IAM
+  Ec2IAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement: 
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ec2.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - !Ref Ec2IAMRole
+
+  ## BoundaryVPC
+  #### create VPC
+  BoundaryVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Sub ${BoundaryVpcCidr}
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: BoundaryVpc
+
+  #### create subnet
+  BoundaryVpcNatSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 0, !Cidr [ !GetAtt BoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref BoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: BoundaryVpcNatSubnet
+
+  BoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt BoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref BoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: BoundaryVpcPrivateSubnet
+
+  BoundaryVpcTgwSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [ 10, !Cidr [ !GetAtt BoundaryVpc.CidrBlock, 11, 8 ]]
+      VpcId: !Ref BoundaryVpc
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: BoundaryVpcTgwSubnet
+
+  #### create IGW
+  Igw:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: Igw
+
+  IgwAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref Igw
+      VpcId: !Ref BoundaryVpc
+
+  #### Create NATGW
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGW:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      SubnetId: !Ref BoundaryVpcNatSubnet
+      AllocationId: !GetAtt NatEIP.AllocationId
+      Tags:
+        - Key: Name
+          Value: NatGW
+
+  #### Route Table
+  RtbBoundaryVpcNatSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BoundaryVpc
+      Tags:
+        - Key: Name
+          Value: RtbBoundaryVpcNatSubnet
+
+  RtbBoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BoundaryVpc
+      Tags:
+        - Key: Name
+          Value: RtbBoundaryVpcPrivateSubnet
+
+  RtbBoundaryVpcTgwSubnet:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref BoundaryVpc
+      Tags:
+        - Key: Name
+          Value: RtbBoundaryVpcTgwSubnet
+
+  #### Create route
+  ###### Create route & Associsate NatSubnet
+  RouteBoundaryVpcNatSubnetDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RtbBoundaryVpcNatSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Igw
+
+  RouteBoundaryVpcNatSubnetToTgw:
+    DependsOn: TgwAttachmentBoundaryVpc
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RtbBoundaryVpcNatSubnet
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref Tgw
+
+  RtbAssoBoundaryVpcNatSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BoundaryVpcNatSubnet
+      RouteTableId: !Ref RtbBoundaryVpcNatSubnet
+
+  ###### Create route & Associsate PrivateSubnet
+  RouteBoundaryVpcPrivateSubnetToNat:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RtbBoundaryVpcPrivateSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGW
+
+  RouteBoundaryVpcPrivateSubnetToTgw:
+    DependsOn: TgwAttachmentBoundaryVpc
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RtbBoundaryVpcPrivateSubnet
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref Tgw
+
+  RtbAssoBoundaryVpcPrivateSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BoundaryVpcPrivateSubnet
+      RouteTableId: !Ref RtbBoundaryVpcPrivateSubnet
+
+  ###### Create route & Associsate TgwSubnet
+  RouteBoundaryVpcTgwSubnetToNat:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RtbBoundaryVpcTgwSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGW
+
+  RtbAssoBoundaryVpcTgwSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref BoundaryVpcTgwSubnet
+      RouteTableId: !Ref RtbBoundaryVpcTgwSubnet
+
+  #### Create Endpoint
+  SGSsmEndPoint0:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SgSsmEndPoint0
+      GroupDescription: "for SSM Endpoint"
+      VpcId: !Ref BoundaryVpc
+      SecurityGroupIngress:
+        - Description: "Allow SSM Endpoint from Internal"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Sub ${BoundaryVpcCidr}
+      Tags:
+        - Key: Name
+          Value: SGSsmEndPoint0
+
+  SsmEndpoint0:
+    DependsOn: Ec2Instance192x168x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref BoundaryVpc
+      SubnetIds:
+        - !Ref BoundaryVpcPrivateSubnet
+      SecurityGroupIds:
+        - !Ref SGSsmEndPoint0
+
+  SsmMessagesEndpoint0:
+    DependsOn: Ec2Instance192x168x1x100
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref BoundaryVpc
+      SubnetIds:
+        - !Ref BoundaryVpcPrivateSubnet
+      SecurityGroupIds:
+        - !Ref SGSsmEndPoint0
+
+  #### Create Instace
+  SGEc2Instance0:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SGEc2Instance0 
+      GroupDescription: "for EC2 instance"
+      VpcId: !Ref BoundaryVpc
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "10.0.0.0/8"
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref BoundaryVpcCidr
+      Tags:
+        - Key: Name
+          Value: SGEc2Instance0
+
+  Ec2Instance192x168x1x100: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref Ec2Ami
+      InstanceType: !Ref Ec2InstanceType
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      NetworkInterfaces: 
+        - DeviceIndex: "0"
+          SubnetId: !Ref BoundaryVpcPrivateSubnet
+          GroupSet:
+            - !Ref SGEc2Instance0
+          PrivateIpAddresses:
+            - PrivateIpAddress: "192.168.1.100"
+              Primary: true
+      Tags:
+          - Key: Name
+            Value: Ec2Instance192-168-1-100
+
+  # TransitGW
+  Tgw:
+    Type: AWS::EC2::TransitGateway
+    Properties:
+      Description: !Sub "${AWS::StackName}-tgw"
+      AmazonSideAsn: 65000
+      AutoAcceptSharedAttachments: enable
+      DefaultRouteTableAssociation: disable # 初回デプロイが完了後、2回目のデプロイで手動でenableに変更して有効化する & 初回デプロイ時に作成したルートテーブルのIdを指定する(仕様対策)
+      DefaultRouteTablePropagation: disable # 初回デプロイが完了後、2回目のデプロイで手動でenableに変更して有効化する & 初回デプロイ時に作成したルートテーブルのIdを指定する(仕様対策)
+      DnsSupport: enable
+      VpnEcmpSupport: enable
+      MulticastSupport: disable
+      # AssociationDefaultRouteTableId: <RouteTableIdを指定して手動で関連付け設定を行う>
+      # PropagationDefaultRouteTableId: <RouteTableIdを指定して手動で関連付け設定を行う>
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-tgw"
+
+  # TGWルートテーブル
+  # CFnでは、自動作成されるTGWデフォルトルートテーブルを管理できないため、明示的にルートテーブルを作成
+  TgwRouteTable:
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties:
+      TransitGatewayId: !Ref Tgw
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-tgw-rtb"
+
+  # インターネット向けのデフォルトルート
+  TgwDefaultRoute:
+    Type: AWS::EC2::TransitGatewayRoute
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayRouteTableId: !Ref TgwRouteTable
+      TransitGatewayAttachmentId: !Ref TgwAttachmentBoundaryVpc
+      
+  #### Attachment VPC TransitGW
+  TgwAttachmentBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      TransitGatewayId: !Ref Tgw
+      VpcId: !Ref BoundaryVpc
+      SubnetIds: 
+        - !Ref BoundaryVpcTgwSubnet
+      Tags:
+        - Key: Name
+          Value: TgwVpcAttachmentBoundaryVpc
+
+  # Boundary VPC との関連付け
+  TgwRouteTableAssociationBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayRouteTableId: !Ref TgwRouteTable
+      TransitGatewayAttachmentId: !Ref TgwAttachmentBoundaryVpc
+
+  # Boundary VPC からの経路伝搬
+  TgwRouteTablePropagationBoundaryVpc:
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties:
+      TransitGatewayRouteTableId: !Ref TgwRouteTable
+      TransitGatewayAttachmentId: !Ref TgwAttachmentBoundaryVpc
+  
+  #RAMで他アカウントとTGW共有
+  ResourceShare:
+    Type: AWS::RAM::ResourceShare
+    Properties: 
+      Name: !Sub "${AWS::StackName}-tgw-ram"
+      ResourceArns:
+        - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:transit-gateway/${Tgw}"
+      Principals:
+        - !Ref AccountBId
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-tgw-ram"
+
+Outputs:
+  Tgw:
+    Description: Tgw
+    Value: !Ref Tgw
+    Export:
+      Name: Tgw
+
+  BoundaryVpc:
+    Description: BoundaryVpc
+    Value: !Ref BoundaryVpc
+    Export:
+      Name: BoundaryVpc
+
+  Ec2Instance192x168x1x100:
+    Description: Ec2Instance192-168-1-100
+    Value: !Ref Ec2Instance192x168x1x100
+    Export:
+      Name: Ec2Instance192-168-1-100
