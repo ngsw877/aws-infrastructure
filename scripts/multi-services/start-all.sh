@@ -56,7 +56,7 @@ fi
 
 # --- Aurora DBクラスターの起動 ---
 echo "=== Aurora DBクラスターの起動処理を開始します ==="
-if ! "${SCRIPT_DIR}/start-aurora.sh" -d "${AURORA_CLUSTER_ID}" ${AWS_PROFILE_PARAM}; then
+if ! "${SCRIPT_DIR}/../aurora/start-cluster.sh" -d "${AURORA_CLUSTER_ID}" ${AWS_PROFILE_PARAM}; then
   echo "⚠️ Aurora DBクラスターの起動に失敗しましたが、処理を続行します。"
 fi
 
@@ -76,7 +76,7 @@ done
 
 # --- ECSサービスの起動 ---
 echo -e "\n=== ECSサービスの起動処理を開始します ==="
-if ! "${SCRIPT_DIR}/start-ecs.sh" -c "${ECS_CLUSTER_NAME}" -s "${ECS_SERVICE_NAME}" ${MIN_CAPACITY_PARAM} ${MAX_CAPACITY_PARAM} ${AWS_PROFILE_PARAM}; then
+if ! "${SCRIPT_DIR}/../ecs/start-tasks.sh" -c "${ECS_CLUSTER_NAME}" -s "${ECS_SERVICE_NAME}" ${MIN_CAPACITY_PARAM} ${MAX_CAPACITY_PARAM} ${AWS_PROFILE_PARAM}; then
   echo "⚠️ ECSサービスの起動に失敗しました。"
 fi
 

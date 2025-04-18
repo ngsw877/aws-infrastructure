@@ -48,13 +48,13 @@ fi
 
 # --- ECSサービスの停止 ---
 echo "=== ECSサービスの停止処理を開始します ==="
-if ! "${SCRIPT_DIR}/stop-ecs.sh" -c "${ECS_CLUSTER_NAME}" -s "${ECS_SERVICE_NAME}" ${AWS_PROFILE_PARAM}; then
+if ! "${SCRIPT_DIR}/../ecs/stop-tasks.sh" -c "${ECS_CLUSTER_NAME}" -s "${ECS_SERVICE_NAME}" ${AWS_PROFILE_PARAM}; then
   echo "⚠️ ECSサービスの停止に失敗しましたが、処理を続行します。"
 fi
 
 # --- Aurora DBクラスターの停止 ---
 echo -e "\n=== Aurora DBクラスターの停止処理を開始します ==="
-if ! "${SCRIPT_DIR}/stop-aurora.sh" -d "${AURORA_CLUSTER_ID}" ${AWS_PROFILE_PARAM}; then
+if ! "${SCRIPT_DIR}/../aurora/stop-cluster.sh" -d "${AURORA_CLUSTER_ID}" ${AWS_PROFILE_PARAM}; then
   echo "⚠️ Aurora DBクラスターの停止に失敗しました。"
 fi
 
