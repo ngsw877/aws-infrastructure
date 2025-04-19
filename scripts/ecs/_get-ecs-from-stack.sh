@@ -10,6 +10,12 @@ fi
 STACK_NAME="$1"
 PROFILE="$2"
 
+# プロファイルが指定されていない場合、環境変数から取得を試みる
+if [ -z "$PROFILE" ] && [ -n "$AWS_PROFILE" ]; then
+  PROFILE="$AWS_PROFILE"
+  echo "環境変数 AWS_PROFILE の値 '$PROFILE' を使用します" >&2
+fi
+
 # プロファイルオプションを準備
 PROFILE_OPT=""
 if [ -n "$PROFILE" ]; then
