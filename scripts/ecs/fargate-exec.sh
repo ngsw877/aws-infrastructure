@@ -19,6 +19,11 @@ usage() {
   exit 1
 }
 
+# スクリプトのディレクトリを取得
+SCRIPT_DIR=$(dirname "$0")
+# ヘルパースクリプトを読み込む
+source "$SCRIPT_DIR/_get-ecs-info.sh"
+
 # パラメータを初期化
 PROFILE=""
 STACK_NAME=""
@@ -39,54 +44,37 @@ while getopts "P:S:c:s:t:h" opt; do
   esac
 done
 
-# スタック名が指定されている場合、クラスターとサービスを自動検出
-if [ -n "$STACK_NAME" ]; then
-  echo "CloudFormation スタック '$STACK_NAME' からリソースを検出しています..."
-  
-  # スクリプトのディレクトリを取得
-  SCRIPT_DIR=$(dirname "$0")
-  
-  # ヘルパースクリプトを呼び出してスタックからクラスターとサービスの情報を取得
-  STACK_INFO=$("$SCRIPT_DIR"/_get-ecs-from-stack.sh "$STACK_NAME" "$PROFILE")
-  
-  # 呼び出し結果をチェック
-  if [ $? -ne 0 ]; then
-    # エラーメッセージはすでにヘルパースクリプトから出力されている
-    exit 1
-  fi
-  
-  # 取得した情報を変数に設定
-  eval "$STACK_INFO"
-  
-  echo "検出されたクラスター: $CLUSTER_NAME"
-  echo "検出されたサービス: $SERVICE_NAME"
-  
-elif [ -z "$CLUSTER_NAME" ] || [ -z "$SERVICE_NAME" ]; then
-  echo "エラー: スタック名が指定されていない場合は、クラスター名 (-c) とサービス名 (-s) が必須です"
-  usage
+# PROFILEが未指定かつAWS_PROFILEがセットされている場合、PROFILEにAWS_PROFILEを使う
+if [ -z "$PROFILE" ] && [ -n "$AWS_PROFILE" ]; then
+  PROFILE="$AWS_PROFILE"
+  echo "🔍 環境変数 AWS_PROFILE の値 '$PROFILE' を使用します"
 fi
 
-# プロファイルオプションを準備
-PROFILE_OPT=""
-if [ -n "$PROFILE" ]; then
-  PROFILE_OPT="--profile $PROFILE"
-fi
-
-# タスクIDを取得
-TASK_ID=$(aws ecs list-tasks \
-  --cluster "$CLUSTER_NAME" \
-  --service-name "$SERVICE_NAME" \
-  $PROFILE_OPT \
-  --query 'taskArns[0]' \
-  --output text)
-
-if [ -z "$TASK_ID" ] || [ "$TASK_ID" == "None" ]; then
-  echo "エラー: クラスター '$CLUSTER_NAME' のサービス '$SERVICE_NAME' で実行中のタスクが見つかりませんでした"
+# プロファイルがどちらもセットされていなければエラー
+if [ -z "$PROFILE" ]; then
+  echo "❌ エラー: プロファイルが指定されていません。-PオプションまたはAWS_PROFILE環境変数を指定してね！" >&2
   exit 1
 fi
 
-echo "実行中のタスク: $TASK_ID"
-echo "コンテナ '$CONTAINER_NAME' に接続しています..."
+# スタック名が指定されている場合、クラスターとサービスを自動検出
+if [ -n "$STACK_NAME" ]; then
+  # 共通関数を使ってスタックからクラスター名とサービス名を取得
+  result=($(get_ecs_from_stack "$STACK_NAME" "$PROFILE"))
+  CLUSTER_NAME=${result[0]}
+  SERVICE_NAME=${result[1]}
+  
+  echo "🔍 検出されたクラスター: $CLUSTER_NAME"
+  echo "🔍 検出されたサービス: $SERVICE_NAME"
+  
+elif [ -z "$CLUSTER_NAME" ] || [ -z "$SERVICE_NAME" ]; then
+  echo "❌ エラー: スタック名が指定されていない場合は、クラスター名 (-c) とサービス名 (-s) が必須です" >&2
+  usage
+fi
+
+# 共通関数を使って実行中のタスクを取得し、TASK_IDに代入
+TASK_ID=$(get_running_task "$CLUSTER_NAME" "$SERVICE_NAME" "$PROFILE")
+
+echo "🔍 コンテナ '$CONTAINER_NAME' に接続しています..."
 
 # タスクにexecコマンドを実行
 aws ecs execute-command \
@@ -96,4 +84,4 @@ aws ecs execute-command \
   --container "$CONTAINER_NAME" \
   --interactive \
   --command "/bin/bash" \
-  $PROFILE_OPT
+  --profile "$PROFILE"

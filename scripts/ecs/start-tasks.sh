@@ -12,9 +12,14 @@ usage() {
   exit 1
 }
 
+# スクリプトのディレクトリを取得
+SCRIPT_DIR=$(dirname "$0")
+# ヘルパースクリプトを読み込む
+source "$SCRIPT_DIR/_get-ecs-info.sh"
+
 # --- 引数が1つも与えられなかった場合はusage関数を実行して終了 ---
 if [ $# -eq 0 ]; then
-  echo "エラー: 引数が指定されていません。" >&2
+  echo "❌ エラー: 引数が指定されていません。" >&2
   usage
 fi
 
@@ -24,7 +29,6 @@ ECS_CLUSTER_NAME=""
 ECS_SERVICE_NAME=""
 MIN_CAPACITY="1"
 MAX_CAPACITY="2"
-PROFILE_OPT=""
 PROFILE=""
 
 # --- オプション解析 ---
@@ -35,7 +39,7 @@ while getopts "S:c:s:m:M:P:" opt; do
     s) ECS_SERVICE_NAME="${OPTARG}" ;;
     m) MIN_CAPACITY="${OPTARG}" ;;
     M) MAX_CAPACITY="${OPTARG}" ;;
-    P) PROFILE="${OPTARG}"; PROFILE_OPT="--profile ${PROFILE}" ;;
+    P) PROFILE="${OPTARG}" ;;
     *) usage ;;
   esac
 done
@@ -43,51 +47,40 @@ done
 # プロファイルが指定されていない場合、環境変数から取得を試みる
 if [ -z "$PROFILE" ] && [ -n "$AWS_PROFILE" ]; then
   PROFILE="$AWS_PROFILE"
-  echo "環境変数 AWS_PROFILE の値 '$PROFILE' を使用します" >&2
-  PROFILE_OPT="--profile ${PROFILE}"
+  echo "🔍 環境変数 AWS_PROFILE の値 '$PROFILE' を使用します"
+fi
+
+# プロファイルがどちらもセットされていなければエラー
+if [ -z "$PROFILE" ]; then
+  echo "❌ エラー: プロファイルが指定されていません。-PオプションまたはAWS_PROFILE環境変数を指定してね！" >&2
+  exit 1
 fi
 
 # --- スタック名が指定されている場合、クラスターとサービスを自動検出 ---
 if [ -n "$STACK_NAME" ]; then
-  echo "CloudFormation スタック '$STACK_NAME' からリソースを検出しています..."
-  
-  # スクリプトのディレクトリを取得
-  SCRIPT_DIR=$(dirname "$0")
-  
-  # ヘルパースクリプトを呼び出してスタックからクラスターとサービスの情報を取得
-  STACK_INFO=$("$SCRIPT_DIR"/_get-ecs-from-stack.sh "$STACK_NAME" "$PROFILE")
-  
-  # 呼び出し結果をチェック
-  if [ $? -ne 0 ]; then
-    # エラーメッセージはすでにヘルパースクリプトから出力されている
-    exit 1
-  fi
-  
-  # 取得した情報を変数に設定
-  eval "$STACK_INFO"
-  
-  echo "検出されたクラスター: $CLUSTER_NAME"
-  echo "検出されたサービス: $SERVICE_NAME"
-  
-  # 変数名を合わせる
-  ECS_CLUSTER_NAME=$CLUSTER_NAME
-  ECS_SERVICE_NAME=$SERVICE_NAME
-  
+  echo "🔍 CloudFormation スタック '$STACK_NAME' からリソースを検出しています..."
+  # 共通関数を使ってスタックからクラスター名とサービス名を取得
+  result=($(get_ecs_from_stack "$STACK_NAME" "$PROFILE"))
+  ECS_CLUSTER_NAME=${result[0]}
+  ECS_SERVICE_NAME=${result[1]}
+  echo "🔍 検出されたクラスター: $ECS_CLUSTER_NAME"
+  echo "🔍 検出されたサービス: $ECS_SERVICE_NAME"
+
 elif [ -z "$ECS_CLUSTER_NAME" ] || [ -z "$ECS_SERVICE_NAME" ]; then
-  echo "エラー: スタック名が指定されていない場合は、クラスター名 (-c) とサービス名 (-s) が必須です。" >&2
+  echo "❌ エラー: スタック名が指定されていない場合は、クラスター名 (-c) とサービス名 (-s) が必須です。" >&2
   usage
 fi
 
 # --- 必須パラメータチェック ---
 if [ -z "$ECS_CLUSTER_NAME" ] || [ -z "$ECS_SERVICE_NAME" ]; then
-  echo "エラー: ECSクラスター名とECSサービス名は必須です。" >&2
+  echo "❌ エラー: ECSクラスター名とECSサービス名は必須です。" >&2
   usage
 fi
 
 # --- Fargate (ECSサービス) の起動 ---
-echo "🚀 Fargate (ECSサービス: ${ECS_SERVICE_NAME}) のDesiredCountを${MIN_CAPACITY}～${MAX_CAPACITY}に設定します..."
+echo "🔍 🚀 Fargate (ECSサービス: ${ECS_SERVICE_NAME}) のDesiredCountを${MIN_CAPACITY}～${MAX_CAPACITY}に設定します..."
 if ! aws application-autoscaling register-scalable-target \
-    ${PROFILE_OPT} \
+    --profile $PROFILE \
     --service-namespace ecs \
     --scalable-dimension ecs:service:DesiredCount \
     --resource-id "service/${ECS_CLUSTER_NAME}/${ECS_SERVICE_NAME}" \
