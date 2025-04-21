@@ -1,5 +1,5 @@
 name: S3 Auto Deploy
-run-name: S3 Auto Deploy to 【${{ github.ref_name }}】
+run-name: S3：${{ github.ref_name }} ブランチ ▶ ${{ github.ref_name }} 環境【自動】
 
 on:
   workflow_dispatch:
