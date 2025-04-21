@@ -1,5 +1,5 @@
 name: S3 Manual Deploy
-run-name: S3 Manual Deploy to 【${{ inputs.deploy-to }}】
+run-name: S3：${{ inputs.branch }}ブランチ ▶ ${{ inputs.deploy-to }}環境 【手動】
 
 on:
   workflow_dispatch:
