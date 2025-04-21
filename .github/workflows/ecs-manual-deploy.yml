@@ -1,5 +1,5 @@
 name: ECS Manual Deploy
-run-name: ECS Manual Deploy to 【${{ inputs.deploy-to }}】
+run-name: ECS：${{ inputs.branch }} ブランチ ▶ ${{ inputs.deploy-to }} 環境【手動】
 
 on:
   workflow_dispatch:
