@@ -8,7 +8,7 @@ if [ -z "$AWS_PROFILE" ]; then
   exit 1
 fi
 
-echo "現在のAWSプロファイルは$AWS_PROFILEです。"
+echo "現在のAWSプロファイルは${AWS_PROFILE}です。"
 
 # プロファイルに間違いがないか確認
 read -p "このプロファイルで正しいですか？ [y/N]: " confirm
