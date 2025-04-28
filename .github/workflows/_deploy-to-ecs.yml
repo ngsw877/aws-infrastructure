@@ -56,7 +56,7 @@ jobs:
           role-to-assume: ${{ steps.set-role-arn.outputs.GITHUB_ACTIONS_ROLE_ARN }}
           role-skip-session-tagging: true
           mask-aws-account-id: false
-  
+
       # 動的パラメータの解決
       - name: Set deployment parameters
         id: set-params
@@ -201,12 +201,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+
+      # https://github.com/dorny/paths-filter
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # 【重要】マイグレーション検知の不具合対策
+          # 症状：プルリクで新規マイグレーションファイルを追加しても検知されずスキップされる問題があった
+          # 原因：baseパラメータ未指定時はリポジトリのデフォルトブランチ（develop）との差分を見るため
+          #      developからmainへマージ後、「最新のdevelop と マージ後のmain の差分」が0と判定されてしまう
+          # 解決策：base: ${{ github.ref }} を指定し「mainの直前の状態」と「最新のmain」の差分だけを見るよう修正
+          base: ${{ github.ref }}
           filters: |
             migrations:
               - ${{ env.MIGRATION_PATH }}
+
       - id: decide-migration
         run: |
           if [ "${{ inputs.migration-mode }}" == "force" ]; then
@@ -223,7 +232,7 @@ jobs:
               echo "::notice::マイグレーションの変更はありません"
             fi
           fi
-  
+
   run-database-migration:
     needs: [setup, build-and-push-app-image, detect-migration-changes]
     if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' }}
@@ -242,7 +251,7 @@ jobs:
           role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
           role-skip-session-tagging: true
           mask-aws-account-id: false
-  
+
       # Amazon ECRへのログイン
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -318,7 +327,7 @@ jobs:
       # SlackチャンネルURLの出力
       - name: Output Slack Channel URL
         env:
-          APP_LOG_SLACK_CHANNEL_URL: ${{ vars.APP_LOG_SLACK_CHANNEL_URL }} 
+          APP_LOG_SLACK_CHANNEL_URL: ${{ vars.APP_LOG_SLACK_CHANNEL_URL }}
         run: echo "::notice::マイグレーションが実行されました。ログの出力先Slackチャンネル：${{ env.APP_LOG_SLACK_CHANNEL_URL }}"
 
       # マイグレーションの完了を待機
