@@ -17,18 +17,21 @@ export interface Tenant {
   isSesEnabled: boolean;
 }
 
-export interface GlobalStackProps extends StackProps {
-  tenants: Tenant[];
+// CommonStackProps インターフェースを定義
+export interface CommonStackProps extends StackProps {
+  envName: string; // 環境名
+  tenants: Tenant[]; // テナント情報
+}
+
+// GlobalStackProps は CommonStackProps を継承
+export interface GlobalStackProps extends CommonStackProps {
   logRetentionDays?: logs.RetentionDays;
   // IP制限の対象外とするパスのリスト
   ipRestrictionExcludedPaths?: string[];
 }
 
-export interface MainStackProps extends StackProps {
-  // マルチテナント設定
-  tenants: Tenant[];
-
-  envName: string;
+// MainStackProps も CommonStackProps を継承
+export interface MainStackProps extends CommonStackProps {
   natGatewaysCount: number;
   logRetentionDays?: logs.RetentionDays;
   defaultTtl?: Duration;

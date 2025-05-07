@@ -1,5 +1,6 @@
 import { Duration, aws_logs as logs, aws_rds as rds } from "aws-cdk-lib";
 import type {
+  CommonStackProps,
   GlobalStackProps,
   MainStackProps,
   Params,
@@ -33,13 +34,18 @@ const tenants: Tenant[] = [
   },
 ];
 
+const commonStackProps: CommonStackProps = {
+  envName: "dev",
+  tenants: tenants,
+};
+
 const globalStackProps: GlobalStackProps = {
+  ...commonStackProps,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "us-east-1",
   },
   crossRegionReferences: true,
-  tenants: tenants,
   ipRestrictionExcludedPaths: [
     "/sample",
     "/product",
@@ -50,13 +56,12 @@ const globalStackProps: GlobalStackProps = {
 };
 
 const mainStackProps: MainStackProps = {
+  ...commonStackProps,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "ap-northeast-1",
   },
   crossRegionReferences: true,
-  tenants: tenants,
-  envName: "dev",
   natGatewaysCount: 1,
   logRetentionDays: logs.RetentionDays.ONE_MONTH,
   defaultTtl: Duration.days(1),
