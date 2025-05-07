@@ -14,6 +14,7 @@ export interface Tenant {
   route53HostedZoneId: string;
   appDomainName: string;
   allowedIpAddresses?: string[]; // IP制限を適用する場合の許可IPアドレス一覧
+  isSesEnabled: boolean;
 }
 
 export interface GlobalStackProps extends StackProps {

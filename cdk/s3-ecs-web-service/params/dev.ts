@@ -16,17 +16,20 @@ const tenants: Tenant[] = [
     appDomainName: devSecrets.domains.sample.appDomainName,
     // IP制限あり
     allowedIpAddresses: devSecrets.allowedIpAddresses.sample,
+    isSesEnabled: true,
   },
   {
     route53HostedZoneId: devSecrets.domains.hoge.route53HostedZoneId,
     appDomainName: devSecrets.domains.hoge.appDomainName,
     // IP制限なし
+    isSesEnabled: true,
   },
   {
     route53HostedZoneId: devSecrets.domains.study.route53HostedZoneId,
     appDomainName: devSecrets.domains.study.appDomainName,
     // IP制限あり
     allowedIpAddresses: devSecrets.allowedIpAddresses.study,
+    isSesEnabled: false,
   },
 ];
 

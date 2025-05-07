@@ -1263,29 +1263,37 @@ export class MainStack extends Stack {
      *************************************/
     // 各テナントドメインのSES設定
     for (const tenant of props.tenants) {
-      // SES ID
-      new ses.EmailIdentity(
-        this,
-        `EmailIdentity-${tenant.appDomainName.replace(/\./g, "-")}`,
-        {
-          identity: ses.Identity.publicHostedZone(
-            baseDomainZoneMap[tenant.appDomainName],
-          ),
-          mailFromDomain: `bounce.${tenant.appDomainName}`,
-        },
-      );
+      // SESの作成が有効な場合のみ実行
+      if (tenant.isSesEnabled) {
+        // SES ID
+        new ses.EmailIdentity(
+          this,
+          `EmailIdentity-${tenant.appDomainName.replace(/\./g, "-")}`,
+          {
+            identity: ses.Identity.publicHostedZone(
+              baseDomainZoneMap[tenant.appDomainName],
+            ),
+            mailFromDomain: `bounce.${tenant.appDomainName}`,
+          },
+        );
 
-      // DMARC設定
-      new route53.TxtRecord(
-        this,
-        `DmarcRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
-        {
-          zone: baseDomainZoneMap[tenant.appDomainName],
-          recordName: `_dmarc.${tenant.appDomainName}`,
-          values: [`v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`],
-          ttl: Duration.hours(1),
-        },
-      );
+        // DMARC設定
+        new route53.TxtRecord(
+          this,
+          `DmarcRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
+          {
+            zone: baseDomainZoneMap[tenant.appDomainName],
+            recordName: `_dmarc.${tenant.appDomainName}`,
+            values: [`v=DMARC1; p=none; rua=mailto:${props.dmarcReportEmail}`],
+            ttl: Duration.hours(1),
+          },
+        );
+      } else {
+        // SESの作成が無効な場合、スキップされたことをログに出力（CDK synth/deploy時に表示される）
+        console.log(
+          `Skipping SES Identity and DMARC Record creation for tenant: ${tenant.appDomainName} as isSesEnabled is false.`,
+        );
+      }
     }
 
     /*************************************
