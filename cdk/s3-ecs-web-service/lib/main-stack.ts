@@ -519,7 +519,7 @@ export class MainStack extends Stack {
       this,
       "BackendKinesisErrorLogGroup",
       {
-        logGroupName: "/aws/kinesisfirehose/backend-error-logs",
+        logGroupName: `/aws/kinesisfirehose/${this.stackName}/backend-error-logs`,
         retention: props.logRetentionDays,
         removalPolicy: RemovalPolicy.DESTROY,
       },
@@ -882,7 +882,7 @@ export class MainStack extends Stack {
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "firelens",
         logGroup: new logs.LogGroup(this, "BackendLogRouterLogGroup", {
-          logGroupName: "backend-logrouter-logs",
+          logGroupName: `/aws/ecs/${this.stackName}/backend-logrouter-logs`,
           retention: props.logRetentionDays,
           removalPolicy: RemovalPolicy.DESTROY,
         }),
