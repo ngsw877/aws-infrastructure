@@ -13,27 +13,30 @@ type SchedulerState = "ENABLED" | "DISABLED";
 export interface Tenant {
   route53HostedZoneId: string;
   appDomainName: string;
-  allowedIpAddresses?: string[]; // IP制限を適用する場合の許可IPアドレス一覧
-  isSesEnabled: boolean;
+  // IP制限を適用する場合の許可IPアドレス一覧
+  allowedIpAddresses?: string[];
+  // テナント固有のIP制限除外パス（各テナントで個別に設定可能）
+  ipRestrictionExcludedPaths?: string[];
+  // SESの作成を有効にするかどうか
+  isSesEnabled?: boolean;
 }
 
-// CommonStackProps インターフェースを定義
+// 共通のスタックプロパティ
 export interface CommonStackProps extends StackProps {
   envName: string; // 環境名
   tenants: Tenant[]; // テナント情報
+  logRetentionDays?: logs.RetentionDays; // ログ保持期間
 }
+
 
 // GlobalStackProps は CommonStackProps を継承
 export interface GlobalStackProps extends CommonStackProps {
-  logRetentionDays?: logs.RetentionDays;
-  // IP制限の対象外とするパスのリスト
-  ipRestrictionExcludedPaths?: string[];
+  // GlobalStack特有のプロパティが必要になれば追加する
 }
 
 // MainStackProps も CommonStackProps を継承
 export interface MainStackProps extends CommonStackProps {
   natGatewaysCount: number;
-  logRetentionDays?: logs.RetentionDays;
   defaultTtl?: Duration;
   maxTtl?: Duration;
   minTtl?: Duration;

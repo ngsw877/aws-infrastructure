@@ -49,7 +49,7 @@ export class GlobalStack extends Stack {
 
     // WAF用のルール配列を作成
     const wafRules: wafv2.CfnWebACL.RuleProperty[] = [
-      // AWSマネージドルール
+      // AWSマネージドルール（優先度1: 最初に評価）
       {
         name: "CommonSecurityProtection",
         priority: 1,
@@ -68,25 +68,94 @@ export class GlobalStack extends Stack {
       },
     ];
 
-    // テナントごとのIP制限ルールを追加 - 修正後のコード
+    // テナントごとのルールを追加
     props.tenants.forEach((tenant, index) => {
+      // テナントごとに優先度の10の位を変える（テナントAは10台、テナントBは20台...）
+      const tenantBasePriority = 10 * (index + 1);
+      let tenantPriority = 0; // テナント内での優先度カウンター
+
+      // 1つ目のルール（許可パスルール）
+      if (tenant.ipRestrictionExcludedPaths && tenant.ipRestrictionExcludedPaths.length > 0) {
+        wafRules.push({
+          name: `AllowedPaths-${tenant.appDomainName.replace(/\./g, '-')}`,
+          priority: tenantBasePriority, // 10, 20, 30...
+          action: { allow: {} },
+          statement: {
+            andStatement: {
+              statements: [
+                // 特定のドメインへのリクエストを識別
+                {
+                  byteMatchStatement: {
+                    fieldToMatch: {
+                      singleHeader: { Name: "host" }
+                    },
+                    positionalConstraint: "EXACTLY",
+                    searchString: tenant.appDomainName,
+                    textTransformations: [{ priority: 0, type: "NONE" }]
+                  }
+                },
+                // パス条件
+                {
+                  orStatement: {
+                    statements: tenant.ipRestrictionExcludedPaths.map(path => ({
+                      byteMatchStatement: {
+                        fieldToMatch: { uriPath: {} },
+                        positionalConstraint: "STARTS_WITH",
+                        searchString: path,
+                        textTransformations: [{ priority: 0, type: "NONE" }]
+                      }
+                    }))
+                  }
+                }
+              ]
+            }
+          },
+          visibilityConfig: {
+            metricName: `AllowedPaths-${tenant.appDomainName.replace(/\./g, '-')}`,
+            cloudWatchMetricsEnabled: true,
+            sampledRequestsEnabled: true,
+          },
+        });
+      }
+
+      // 2つ目以降のルール（IP制限ルールなど）
       if (tenant.allowedIpAddresses && tenant.allowedIpAddresses.length > 0) {
         // IPセットを直接作成
         const ipSet = new wafv2.CfnIPSet(
           this,
-          `AllowedIpSet-${tenant.appDomainName.replace(/\./g, "-")}`,
+          `AllowedIpSet-${tenant.appDomainName.replace(/\./g, '-')}`,
           {
             scope: "CLOUDFRONT",
             ipAddressVersion: "IPV4",
             addresses: tenant.allowedIpAddresses,
-          },
+          }
         );
 
-        // IP制限がある場合のルール
-        const rule: wafv2.CfnWebACL.RuleProperty = {
-          name: `IPRestriction-${tenant.appDomainName.replace(/\./g, "-")}`,
-          priority: 10 + index,
-          action: { block: {} },
+        wafRules.push({
+          name: `IPRestriction-${tenant.appDomainName.replace(/\./g, '-')}`,
+          priority: tenantBasePriority + ++tenantPriority, // 11, 21, 31...
+          action: { 
+            block: { 
+              // WAFブロック時は403ではなく404を返すようにしています
+              // NOTE:
+              // WAFブロック時にデフォルトの403エラーを発生させると、
+              // CloudFront側のerrorResponses設定により、ステータスコード200で"/"に転送されます。
+              // この挙動により以下の事象が発生します:
+              //
+              // - 許可IP以外の企業ユーザーがログイン画面"/login"にアクセスし、ログイン成功。
+              // - 期待値: ログイン成功後にWAFブロックされる（ログイン後に遷移するトップページ"/"はIP制限対象のため）
+              // - 実際: ログイン成功 → WAFブロック → 403エラー → 200で"/"に転送 → _nuxtが読み込まれるからか問題なくトップページが開けてしまう → 更にトップページのメニューから他のページにも遷移できてしまう。
+              customResponse: {
+                responseCode: 404,
+                responseHeaders: [
+                  {
+                    name: "x-waf-blocked",
+                    value: "true"
+                  }
+                ]
+              } 
+            }
+          },
           statement: {
             andStatement: {
               statements: [
@@ -106,47 +175,20 @@ export class GlobalStack extends Stack {
                   notStatement: {
                     statement: {
                       ipSetReferenceStatement: {
-                        arn: ipSet.attrArn,
-                      },
-                    },
-                  },
-                },
-                // IP制限の対象外のパス
-                {
-                  notStatement: {
-                    statement: {
-                      orStatement: {
-                        statements: [
-                          ...(props.ipRestrictionExcludedPaths || []).map(
-                            (path) => ({
-                              byteMatchStatement: {
-                                fieldToMatch: {
-                                  uriPath: {},
-                                },
-                                positionalConstraint: "STARTS_WITH",
-                                searchString: path,
-                                textTransformations: [
-                                  { priority: 0, type: "NONE" },
-                                ],
-                              },
-                            }),
-                          ),
-                        ],
-                      },
-                    },
-                  },
-                },
-              ],
-            },
+                        arn: ipSet.attrArn
+                      }
+                    }
+                  }
+                }
+              ]
+            }
           },
           visibilityConfig: {
             metricName: `IPRestriction-${tenant.appDomainName.replace(/\./g, "-")}`,
             cloudWatchMetricsEnabled: true,
             sampledRequestsEnabled: true,
           },
-        };
-
-        wafRules.push(rule);
+        });
       }
     });
 

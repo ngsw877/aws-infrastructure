@@ -10,6 +10,15 @@ import { devSecrets } from "./secrets";
 // スナップショットテスト用
 const dummyAccountId = "123456789012";
 
+// 共通のIP制限除外パス
+const commonIpRestrictionExcludedPaths = [
+  "/sample",
+  "/product",
+  "/login",
+  "/register",
+  "/_nuxt/", // Nuxt.jsのアセット
+];
+
 // マルチドメイン対応のテナント設定
 const tenants: Tenant[] = [
   {
@@ -17,6 +26,7 @@ const tenants: Tenant[] = [
     appDomainName: devSecrets.domains.sample.appDomainName,
     // IP制限あり
     allowedIpAddresses: devSecrets.allowedIpAddresses.sample,
+    ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
     isSesEnabled: true,
   },
   {
@@ -30,6 +40,7 @@ const tenants: Tenant[] = [
     appDomainName: devSecrets.domains.study.appDomainName,
     // IP制限あり
     allowedIpAddresses: devSecrets.allowedIpAddresses.study,
+    ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
     isSesEnabled: false,
   },
 ];
@@ -37,6 +48,7 @@ const tenants: Tenant[] = [
 const commonStackProps: CommonStackProps = {
   envName: "dev",
   tenants: tenants,
+  logRetentionDays: logs.RetentionDays.THREE_MONTHS,
 };
 
 const globalStackProps: GlobalStackProps = {
@@ -46,13 +58,6 @@ const globalStackProps: GlobalStackProps = {
     region: "us-east-1",
   },
   crossRegionReferences: true,
-  ipRestrictionExcludedPaths: [
-    "/sample",
-    "/product",
-    "/login",
-    "/register",
-    "/_nuxt/",
-  ],
 };
 
 const mainStackProps: MainStackProps = {
@@ -63,7 +68,6 @@ const mainStackProps: MainStackProps = {
   },
   crossRegionReferences: true,
   natGatewaysCount: 1,
-  logRetentionDays: logs.RetentionDays.ONE_MONTH,
   defaultTtl: Duration.days(1),
   maxTtl: Duration.days(365),
   minTtl: Duration.seconds(0),
