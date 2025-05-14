@@ -114,9 +114,29 @@ jobs:
           aws s3 sync dist/ s3://${{ steps.set-params.outputs.FRONTEND_BUCKET_NAME }}/ --delete
 
       # CloudFrontのキャッシュ削除
-      - name: Invalidate CloudFront Cache
+      - name: Invalidate CloudFront Cache for Multitenants
         run: |
           set -x
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ steps.set-params.outputs.DISTRIBUTION_ID }} \
-            --paths "/*"
+          
+          # 親ディストリビューションIDを設定
+          PARENT_DISTRIBUTION_ID="${{ steps.set-params.outputs.DISTRIBUTION_ID }}"
+          
+          # テナントIDをスペース区切りで取得
+          # `--output text` はデフォルトでスペース区切りになる
+          TENANT_IDS=$(aws cloudfront list-distribution-tenants \
+            --association-filter DistributionId=$PARENT_DISTRIBUTION_ID \
+            --query "DistributionTenantList[*].Id" \
+            --output text)
+          
+          # 取得したテナントIDを一つずつ処理
+          for TENANT_ID in $TENANT_IDS; do
+            # タイムスタンプを作成（一意のCallerReference用）
+            # CallerReferenceは必須なので毎回ユニークな値を生成
+            TIMESTAMP=$(date +%s)
+            
+            # テナントのキャッシュを無効化
+            # --invalidation-batch はJSON形式で指定する必要がある
+            aws cloudfront create-invalidation-for-distribution-tenant \
+              --id "$TENANT_ID" \
+              --invalidation-batch "{\"Paths\":{\"Quantity\":1,\"Items\":[\"/*\"]},\"CallerReference\":\"$TIMESTAMP\"}"
+          done

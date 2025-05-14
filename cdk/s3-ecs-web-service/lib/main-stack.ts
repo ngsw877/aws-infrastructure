@@ -1542,16 +1542,16 @@ export class MainStack extends Stack {
                 `${frontendBucket.bucketArn}/*`,
               ],
             }),
-            // CloudFrontのキャッシュ無効化権限
+            // Multi-tenantタイプのCloudFrontのキャッシュ削除権限
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: [
-                "cloudfront:CreateInvalidation",
-                "cloudfront:GetInvalidation",
+                // テナント一覧取得
+                "cloudfront:ListDistributionTenants",
+                // テナント単位でのキャッシュ無効化
+                "cloudfront:CreateInvalidationForDistributionTenant",
               ],
-              resources: [
-                `arn:${this.partition}:cloudfront::${this.account}:distribution/${cloudFrontDistribution.distributionId}`,
-              ],
+              resources: ["*"]
             }),
             // ECSタスク関連の権限を追加
             new iam.PolicyStatement({
