@@ -28,7 +28,7 @@ const globalStack = new GlobalStack(
 // 東京リージョン用のスタック
 new MainStack(app, `${envName}-S3EcsWebServiceMain`, {
   ...params.mainStackProps,
-  cloudfrontCertificate: globalStack.cloudfrontCertificate,
+  cloudFrontTenantCertificates: globalStack.cloudFrontTenantCertificates,
   cloudFrontWebAcl: globalStack.cloudFrontWebAcl,
 });
 

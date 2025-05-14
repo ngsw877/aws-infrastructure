@@ -39,7 +39,7 @@ export class MainStack extends Stack {
   constructor(scope: Construct, id: string, props: MainStackProps) {
     super(scope, id, props);
 
-    if (!props.cloudfrontCertificate || !props.cloudFrontWebAcl) {
+    if (!props.cloudFrontTenantCertificates || !props.cloudFrontWebAcl) {
       throw new Error(
         "GlobalStackから取得した、「cloudfrontCertificate」と「cloudFrontWebAcl」の両方が必須です。",
       );
@@ -188,13 +188,11 @@ export class MainStack extends Stack {
       },
     );
 
-    // フロントエンド用CloudFront
-    const frontendCloudFront = new CloudFrontToS3(this, "FrontendCloudFront", {
+    // CloudFrontToS3コンストラクトを使ってCloudFrontとS3を接続
+    const cloudFrontToS3 = new CloudFrontToS3(this, "MultiTenantCloudFrontToS3", {
       existingBucketObj: frontendBucket,
+      insertHttpSecurityHeaders: false, // カスタム関数で対応するため無効化
       cloudFrontDistributionProps: {
-        certificate: props.cloudfrontCertificate,
-        // 全テナントドメイン
-        domainNames: props.tenants.map((tenant) => tenant.appDomainName),
         webAclId: props.cloudFrontWebAcl?.attrArn,
         defaultBehavior: {
           viewerProtocolPolicy:
@@ -231,7 +229,6 @@ export class MainStack extends Stack {
             enableAcceptEncodingGzip: true,
           }),
         },
-        priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
         httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
         logBucket: cloudFrontLogsBucket,
         logFilePrefix: "FrontendCloudFront/",
@@ -254,21 +251,69 @@ export class MainStack extends Stack {
         ],
       },
     });
+    
+    // 作成されたCloudFrontディストリビューションを取得
+    const cloudFrontDistribution = cloudFrontToS3.cloudFrontWebDistribution;
+    // L1リソースにアクセスしてマルチテナント設定を適用
+    const cfnDistribution = cloudFrontDistribution.node.defaultChild as cloudfront.CfnDistribution;
+    // マルチテナントでは使えないプロパティを削除
+    cfnDistribution.addPropertyDeletionOverride("DistributionConfig.IPV6Enabled");
+    // マルチテナント設定を追加
+    cfnDistribution.addPropertyOverride('DistributionConfig.ConnectionMode', 'tenant-only');
 
-    // 各テナントドメインにCloudFrontエイリアスレコードを作成
+    // デバッグ用のOutputを追加
+    new CfnOutput(this, "DebugCloudFrontDistributionId", {
+      value: cloudFrontDistribution.distributionId,
+      description: "CloudFront Distribution ID for debugging"
+    });
+    
+    // コネクショングループの作成（CloudFormationリソースとして直接定義）
+    const connectionGroup = new cloudfront.CfnConnectionGroup(
+      this,
+      "FrontendConnectionGroup",
+      {
+        name: `${this.stackName}-FrontendConnectionGroup`,
+        enabled: true,
+        ipv6Enabled: false
+      }
+    );
+
+    // 各テナント用のDistributionTenantsを作成
     for (const tenant of props.tenants) {
+      const tenantId = tenant.appDomainName.replace(/\./g, "-");
+    
+      // CloudFormationリソースとしてDistributionTenantを直接定義
+      new cloudfront.CfnDistributionTenant(
+        this,
+        `FrontendDistributionTenant${tenantId}`,
+        {
+          distributionId: cloudFrontDistribution.distributionId,
+          connectionGroupId: connectionGroup.attrId,
+          name: `${this.stackName}-frontend-tenant-${tenantId}`,
+          domains: [tenant.appDomainName],
+          enabled: true,
+          customizations: {
+            certificate: {
+              arn: props.cloudFrontTenantCertificates[tenant.appDomainName].certificateArn,
+            },
+          },
+        }
+      );
+
+      // Route53レコードの作成（ConnectionGroupのドメインを使用）
       new route53.ARecord(
         this,
-        `CloudFrontAliasRecord-${tenant.appDomainName.replace(/\./g, "-")}`,
+        `CloudFrontAliasRecord${tenantId}`,
         {
           zone: baseDomainZoneMap[tenant.appDomainName],
           recordName: tenant.appDomainName,
-          target: route53.RecordTarget.fromAlias(
-            new targets.CloudFrontTarget(
-              frontendCloudFront.cloudFrontWebDistribution,
-            ),
-          ),
-        },
+          target: route53.RecordTarget.fromAlias({
+            bind: () => ({
+              dnsName: Fn.getAtt(connectionGroup.logicalId, "RoutingEndpoint").toString(),
+              hostedZoneId: 'Z2FDTNDATAQYW2', // CloudFrontの固定ゾーンID
+            })
+          })
+        }
       );
     }
 
@@ -1505,7 +1550,7 @@ export class MainStack extends Stack {
                 "cloudfront:GetInvalidation",
               ],
               resources: [
-                `arn:${this.partition}:cloudfront::${this.account}:distribution/${frontendCloudFront.cloudFrontWebDistribution.distributionId}`,
+                `arn:${this.partition}:cloudfront::${this.account}:distribution/${cloudFrontDistribution.distributionId}`,
               ],
             }),
             // ECSタスク関連の権限を追加
@@ -1569,7 +1614,15 @@ export class MainStack extends Stack {
       value: frontendBucket.bucketName,
     });
     new CfnOutput(this, "FrontendCloudFrontDistributionId", {
-      value: frontendCloudFront.cloudFrontWebDistribution.distributionId,
+      value: cloudFrontDistribution.distributionId,
     });
+    // 各テナントのディストリビューションテナントIDもエクスポート
+    for (const tenant of props.tenants) {
+      const tenantId = tenant.appDomainName.replace(/\./g, "-");
+      new CfnOutput(this, `FrontendDistributionTenantId-${tenantId}`, {
+        value: `DistributionTenant-${tenantId}`,
+        description: `Frontend Distribution Tenant ID for ${tenant.appDomainName}`,
+      });
+    }
   }
 }

@@ -71,8 +71,8 @@ export interface MainStackProps extends CommonStackProps {
   githubOrgName: string;
   githubRepositoryName: string;
   // 以下は、GlobalStackからインポートする
-  cloudfrontCertificate?: acm.ICertificate;
   cloudFrontWebAcl?: wafv2.CfnWebACL;
+  cloudFrontTenantCertificates?: Record<string, acm.ICertificate>;
   // 削除保護のプロパティ
   albDeletionProtection: boolean;
   auroraDeletionProtection: boolean;

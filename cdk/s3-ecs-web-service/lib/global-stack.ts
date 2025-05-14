@@ -2,6 +2,7 @@ import {
   Duration,
   RemovalPolicy,
   Stack,
+  CfnOutput,
   aws_s3 as s3,
   aws_wafv2 as wafv2,
 } from "aws-cdk-lib";
@@ -11,7 +12,7 @@ import type { Construct } from "constructs";
 import type { GlobalStackProps } from "../types/params";
 
 export class GlobalStack extends Stack {
-  public readonly cloudfrontCertificate: acm.ICertificate;
+  public readonly cloudFrontTenantCertificates: Record<string, acm.ICertificate> = {};
   public readonly cloudFrontWebAcl: wafv2.CfnWebACL;
 
   constructor(scope: Construct, id: string, props: GlobalStackProps) {
@@ -33,19 +34,29 @@ export class GlobalStack extends Stack {
         );
     }
 
-    // CloudFront用のACM証明書（複数ドメイン対応）
-    this.cloudfrontCertificate = new acm.Certificate(
-      this,
-      "CloudFrontCertificate",
-      {
-        certificateName: `${this.stackName}-cloudfront-certificate`,
-        domainName: props.tenants[0].appDomainName, // プライマリドメイン
-        subjectAlternativeNames: props.tenants
-          .slice(1)
-          .map((tenant) => tenant.appDomainName), // 追加ドメイン
-        validation: acm.CertificateValidation.fromDnsMultiZone(hostedZoneMap),
-      },
-    );
+    // テナントごとにACM証明書を作成
+    for (const tenant of props.tenants) {
+      // テナント用の証明書名
+      const tenantId = tenant.appDomainName.replace(/\./g, "-");
+      const certificate = new acm.Certificate(
+        this,
+        `CloudFrontCertificate-${tenantId}`,
+        {
+          certificateName: `${this.stackName}-cloudfront-certificate-${tenantId}`,
+          domainName: tenant.appDomainName,
+          validation: acm.CertificateValidation.fromDns(hostedZoneMap[tenant.appDomainName]),
+        }
+      );
+      
+      // テナントドメインとACM証明書のマッピングを保存
+      this.cloudFrontTenantCertificates[tenant.appDomainName] = certificate;
+      
+      // テナントごとの証明書をエクスポート
+      new CfnOutput(this, `FrontendCertificateArn-${tenantId}`, {
+        value: certificate.certificateArn,
+        exportName: `${props.envName}-frontend-cert-arn-${tenantId}`,
+      });
+    }
 
     // WAF用のルール配列を作成
     const wafRules: wafv2.CfnWebACL.RuleProperty[] = [
