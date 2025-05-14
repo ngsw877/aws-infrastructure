@@ -174,19 +174,43 @@ export class MainStack extends Stack {
       },
     );
 
-    // CloudFront Function レスポンスセキュリティヘッダー設定用
-    const frontendHttpSecurityHeaderFunction = new cloudfront.Function(
-      this,
-      "FrontendHttpSecurityHeaderFunction",
-      {
-        functionName: `${this.stackName}-FrontendHttpSecurityHeaderFunction`,
-        runtime: cloudfront.FunctionRuntime.JS_2_0,
-        code: cloudfront.FunctionCode.fromFile({
-          filePath:
-            "cloudfront-functions/FrontendHttpSecurityHeaderFunction.js",
-        }),
-      },
-    );
+    // セキュリティヘッダーポリシーを作成
+    const securityHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, "SecurityHeadersPolicy", {
+      securityHeadersBehavior: {
+        contentSecurityPolicy: {
+          override: true,
+          contentSecurityPolicy:
+            "default-src 'self' https:; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; " +
+            "style-src 'self' 'unsafe-inline' https:; " +
+            "font-src 'self' data: https:; " +
+            "img-src 'self' data: https:; " +
+            "media-src 'self' https:; " +
+            "connect-src 'self' https:; " +
+            "frame-src 'self' https:; " +
+            "frame-ancestors 'none'; " +
+            "object-src 'none';"
+        },
+        strictTransportSecurity: {
+          override: true,
+          accessControlMaxAge: Duration.seconds(63072000),
+          includeSubdomains: true,
+          preload: true
+        },
+        contentTypeOptions: {
+          override: true
+        },
+        frameOptions: {
+          override: true,
+          frameOption: cloudfront.HeadersFrameOption.DENY
+        },
+        xssProtection: {
+          override: true,
+          protection: true,
+          modeBlock: true
+        }
+      }
+    });
 
     // CloudFrontToS3コンストラクトを使ってCloudFrontとS3を接続
     const cloudFrontToS3 = new CloudFrontToS3(this, "MultiTenantCloudFrontToS3", {
@@ -202,11 +226,8 @@ export class MainStack extends Stack {
               function: frontendIndexPageFunction,
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
             },
-            {
-              function: frontendHttpSecurityHeaderFunction,
-              eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE,
-            },
           ],
+          responseHeadersPolicy: securityHeadersPolicy,
           // オリジンリクエストポリシー
           originRequestPolicy: new cloudfront.OriginRequestPolicy(
             this,
