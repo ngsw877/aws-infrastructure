@@ -6,6 +6,9 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
+permissions:
+  actions: write
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
@@ -21,6 +24,9 @@ jobs:
           WORKFLOW_FILES=(
             "./ecs-auto-deploy.yml"
             "./ecs-manual-deploy.yml"
+            "./s3-auto-deploy.yml"
+            "./s3-manual-deploy.yml"
+            "./cleanup-workflow-runs.yml"
           )
 
           # 指定したworkflowファイルごとに実行履歴を全て削除
