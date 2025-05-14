@@ -46,6 +46,7 @@ const tenants: Tenant[] = [
 ];
 
 const commonStackProps: CommonStackProps = {
+  crossRegionReferences: true,
   envName: "dev",
   tenants: tenants,
   logRetentionDays: logs.RetentionDays.THREE_MONTHS,
@@ -57,7 +58,6 @@ const globalStackProps: GlobalStackProps = {
     account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "us-east-1",
   },
-  crossRegionReferences: true,
 };
 
 const mainStackProps: MainStackProps = {
@@ -66,7 +66,6 @@ const mainStackProps: MainStackProps = {
     account: process.env.CDK_DEFAULT_ACCOUNT || dummyAccountId,
     region: "ap-northeast-1",
   },
-  crossRegionReferences: true,
   natGatewaysCount: 1,
   defaultTtl: Duration.days(1),
   maxTtl: Duration.days(365),
