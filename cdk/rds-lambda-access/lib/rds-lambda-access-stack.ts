@@ -2,10 +2,10 @@ import * as cdk from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'node:path';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class RdsLambdaAccessStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -107,6 +107,15 @@ export class RdsLambdaAccessStack extends cdk.Stack {
       'Allow PostgreSQL access from Lambda'
     );
 
+    // S3バケットの作成（CSV出力用）
+    const csvBucket = new s3.Bucket(this, 'CsvBucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+    });
+
     // Lambda用のロール
     const lambdaRole = new iam.Role(this, 'LambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -118,10 +127,13 @@ export class RdsLambdaAccessStack extends cdk.Stack {
     // Secrets ManagerへのアクセスをLambdaに許可
     rdsInstance.secret?.grantRead(lambdaRole);
 
-    // RDSへのアクセスを行うLambda関数
-    const rdsAccessLambda = new lambda.Function(this, 'RdsAccessLambda', {
+    // S3バケットへの書き込み権限をLambdaに追加
+    csvBucket.grantReadWrite(lambdaRole);
+
+    // DB初期化用のLambda関数
+    const initDbLambda = new lambda.Function(this, 'InitDbLambda', {
       runtime: lambda.Runtime.PYTHON_3_13,
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/init_db'), {
         bundling: {
           image: lambda.Runtime.PYTHON_3_13.bundlingImage,
           command: [
@@ -132,11 +144,41 @@ export class RdsLambdaAccessStack extends cdk.Stack {
           ],
         },
       }),
-      handler: 'rds_access.handler',
+      handler: 'lambda_function.lambda_handler',
       environment: {
         DB_SECRET_ARN: rdsInstance.secret?.secretArn || '',
       },
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+      vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      securityGroups: [lambdaSecurityGroup],
+      role: lambdaRole,
+      architecture: lambda.Architecture.ARM_64,
+    });
+
+    // データ取得・CSV出力用のLambda関数
+    const exportRdsToS3Lambda = new lambda.Function(this, 'ExportRdsToS3Lambda', {
+      runtime: lambda.Runtime.PYTHON_3_13,
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/export_rds_to_s3'), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_13.bundlingImage,
+          command: [
+            'bash', '-c', [
+              'pip install -r requirements.txt -t /asset-output',
+              'cp -au . /asset-output'
+            ].join(' && ')
+          ],
+        },
+      }),
+      handler: 'lambda_function.lambda_handler',
+      environment: {
+        DB_SECRET_ARN: rdsInstance.secret?.secretArn || '',
+        S3_BUCKET_NAME: csvBucket.bucketName,
+      },
+      timeout: cdk.Duration.minutes(3),
       memorySize: 256,
       vpc,
       vpcSubnets: {
