@@ -47,6 +47,12 @@ runs:
       uses: docker/setup-qemu-action@v3
       with:
         platforms: ${{ inputs.platforms }}
+        # ubuntu-24.04でのセグメンテーションフォルト問題を回避するため、修正版のqemu-v9.2.2-52に固定
+        # 参考リンク:
+        #   - https://github.com/actions/runner-images/issues/11662
+        #   - https://github.com/tonistiigi/binfmt/releases/tag/deploy%2Fv9.2.2-52
+        #   - https://wiki.qemu.org/ChangeLog/9.2
+        image: tonistiigi/binfmt:qemu-v9.2.2-52
 
     - name: Setup Buildx
       uses: docker/setup-buildx-action@v3
