@@ -51,7 +51,7 @@ runs:
         # ARM64アーキテクチャを使用する場合、imageを明示的に指定しないとlatestが使用され、
         # セグメンテーションフォールトが発生する可能性がある
         # 詳細: https://github.com/docker/setup-qemu-action/issues/198
-        image: tonistiigi/binfmt:qemu-v7.0.0-28
+        image: tonistiigi/binfmt:qemu-v8.1.5-45
 
     - name: Setup Buildx
       uses: docker/setup-buildx-action@v3
