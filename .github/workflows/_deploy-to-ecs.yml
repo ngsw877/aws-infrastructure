@@ -32,7 +32,7 @@ defaults:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       id-token: write
       contents: read
@@ -98,7 +98,7 @@ jobs:
           echo "ECS_TASK_DEFINITION_FAMILY=${ECS_TASK_DEFINITION_FAMILY}" >> $GITHUB_OUTPUT
           echo "ECS_SG_ID=${ECS_SG_ID}" >> $GITHUB_OUTPUT
           echo "PRIVATE_SUBNET_ID=${PRIVATE_SUBNET_ID}" >> $GITHUB_OUTPUT
-          
+
           echo "APP_IMAGE_TAG=${APP_IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "WEB_IMAGE_TAG=${WEB_IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "LOG_ROUTER_IMAGE_TAG=${LOG_ROUTER_IMAGE_TAG}" >> $GITHUB_OUTPUT
@@ -120,7 +120,7 @@ jobs:
       LOG_ROUTER_IMAGE_TAG: ${{ steps.set-params.outputs.LOG_ROUTER_IMAGE_TAG }}
 
   build-and-push-app-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: setup
     permissions:
       id-token: write
@@ -143,7 +143,7 @@ jobs:
           platforms: linux/arm64
 
   build-and-push-web-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: setup
     permissions:
       id-token: write
@@ -170,7 +170,7 @@ jobs:
             RESOLVER=${{ env.RESOLVER }}
 
   build-and-push-log-router-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: setup
     permissions:
       id-token: write
@@ -191,7 +191,7 @@ jobs:
           platforms: linux/arm64
 
   detect-migration-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       pull-requests: read
       contents: read
@@ -236,7 +236,7 @@ jobs:
   run-database-migration:
     needs: [setup, build-and-push-app-image, detect-migration-changes]
     if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       id-token: write
       contents: read
@@ -268,7 +268,7 @@ jobs:
             --task-definition ${{ needs.setup.outputs.ECS_TASK_DEFINITION_FAMILY }} \
             --query 'taskDefinition' \
             --output json)
-          
+
           # 新しいタスク定義用にJSONを修正
           # - 不要なフィールドを削除（webコンテナも、マイグレーション用のタスクには不要なので除外する）
           # - appコンテナのイメージを一時タグに変更
@@ -289,7 +289,7 @@ jobs:
               if .name == "app" then .image = $IMG else . end
             ) |
             .family = $FAMILY')
-          
+
           # マイグレーション用の一時タスク定義を登録
           # - ECSサービス用のタスク定義とは別に登録する
           # - 一時タスク用のタスク定義はCDK管理外
@@ -297,7 +297,7 @@ jobs:
             --cli-input-json "$MODIFIED_TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
-          
+
           echo "MIGRATION_TASK_DEF_ARN=$MIGRATION_TASK_DEF_ARN" >> $GITHUB_OUTPUT
           set +x
 
@@ -348,7 +348,7 @@ jobs:
             --tasks ${{ steps.migration.outputs.TASK_ARN }} \
             --query 'tasks[0].containers[?name==`app`].exitCode' \
             --output text)
-          
+
           if [ "$TASK_STATUS" != "0" ]; then
             echo "マイグレーションに失敗しました。終了コード: ${TASK_STATUS}"
             exit 1
@@ -358,7 +358,7 @@ jobs:
   deploy-to-ecs:
     needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, run-database-migration]
     if: ${{ !cancelled() && !failure() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       id-token: write
       contents: read
