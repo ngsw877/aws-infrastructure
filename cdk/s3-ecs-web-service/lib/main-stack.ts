@@ -282,12 +282,6 @@ export class MainStack extends Stack {
     // マルチテナント設定を追加
     cfnDistribution.addPropertyOverride('DistributionConfig.ConnectionMode', 'tenant-only');
 
-    // デバッグ用のOutputを追加
-    new CfnOutput(this, "DebugCloudFrontDistributionId", {
-      value: cloudFrontDistribution.distributionId,
-      description: "CloudFront Distribution ID for debugging"
-    });
-    
     // コネクショングループの作成（CloudFormationリソースとして直接定義）
     const connectionGroup = new cloudfront.CfnConnectionGroup(
       this,
