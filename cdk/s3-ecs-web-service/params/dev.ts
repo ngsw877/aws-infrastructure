@@ -22,6 +22,7 @@ const tenants: Tenant[] = [
         allowedIpAddresses: devSecrets.allowedIpAddresses,
         ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
         isSesEnabled: true,
+        isDemo: false,
     },
     // テナント2
     {
@@ -29,13 +30,23 @@ const tenants: Tenant[] = [
         appDomainName: "dev.s3-ecs-web-service.hoge-app.click",
         // IP制限なし
         isSesEnabled: true,
+        isDemo: false,
     },
-    // テナント3
+    // テナント3（デモテナント）
     {
-        route53HostedZoneId: "Z10072973EOGDWG5ZALL3",
-        appDomainName: "dev.s3-ecs-web-service.example.click",
+        route53HostedZoneId: "Z015135176PPBIY626ST",
+        appDomainName: "demo1.s3-ecs-web-service.hoge-app.click",
         // IP制限なし
         isSesEnabled: false,
+        isDemo: true,
+    },
+    // テナント4（デモテナント）
+    {
+        route53HostedZoneId: "Z015135176PPBIY626ST",
+        appDomainName: "demo2.s3-ecs-web-service.hoge-app.click",
+        // IP制限なし
+        isSesEnabled: false,
+        isDemo: true,
     },
 ];
 

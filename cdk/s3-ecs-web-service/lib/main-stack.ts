@@ -293,8 +293,12 @@ export class MainStack extends Stack {
       }
     );
 
-    // 各テナント用のDistributionTenantsを作成
-    for (const tenant of props.tenants) {
+    // 通常テナントとデモテナントを分離
+    const normalTenants = props.tenants.filter(tenant => !tenant.isDemo);
+    const demoTenants = props.tenants.filter(tenant => tenant.isDemo);
+
+    // 通常テナント用のDistributionTenantsを作成（個別）
+    for (const tenant of normalTenants) {
       const tenantId = tenant.appDomainName.replace(/\./g, "-");
     
       // CloudFormationリソースとしてDistributionTenantを直接定義
@@ -330,6 +334,51 @@ export class MainStack extends Stack {
           })
         }
       );
+    }
+
+    // デモテナント用に1つのDistributionTenantを作成（複数ドメインを登録）
+    if (demoTenants.length > 0) {
+      // デモテナント用のドメイン一覧を作成
+      const demoDomains = demoTenants.map(tenant => tenant.appDomainName);
+      // どのデモテナントの証明書も同じワイルドカード証明書なので、最初のものを使用
+      const demoCertificateArn = props.cloudFrontTenantCertificates[demoTenants[0].appDomainName].certificateArn;
+      
+      // デモテナント用のDistributionTenantを作成
+      new cloudfront.CfnDistributionTenant(
+        this,
+        `FrontendDistributionTenantDemo`,
+        {
+          distributionId: cloudFrontDistribution.distributionId,
+          connectionGroupId: connectionGroup.attrId,
+          name: `${this.stackName}-frontend-tenant-demo`,
+          domains: demoDomains, // 複数のデモドメインを指定
+          enabled: true,
+          customizations: {
+            certificate: {
+              arn: demoCertificateArn, // ワイルドカード証明書のARN
+            },
+          },
+        }
+      );
+      
+      // 各デモテナント用のRoute53レコードを作成
+      for (const demoTenant of demoTenants) {
+        const demoTenantId = demoTenant.appDomainName.replace(/\./g, "-");
+        new route53.ARecord(
+          this,
+          `CloudFrontAliasRecordDemo${demoTenantId}`,
+          {
+            zone: baseDomainZoneMap[demoTenant.appDomainName],
+            recordName: demoTenant.appDomainName,
+            target: route53.RecordTarget.fromAlias({
+              bind: () => ({
+                dnsName: Fn.getAtt(connectionGroup.logicalId, "RoutingEndpoint").toString(),
+                hostedZoneId: 'Z2FDTNDATAQYW2', // CloudFrontの固定ゾーンID
+              })
+            })
+          }
+        );
+      }
     }
 
     /*************************************
@@ -1631,12 +1680,20 @@ export class MainStack extends Stack {
     new CfnOutput(this, "FrontendCloudFrontDistributionId", {
       value: cloudFrontDistribution.distributionId,
     });
-    // 各テナントのディストリビューションテナントIDもエクスポート
-    for (const tenant of props.tenants) {
+    // 通常テナントのディストリビューションテナントIDをエクスポート
+    for (const tenant of normalTenants) {
       const tenantId = tenant.appDomainName.replace(/\./g, "-");
       new CfnOutput(this, `FrontendDistributionTenantId-${tenantId}`, {
         value: `DistributionTenant-${tenantId}`,
         description: `Frontend Distribution Tenant ID for ${tenant.appDomainName}`,
+      });
+    }
+    
+    // デモテナント用の共通ディストリビューションテナントIDをエクスポート
+    if (demoTenants.length > 0) {
+      new CfnOutput(this, "FrontendDistributionTenantIdDemo", {
+        value: "DistributionTenant-Demo",
+        description: "Frontend Distribution Tenant ID for demo tenants",
       });
     }
   }

@@ -34,28 +34,72 @@ export class GlobalStack extends Stack {
         );
     }
 
-    // テナントごとにACM証明書を作成
-    for (const tenant of props.tenants) {
-      // テナント用の証明書名
-      const tenantId = tenant.appDomainName.replace(/\./g, "-");
-      const certificate = new acm.Certificate(
+    // デモテナント用ワイルドカード証明書を作成
+    const demoTenants = props.tenants.filter(tenant => tenant.isDemo);
+    let wildcardCertificate: acm.ICertificate | undefined;
+    
+    if (demoTenants.length > 0) {
+      // デモテナント用のベースドメインを動的に取得
+      const firstDemoTenant = demoTenants[0];
+      const demoBaseDomain = firstDemoTenant.appDomainName.split('.').slice(1).join('.'); // demo1.s3-ecs-web-service.hoge-app.click → s3-ecs-web-service.hoge-app.click
+      const wildcardDomain = `*.${demoBaseDomain}`;
+      
+      wildcardCertificate = new acm.Certificate(
         this,
-        `CloudFrontCertificate-${tenantId}`,
+        "CloudFrontWildcardCertificate",
         {
-          certificateName: `${this.stackName}-cloudfront-certificate-${tenantId}`,
-          domainName: tenant.appDomainName,
-          validation: acm.CertificateValidation.fromDns(hostedZoneMap[tenant.appDomainName]),
+          certificateName: `${this.stackName}-cloudfront-wildcard-certificate`,
+          domainName: wildcardDomain,
+          validation: acm.CertificateValidation.fromDns(
+            route53.HostedZone.fromHostedZoneAttributes(this, "WildcardHostedZone", {
+              hostedZoneId: firstDemoTenant.route53HostedZoneId, // デモテナントのHostedZoneIdを使用
+              zoneName: demoBaseDomain,
+            })
+          ),
         }
       );
       
-      // テナントドメインとACM証明書のマッピングを保存
-      this.cloudFrontTenantCertificates[tenant.appDomainName] = certificate;
-      
-      // テナントごとの証明書をエクスポート
-      new CfnOutput(this, `FrontendCertificateArn-${tenantId}`, {
-        value: certificate.certificateArn,
-        exportName: `${props.envName}-frontend-cert-arn-${tenantId}`,
+      // ワイルドカード証明書をエクスポート
+      new CfnOutput(this, "FrontendWildcardCertificateArn", {
+        value: wildcardCertificate.certificateArn,
+        exportName: `${props.envName}-frontend-wildcard-cert-arn`,
       });
+    }
+
+    // テナントごとにACM証明書を作成または割り当て
+    for (const tenant of props.tenants) {
+      const tenantId = tenant.appDomainName.replace(/\./g, "-");
+      
+      if (tenant.isDemo && wildcardCertificate) {
+        // デモテナントはワイルドカード証明書を使用
+        this.cloudFrontTenantCertificates[tenant.appDomainName] = wildcardCertificate;
+        
+        // デモテナント用の証明書参照をエクスポート
+        new CfnOutput(this, `FrontendCertificateArn-${tenantId}`, {
+          value: wildcardCertificate.certificateArn,
+          exportName: `${props.envName}-frontend-cert-arn-${tenantId}`,
+        });
+      } else {
+        // 通常テナントは個別にACM証明書を発行
+        const certificate = new acm.Certificate(
+          this,
+          `CloudFrontCertificate-${tenantId}`,
+          {
+            certificateName: `${this.stackName}-cloudfront-certificate-${tenantId}`,
+            domainName: tenant.appDomainName,
+            validation: acm.CertificateValidation.fromDns(hostedZoneMap[tenant.appDomainName]),
+          }
+        );
+        
+        // テナントドメインとACM証明書のマッピングを保存
+        this.cloudFrontTenantCertificates[tenant.appDomainName] = certificate;
+        
+        // テナントごとの証明書をエクスポート
+        new CfnOutput(this, `FrontendCertificateArn-${tenantId}`, {
+          value: certificate.certificateArn,
+          exportName: `${props.envName}-frontend-cert-arn-${tenantId}`,
+        });
+      }
     }
 
     // WAF用のルール配列を作成

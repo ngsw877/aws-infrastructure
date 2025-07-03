@@ -19,6 +19,8 @@ export interface Tenant {
   ipRestrictionExcludedPaths?: string[];
   // SESの作成を有効にするかどうか
   isSesEnabled?: boolean;
+  // デモテナントかどうか（デモテナントの場合はワイルドカード証明書を使用）
+  isDemo?: boolean;
 }
 
 // 共通のスタックプロパティ
