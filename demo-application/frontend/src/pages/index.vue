@@ -88,10 +88,9 @@
 </template>
 
 <script setup>
-const config = useRuntimeConfig()
-const apiBaseUrl = config.public.apiBaseUrl
+import { getApiUrl } from '~/utils/api'
 
-const { data, pending, error } = await $fetch(`${apiBaseUrl}/api/domain`)
+const { data, pending, error } = await useFetch(getApiUrl('/domain'))
 </script>
 
 <style lang="scss" scoped>
