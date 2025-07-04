@@ -34,16 +34,16 @@ const tenants: Tenant[] = [
     },
     // テナント3（デモテナント）
     {
-        route53HostedZoneId: "Z015135176PPBIY626ST",
-        appDomainName: "demo1.s3-ecs-web-service.hoge-app.click",
+        route53HostedZoneId: "Z01140211URKT1J60WTA5",
+        appDomainName: "demo1.dev.s3-ecs-web-service.hoge-app.click",
         // IP制限なし
         isSesEnabled: false,
         isDemo: true,
     },
     // テナント4（デモテナント）
     {
-        route53HostedZoneId: "Z015135176PPBIY626ST",
-        appDomainName: "demo2.s3-ecs-web-service.hoge-app.click",
+        route53HostedZoneId: "Z01140211URKT1J60WTA5",
+        appDomainName: "demo2.dev.s3-ecs-web-service.hoge-app.click",
         // IP制限なし
         isSesEnabled: false,
         isDemo: true,
