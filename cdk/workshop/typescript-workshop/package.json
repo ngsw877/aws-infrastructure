@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.4.0"
+    "@types/node": "^24.0.10"
   }
 }
