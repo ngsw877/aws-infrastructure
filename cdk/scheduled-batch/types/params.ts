@@ -1,8 +1,8 @@
 import type * as cdk from "aws-cdk-lib";
-import type * as events from "aws-cdk-lib/aws-events";
+import type { CronOptions } from "aws-cdk-lib/aws-events";
 
 export interface ScheduleOption {
-  scheduleCron: events.CronOptions;
+  scheduleCron: CronOptions;
   isScheduleEnabled: boolean;
 }
 

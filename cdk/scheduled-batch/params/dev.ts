@@ -24,11 +24,11 @@ export const devParams: ScheduledBatchStackParams = {
     scheduleOption: {
       scheduleCron: {
         minute: "0",
-        hour: "0",
+        hour: "9",
         weekDay: "*",
         month: "*",
         year: "*",
-      }, // 日本時間の9時に毎日実行（UTC 0時）
+      }, // 日本時間の9時に毎日実行
       isScheduleEnabled: true,
     },
   },
@@ -44,11 +44,11 @@ export const devParams: ScheduledBatchStackParams = {
     scheduleOption: {
       scheduleCron: {
         minute: "0",
-        hour: "21",
-        weekDay: "SUN,THU",
+        hour: "6",
+        weekDay: "MON,FRI",
         month: "*",
         year: "*",
-      }, // UTC時間で21:00（日本時間で翌日6:00）に、月曜と金曜にバッチ実行
+      }, // 日本時間で6:00に、月曜と金曜にバッチ実行
       isScheduleEnabled: false,
     },
   },

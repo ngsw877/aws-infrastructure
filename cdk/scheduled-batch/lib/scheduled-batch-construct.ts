@@ -1,7 +1,8 @@
 import * as cdk from "aws-cdk-lib";
 import { Stack } from "aws-cdk-lib";
-import * as events from "aws-cdk-lib/aws-events";
-import * as targets from "aws-cdk-lib/aws-events-targets";
+import { Schedule, ScheduleExpression } from "aws-cdk-lib/aws-scheduler";
+import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
+import { TimeZone } from "aws-cdk-lib/core";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -20,7 +21,7 @@ export interface BatchConfig {
 export class ScheduledBatchConstruct extends Construct {
   public readonly lambda: NodejsFunction;
   public readonly lambdaRole: iam.Role;
-  public readonly rule: events.Rule;
+  public readonly schedule: Schedule;
 
   constructor(scope: Construct, id: string, config: BatchConfig) {
     super(scope, id);
@@ -69,10 +70,13 @@ export class ScheduledBatchConstruct extends Construct {
     });
 
     // スケジュール
-    this.rule = new events.Rule(this, "ScheduleRule", {
+    this.schedule = new Schedule(this, "Schedule", {
+      schedule: ScheduleExpression.cron({
+        ...config.scheduleOption.scheduleCron,
+        timeZone: TimeZone.of("Asia/Tokyo"),
+      }),
+      target: new LambdaInvoke(this.lambda),
       enabled: config.scheduleOption.isScheduleEnabled,
-      schedule: events.Schedule.cron(config.scheduleOption.scheduleCron),
     });
-    this.rule.addTarget(new targets.LambdaFunction(this.lambda));
   }
 }
