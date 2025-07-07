@@ -6,27 +6,17 @@ export interface ScheduleOption {
   isScheduleEnabled: boolean;
 }
 
-// 全てのバッチ処理共通の設定
-export interface CommonBatchProps {
+// バッチ設定
+export interface BatchConfig {
+  lambdaEntry: string;
+  environment: Record<string, string>;
+  scheduleOption: ScheduleOption;
   batchSuccessWebhookParameterStoreName: string;
   batchFailureWebhookParameterStoreName: string;
 }
 
-// テストバッチ用Props
-export interface HelloWorldBatchProps extends CommonBatchProps {
-  testMessage: string;
-  scheduleOption: ScheduleOption;
-}
-
-// ECSタスク再起動バッチ用Props
-export interface RestartEcsTasksBatchProps extends CommonBatchProps {
-  ecsClusterName: string;
-  ecsServiceName: string;
-  scheduleOption: ScheduleOption;
-}
-
 // スタック用のパラメータ
 export interface ScheduledBatchStackParams extends cdk.StackProps {
-  helloWorldBatchProps: HelloWorldBatchProps;
-  restartEcsTasksBatchProps: RestartEcsTasksBatchProps;
+  helloWorldBatchConfig: BatchConfig;
+  restartEcsTasksBatchConfig: BatchConfig;
 }

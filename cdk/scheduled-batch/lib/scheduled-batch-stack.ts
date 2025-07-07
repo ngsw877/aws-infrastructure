@@ -1,21 +1,31 @@
 import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
 import type { Construct } from "constructs";
 import type { ScheduledBatchStackParams } from "../types/params";
-import { HelloWorldBatch } from "./batches/hello-world";
-import { RestartEcsTasksBatch } from "./batches/restart-ecs-tasks-batch";
+import { ScheduledBatchConstruct } from "./scheduled-batch-construct";
 
 export class ScheduledBatchStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ScheduledBatchStackParams) {
     super(scope, id, props);
 
     // テストバッチ
-    new HelloWorldBatch(this, "HelloWorldBatch", props.helloWorldBatchProps);
+    new ScheduledBatchConstruct(this, "HelloWorldBatch", props.helloWorldBatchConfig);
 
     // 指定したECSタスクの再起動バッチ
-    new RestartEcsTasksBatch(
+    const restartEcsBatch = new ScheduledBatchConstruct(
       this,
-      "RestartEcsTasksBatch",
-      props.restartEcsTasksBatchProps,
+      "RestartEcsTasksBatch", 
+      props.restartEcsTasksBatchConfig,
+    );
+
+    // ECS固有のポリシーを追加
+    restartEcsBatch.lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:UpdateService"],
+        resources: [
+          `arn:aws:ecs:${this.region}:${this.account}:service/${props.restartEcsTasksBatchConfig.environment.ECS_CLUSTER_NAME}/${props.restartEcsTasksBatchConfig.environment.ECS_SERVICE_NAME}`,
+        ],
+      })
     );
   }
 }
