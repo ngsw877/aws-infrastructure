@@ -1,0 +1,80 @@
+name: 'Deployment Notification'
+description: 'デプロイメント結果をSlackに通知するアクション'
+inputs:
+  webhook-url:
+    description: 'Slack Webhook URL'
+    required: true
+  status:
+    description: 'デプロイのステータス (success/failure/cancelled)'
+    required: true
+  title:
+    description: 'デプロイメントのタイトル（例: ECSデプロイ）'
+    required: true
+  message-success:
+    description: 'デプロイ成功時のメッセージ'
+    required: false
+    default: '✅ デプロイが正常に完了しました'
+  message-failure:
+    description: 'デプロイ失敗時のメッセージ'
+    required: false
+    default: '❌ デプロイが失敗しました'
+  message-cancelled:
+    description: 'デプロイキャンセル時のメッセージ'
+    required: false
+    default: '⚠️ デプロイがキャンセルされました'
+  fields:
+    description: 'Slack通知に含めるフィールド（JSON形式）'
+    required: false
+    default: '[]'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Webhook URL
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.webhook-url }}" ]; then
+          echo "::warning::Slack Webhook URLが設定されていないため、通知をスキップします"
+          echo "SKIP_NOTIFICATION=true" >> $GITHUB_ENV
+        else
+          echo "SKIP_NOTIFICATION=false" >> $GITHUB_ENV
+        fi
+
+    - name: Set Notification Parameters
+      if: env.SKIP_NOTIFICATION != 'true'
+      shell: bash
+      run: |
+        # ステータスに応じて設定を決定
+        case "${{ inputs.status }}" in
+          "success")
+            echo "MESSAGE=${{ inputs.message-success }}" >> $GITHUB_ENV
+            echo "COLOR=good" >> $GITHUB_ENV
+            ;;
+          "failure")
+            echo "MESSAGE=${{ inputs.message-failure }}" >> $GITHUB_ENV
+            echo "COLOR=danger" >> $GITHUB_ENV
+            ;;
+          "cancelled")
+            echo "MESSAGE=${{ inputs.message-cancelled }}" >> $GITHUB_ENV
+            echo "COLOR=warning" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "::error::不明なステータス: ${{ inputs.status }}"
+            exit 1
+            ;;
+        esac
+
+    - name: Send Slack Notification
+      if: env.SKIP_NOTIFICATION != 'true'
+      uses: slackapi/slack-github-action@v2
+      with:
+        webhook: ${{ inputs.webhook-url }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "text": "${{ inputs.title }}: ${{ env.MESSAGE }}",
+            "attachments": [{
+              "color": "${{ env.COLOR }}",
+              "fields": ${{ inputs.fields }}
+            }]
+          }

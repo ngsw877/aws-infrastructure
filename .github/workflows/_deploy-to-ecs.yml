@@ -487,3 +487,34 @@ jobs:
             --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
             --service ${{ needs.setup.outputs.ECS_SERVICE_NAME }} \
             --force-new-deployment
+
+      # デプロイ完了を待機
+      - name: Wait for ECS Service Stable
+        id: wait-deployment
+        run: |
+          set -x
+          echo "::notice::ECSサービスのデプロイ完了を待機しています..."
+          aws ecs wait services-stable \
+            --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
+            --services ${{ needs.setup.outputs.ECS_SERVICE_NAME }} \
+            --region ${{ env.AWS_REGION }}
+          echo "DEPLOYMENT_STATUS=success" >> $GITHUB_OUTPUT
+
+      # Slack通知
+      - name: Notify Deployment Status to Slack
+        if: always()
+        uses: ./.github/actions/deployment-notification
+        with:
+          webhook-url: ${{ vars.DEPLOY_NOTIFICATION_SLACK_WEBHOOK_URL || '' }}
+          status: ${{ job.status }}
+          title: 'ECSデプロイ'
+          message-success: '✅ デプロイが正常に完了しました'
+          message-failure: '❌ デプロイが失敗しました'
+          fields: |
+            [
+              {"title": "環境", "value": "${{ inputs.deploy-to }}", "short": true},
+              {"title": "ブランチ", "value": "${{ inputs.branch }}", "short": true},
+              {"title": "イメージタグ", "value": "${{ needs.setup.outputs.APP_IMAGE_TAG }}", "short": true},
+              {"title": "実行者", "value": "${{ github.actor }}", "short": true},
+              {"title": "ワークフロー", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+            ]
