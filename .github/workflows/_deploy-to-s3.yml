@@ -113,6 +113,7 @@ jobs:
 
       # CloudFrontのキャッシュ削除
       - name: Invalidate CloudFront Cache for Multitenants
+        id: invalidate-cache
         run: |
           set -x
           
@@ -126,15 +127,76 @@ jobs:
             --query "DistributionTenantList[*].Id" \
             --output text)
           
+          # テナントIDと無効化IDのペアを保存（形式: "tenant_id:invalidation_id tenant_id:invalidation_id ..."）
+          TENANT_INVALIDATION_PAIRS=""
+          
           # 取得したテナントIDを一つずつ処理
           for TENANT_ID in $TENANT_IDS; do
             # タイムスタンプを作成（一意のCallerReference用）
             # CallerReferenceは必須なので毎回ユニークな値を生成
             TIMESTAMP=$(date +%s)
             
-            # テナントのキャッシュを無効化
+            # テナントのキャッシュを無効化し、Invalidation IDを取得
             # --invalidation-batch はJSON形式で指定する必要がある
-            aws cloudfront create-invalidation-for-distribution-tenant \
+            INVALIDATION_RESULT=$(aws cloudfront create-invalidation-for-distribution-tenant \
               --id "$TENANT_ID" \
-              --invalidation-batch "{\"Paths\":{\"Quantity\":1,\"Items\":[\"/*\"]},\"CallerReference\":\"$TIMESTAMP\"}"
+              --invalidation-batch "{\"Paths\":{\"Quantity\":1,\"Items\":[\"/*\"]},\"CallerReference\":\"$TIMESTAMP\"}" \
+              --output json)
+            
+            INVALIDATION_ID=$(echo $INVALIDATION_RESULT | jq -r '.Invalidation.Id')
+            echo "::notice::テナント ${TENANT_ID}: キャッシュ削除 ${INVALIDATION_ID} を開始しました"
+            
+            # テナントIDと無効化IDのペアを保存
+            TENANT_INVALIDATION_PAIRS="${TENANT_INVALIDATION_PAIRS}${TENANT_ID}:${INVALIDATION_ID} "
           done
+          
+          # 無効化情報を出力として設定
+          echo "TENANT_INVALIDATION_PAIRS=${TENANT_INVALIDATION_PAIRS}" >> $GITHUB_OUTPUT
+          echo "PARENT_DISTRIBUTION_ID=${PARENT_DISTRIBUTION_ID}" >> $GITHUB_OUTPUT
+
+      # キャッシュ削除の完了を待機
+      - name: Wait for CloudFront Invalidations to Complete
+        run: |
+          set -x
+          
+          # テナントと無効化IDのペアを取得
+          TENANT_INVALIDATION_PAIRS="${{ steps.invalidate-cache.outputs.TENANT_INVALIDATION_PAIRS }}"
+          
+          echo "::notice::すべてのキャッシュ削除の完了を待機しています..."
+          
+          # スペース区切りで各ペアを処理
+          for PAIR in $TENANT_INVALIDATION_PAIRS; do
+            # コロンで分割してテナントIDと無効化IDを取得
+            IFS=':' read -r TENANT_ID INVALIDATION_ID <<< "$PAIR"
+            
+            echo "::notice::テナント ${TENANT_ID} の無効化 ${INVALIDATION_ID} の完了を待機中..."
+            
+            # AWS CLIのwaitコマンドで無効化の完了を待機
+            # 20秒ごとにポーリングし、最大30回（約10分）待機
+            aws cloudfront wait invalidation-for-distribution-tenant-completed \
+              --distribution-tenant-id "$TENANT_ID" \
+              --id "$INVALIDATION_ID"
+            
+            echo "::notice::テナント ${TENANT_ID} のキャッシュ削除が完了しました"
+          done
+          
+          echo "::notice::すべてのキャッシュ削除が完了しました"
+
+      # Slack通知
+      - name: Notify Deployment Status to Slack
+        if: always()
+        uses: ./.github/actions/deployment-notification
+        with:
+          webhook-url: ${{ vars.DEPLOY_NOTIFICATION_SLACK_WEBHOOK_URL || '' }}
+          status: ${{ job.status }}
+          title: 'S3デプロイ'
+          message-success: '✅ デプロイが正常に完了しました'
+          message-failure: '❌ デプロイが失敗しました'
+          fields: |
+            [
+              {"title": "環境", "value": "${{ inputs.deploy-to }}", "short": true},
+              {"title": "ブランチ", "value": "${{ inputs.branch }}", "short": true},
+              {"title": "S3バケット", "value": "${{ steps.set-params.outputs.FRONTEND_BUCKET_NAME }}", "short": true},
+              {"title": "実行者", "value": "${{ github.actor }}", "short": true},
+              {"title": "ワークフロー", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+            ]
