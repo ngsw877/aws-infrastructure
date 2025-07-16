@@ -15,11 +15,10 @@ on:
       migration-mode:
         description: マイグレーション実行モード
         type: choice
-        default: 'auto'
+        default: 'skip'
         options:
-          - 'auto'    # 変更検知時のみ実行
-          - 'force'   # 強制実行
-          - 'skip'    # 実行しない
+          - 'run'    # マイグレーションを実行
+          - 'skip'   # マイグレーションを実行しない
 
 permissions:
   id-token: write
