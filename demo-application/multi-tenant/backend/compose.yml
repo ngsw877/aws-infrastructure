@@ -1,0 +1,66 @@
+name: demo-api
+services:
+    web:
+        build:
+            context: ./docker/nginx
+            dockerfile: Dockerfile
+        ports:
+            - '80:80'
+        environment:
+            BACKEND_APP_DOMAIN: "app"
+            RESOLVER: "127.0.0.11"
+            LOG_SOURCE_NAME: "demo-api-nginx"
+        depends_on:
+            - app
+    app:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+            target: local
+        environment:
+            APP_ENV: local
+        volumes:
+            - './src:/var/www/html'
+            - 'vendor:/.composer'
+        depends_on:
+            db:
+                condition: service_healthy
+
+    db:
+        image: postgres:17
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready --username $$POSTGRES_USER"]
+            interval: 1s
+            timeout: 5s
+            retries: 3
+        command: [
+            "-c","shared_buffers=1GB",
+            "-c","work_mem=128MB",
+            "-c","maintenance_work_mem=512MB",
+            "-c","log_statement=all",
+            "-c","log_min_duration_statement=3s",
+            "-c","autovacuum=off",
+            "-c","checkpoint_timeout=30min",
+            "-c","max_wal_size=8GB",
+            "-c","fsync=off",
+            "-c","synchronous_commit=off",
+            "-c","full_page_writes=off",
+            "-c","bgwriter_lru_maxpages=0",
+        ]
+        shm_size: 1g
+        volumes:
+            - 'postgresql:/var/lib/postgresql/data'
+        environment:
+            PGTZ: Asia/Tokyo
+            PGUSER: webapp
+            PGDATABASE: demo_db
+            POSTGRES_USER: webapp
+            POSTGRES_DB: demo_db
+            POSTGRES_PASSWORD: webapp
+        ports:
+            - "15432:5432"
+
+volumes:
+    vendor:
+    postgresql:
+        driver: local
