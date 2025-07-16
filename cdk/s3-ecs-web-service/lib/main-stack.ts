@@ -1588,7 +1588,7 @@ export class MainStack extends Stack {
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
-              actions: ["ecs:UpdateService"],
+              actions: ["ecs:UpdateService", "ecs:DescribeServices"],
               resources: [backendEcsService.serviceArn],
             }),
             // --- フロントエンドアプリ用 ---
@@ -1614,6 +1614,8 @@ export class MainStack extends Stack {
                 "cloudfront:ListDistributionTenants",
                 // テナント単位でのキャッシュ無効化
                 "cloudfront:CreateInvalidationForDistributionTenant",
+                // キャッシュ無効化の状態確認（waitコマンドで必要）
+                "cloudfront:GetInvalidationForDistributionTenant",
               ],
               resources: ["*"]
             }),

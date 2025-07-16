@@ -500,6 +500,12 @@ jobs:
             --region ${{ env.AWS_REGION }}
           echo "DEPLOYMENT_STATUS=success" >> $GITHUB_OUTPUT
 
+      # リポジトリのチェックアウト（deployment-notificationアクションで必要）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
       # Slack通知
       - name: Notify Deployment Status to Slack
         if: always()
