@@ -1,98 +1,267 @@
 <template>
-  <div class="main-page">
-    <div class="container">
-      <!-- Header -->
-      <div class="header">
-        <h1 class="header__title">Multi-Tenant Demo Application</h1>
-        <p class="header__subtitle">Domain-based tenant identification system</p>
+  <div class="shop-page">
+    <div v-if="shopPending || productsPending" class="loading-container">
+      <div class="loading">
+        <div class="loading__spinner"></div>
+        <p class="loading__text">読み込み中...</p>
       </div>
+    </div>
+    
+    <div v-else-if="shopError || productsError" class="error-container">
+      <div class="error">
+        <h2 class="error__title">エラーが発生しました</h2>
+        <p class="error__message">{{ shopError || productsError }}</p>
+      </div>
+    </div>
+    
+    <div v-else class="container">
+      <!-- Shop Header -->
+      <header class="shop-header" :style="headerStyle">
+        <div class="shop-header__content">
+          <h1 class="shop-header__title">{{ shopData?.shop?.name }}</h1>
+          <p class="shop-header__description">{{ shopData?.shop?.description }}</p>
+        </div>
+      </header>
 
-      <!-- Domain Info Card -->
-      <div class="domain-card">
-        <div class="domain-card__icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"></path>
-          </svg>
+      <!-- Products Section -->
+      <section class="products-section">
+        <h2 class="products-section__title">商品一覧</h2>
+        
+        <div v-if="!productsData?.products?.length" class="no-products">
+          <p>現在、商品がありません。</p>
         </div>
         
-        <div v-if="pending" class="loading">
-          <div class="loading__spinner"></div>
-          <p class="loading__text">Loading domain information...</p>
-        </div>
-        
-        <div v-else-if="error" class="error">
-          <div class="error__content">
-            <svg class="error__icon" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg>
-            <div>
-              <h3 class="error__title">Error loading domain</h3>
-              <p class="error__message">{{ error }}</p>
+        <div v-else class="products-grid">
+          <NuxtLink
+            v-for="product in productsData.products"
+            :key="product.id"
+            :to="`/products/${product.id}`"
+            class="product-card"
+          >
+            <div class="product-card__image">
+              <img :src="product.image_url" :alt="product.name" />
+              <div v-if="!product.in_stock" class="product-card__out-of-stock">
+                在庫切れ
+              </div>
             </div>
-          </div>
+            <div class="product-card__content">
+              <h3 class="product-card__name">{{ product.name }}</h3>
+              <p class="product-card__description">{{ product.description }}</p>
+              <div class="product-card__footer">
+                <span class="product-card__price">¥{{ product.price.toLocaleString() }}</span>
+                <span v-if="product.in_stock" class="product-card__stock">在庫: {{ product.stock }}</span>
+              </div>
+            </div>
+          </NuxtLink>
         </div>
-        
-        <div v-else class="domain-card__content">
-          <h2 class="domain-card__title">Current Domain</h2>
-          <div class="domain-card__domain">
-            <p class="domain-card__domain-text">{{ data?.domain }}</p>
-            <p class="domain-card__domain-label">Detected from request headers</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation Cards -->
-      <div class="nav-grid">
-        <NuxtLink to="/sample" class="nav-card">
-          <div class="nav-card__icon nav-card__icon--success">
-            <svg viewBox="0 0 24 24">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <h3 class="nav-card__title">Sample Page</h3>
-          <p class="nav-card__description">Test page for development</p>
-        </NuxtLink>
-
-        <NuxtLink to="/product" class="nav-card">
-          <div class="nav-card__icon nav-card__icon--purple">
-            <svg viewBox="0 0 24 24">
-              <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-            </svg>
-          </div>
-          <h3 class="nav-card__title">Products</h3>
-          <p class="nav-card__description">Product catalog</p>
-        </NuxtLink>
-
-        <NuxtLink to="/user" class="nav-card">
-          <div class="nav-card__icon nav-card__icon--warning">
-            <svg viewBox="0 0 24 24">
-              <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-            </svg>
-          </div>
-          <h3 class="nav-card__title">Users</h3>
-          <p class="nav-card__description">User management</p>
-        </NuxtLink>
-
-        <NuxtLink to="/order" class="nav-card">
-          <div class="nav-card__icon nav-card__icon--error">
-            <svg viewBox="0 0 24 24">
-              <path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-          </div>
-          <h3 class="nav-card__title">Orders</h3>
-          <p class="nav-card__description">Order management</p>
-        </NuxtLink>
-      </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
 import { getApiUrl } from '~/utils/api'
+import { computed } from 'vue'
 
-const { data, pending, error } = await useFetch(getApiUrl('/domain'))
+// ショップ情報の取得
+const { data: shopData, pending: shopPending, error: shopError } = await useFetch(getApiUrl('/shop'))
+
+// 商品一覧の取得
+const { data: productsData, pending: productsPending, error: productsError } = await useFetch(getApiUrl('/products'))
+
+// テーマ設定に基づくヘッダースタイル
+const headerStyle = computed(() => {
+  const theme = shopData.value?.shop?.theme_settings || {}
+  return {
+    backgroundColor: theme.primary_color || '#3490dc',
+    color: '#ffffff'
+  }
+})
 </script>
 
 <style lang="scss" scoped>
-@import '~/assets/scss/main.scss';
+.shop-page {
+  min-height: 100vh;
+  background-color: #f7fafc;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.loading {
+  text-align: center;
+  
+  &__spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #3490dc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  &__text {
+    color: #718096;
+    font-size: 16px;
+  }
+}
+
+.error {
+  text-align: center;
+  padding: 40px;
+  
+  &__title {
+    font-size: 24px;
+    color: #e53e3e;
+    margin-bottom: 8px;
+  }
+  
+  &__message {
+    color: #718096;
+  }
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.shop-header {
+  padding: 80px 0;
+  margin-bottom: 48px;
+  text-align: center;
+  position: relative;
+  
+  &__content {
+    position: relative;
+    z-index: 1;
+  }
+  
+  &__title {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  
+  &__description {
+    font-size: 20px;
+    opacity: 0.9;
+  }
+}
+
+.products-section {
+  padding-bottom: 80px;
+  
+  &__title {
+    font-size: 32px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+}
+
+.no-products {
+  text-align: center;
+  padding: 80px 0;
+  color: #718096;
+  font-size: 18px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 32px;
+}
+
+.product-card {
+  display: block;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+  color: inherit;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  &__image {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+  
+  &__out-of-stock {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  
+  &__content {
+    padding: 24px;
+  }
+  
+  &__name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+  }
+  
+  &__description {
+    color: #718096;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  &__price {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+  }
+  
+  &__stock {
+    color: #48bb78;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 </style>

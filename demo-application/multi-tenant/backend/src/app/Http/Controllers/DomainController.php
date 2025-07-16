@@ -17,9 +17,15 @@ class DomainController extends Controller
     public function getCurrentDomain(Request $request): JsonResponse
     {
         $domain = $request->getHost();
+        $tenant = $request->get('tenant');
         
         return response()->json([
-            'domain' => $domain
+            'domain' => $domain,
+            'tenant' => $tenant ? [
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'slug' => $tenant->slug
+            ] : null
         ]);
     }
 }

@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('migration_09', function (Blueprint $table) {
+        Schema::create('shops', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
             $table->string('name');
+            $table->text('description')->nullable();
+            $table->string('logo_url')->nullable();
+            $table->json('theme_settings')->nullable();
             $table->timestamps();
         });
     }
@@ -23,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('migration_09');
+        Schema::dropIfExists('shops');
     }
-}; 
+};

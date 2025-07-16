@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('migration_08', function (Blueprint $table) {
+        Schema::create('tenants', function (Blueprint $table) {
             $table->id();
+            $table->string('domain')->unique();
             $table->string('name');
+            $table->string('slug')->unique();
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
     }
@@ -23,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('migration_08');
+        Schema::dropIfExists('tenants');
     }
-}; 
+};
