@@ -29,7 +29,7 @@ const tenants: Tenant[] = [
         route53HostedZoneId: "Z01140211URKT1J60WTA5",
         appDomainName: "dev.s3-ecs-web-service.hoge-app.click",
         // IP制限なし
-        isSesEnabled: true,
+        isSesEnabled: false,
         isDemo: false,
     },
     // テナント3（デモテナント）
