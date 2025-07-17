@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <linearGradient id="shirtGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e53e3e"/>
+      <stop offset="100%" stop-color="#c53030"/>
+    </linearGradient>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fed7d7"/>
+      <stop offset="100%" stop-color="#fbb6ce"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" fill="url(#bgGradient)"/>
+  
+  <!-- T-shirt body -->
+  <path d="M85 100 Q85 90, 95 90 L130 90 Q140 80, 140 70 Q140 60, 150 60 Q160 60, 160 70 Q160 80, 170 90 L205 90 Q215 90, 215 100 L215 250 Q215 260, 205 260 L95 260 Q85 260, 85 250 Z" fill="url(#shirtGradient)" stroke="#c53030" stroke-width="1"/>
+  
+  <!-- Sleeves -->
+  <ellipse cx="70" cy="115" rx="25" ry="40" fill="url(#shirtGradient)" stroke="#c53030" stroke-width="1"/>
+  <ellipse cx="230" cy="115" rx="25" ry="40" fill="url(#shirtGradient)" stroke="#c53030" stroke-width="1"/>
+  
+  <!-- Collar -->
+  <path d="M140 90 Q150 80, 160 90" fill="none" stroke="#c53030" stroke-width="3"/>
+  
+  <!-- Shirt details -->
+  <path d="M120 130 L180 130" stroke="#fed7d7" stroke-width="1" opacity="0.6"/>
+  <path d="M110 160 L190 160" stroke="#fed7d7" stroke-width="1" opacity="0.4"/>
+  <path d="M115 190 L185 190" stroke="#fed7d7" stroke-width="1" opacity="0.3"/>
+  
+  <!-- Subtle shadow -->
+  <path d="M90 250 Q90 255, 95 255 L205 255 Q210 255, 210 250" fill="#c53030" opacity="0.3"/>
+</svg>

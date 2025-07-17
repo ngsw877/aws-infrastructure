@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <radialGradient id="screenGradient" cx="50%" cy="30%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#1a202c"/>
+      <stop offset="100%" stop-color="#0f0f0f"/>
+    </radialGradient>
+    <radialGradient id="frameGradient" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#4a5568"/>
+    </radialGradient>
+    <linearGradient id="bandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a5568"/>
+      <stop offset="100%" stop-color="#2d3748"/>
+    </linearGradient>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f7fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" fill="url(#bgGradient)"/>
+  
+  <!-- Watch band segments -->
+  <rect x="135" y="40" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  <rect x="135" y="58" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  <rect x="135" y="76" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  
+  <rect x="135" y="210" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  <rect x="135" y="228" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  <rect x="135" y="246" width="30" height="15" rx="3" fill="url(#bandGradient)" stroke="#2d3748" stroke-width="0.5"/>
+  
+  <!-- Watch frame -->
+  <rect x="95" y="95" width="110" height="110" rx="20" fill="url(#frameGradient)" stroke="#2d3748" stroke-width="2"/>
+  
+  <!-- Watch screen -->
+  <rect x="105" y="105" width="90" height="90" rx="15" fill="url(#screenGradient)"/>
+  
+  <!-- Digital crown -->
+  <rect x="205" y="130" width="8" height="20" rx="4" fill="url(#frameGradient)" stroke="#2d3748" stroke-width="1"/>
+  <circle cx="209" cy="140" r="2" fill="#4a5568"/>
+  
+  <!-- Side button -->
+  <rect x="205" y="155" width="6" height="15" rx="3" fill="url(#frameGradient)" stroke="#2d3748" stroke-width="1"/>
+  
+  <!-- Screen UI elements -->
+  <!-- Time display -->
+  <text x="150" y="135" font-family="Arial, sans-serif" font-size="18" fill="#4fd1c7" text-anchor="middle" font-weight="bold">14:30</text>
+  
+  <!-- Date -->
+  <text x="150" y="150" font-family="Arial, sans-serif" font-size="10" fill="#a0aec0" text-anchor="middle">Mon 17 Jul</text>
+  
+  <!-- Health metrics -->
+  <circle cx="130" cy="170" r="8" fill="none" stroke="#e53e3e" stroke-width="2"/>
+  <path d="M125 170 L130 175 L135 165" stroke="#e53e3e" stroke-width="2" fill="none"/>
+  <text x="130" y="185" font-family="Arial, sans-serif" font-size="8" fill="#a0aec0" text-anchor="middle">♥72</text>
+  
+  <!-- Steps -->
+  <circle cx="170" cy="170" r="8" fill="none" stroke="#48bb78" stroke-width="2"/>
+  <path d="M166 174 L170 170 L174 174 L170 167" stroke="#48bb78" stroke-width="1.5" fill="none"/>
+  <text x="170" y="185" font-family="Arial, sans-serif" font-size="8" fill="#a0aec0" text-anchor="middle">8.2k</text>
+  
+  <!-- Reflection effect -->
+  <path d="M105 105 Q150 110, 195 105 Q190 120, 150 125 Q110 120, 105 105" fill="#ffffff" opacity="0.1"/>
+  
+  <!-- Label -->
+  <text x="150" y="285" font-family="Arial, sans-serif" font-size="11" fill="#4a5568" text-anchor="middle" font-weight="bold">Smart Watch</text>
+</svg>

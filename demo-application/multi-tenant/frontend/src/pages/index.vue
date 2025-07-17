@@ -39,7 +39,7 @@
             class="product-card"
           >
             <div class="product-card__image">
-              <img :src="product.image_url" :alt="product.name" />
+              <img :src="product.image_url.startsWith('/') ? product.image_url : product.image_url" :alt="product.name" />
               <div v-if="!product.in_stock" class="product-card__out-of-stock">
                 在庫切れ
               </div>

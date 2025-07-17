@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <linearGradient id="batteryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a5568"/>
+      <stop offset="50%" stop-color="#2d3748"/>
+      <stop offset="100%" stop-color="#1a202c"/>
+    </linearGradient>
+    <linearGradient id="chargeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#48bb78"/>
+      <stop offset="70%" stop-color="#68d391"/>
+      <stop offset="100%" stop-color="#c6f6d5"/>
+    </linearGradient>
+    <radialGradient id="ledGradient" cx="50%" cy="30%">
+      <stop offset="0%" stop-color="#48bb78"/>
+      <stop offset="100%" stop-color="#2f855a"/>
+    </radialGradient>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f7fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" fill="url(#bgGradient)"/>
+  
+  <!-- Shadow -->
+  <ellipse cx="155" cy="195" rx="75" ry="8" fill="#2d3748" opacity="0.2"/>
+  
+  <!-- Main power bank body -->
+  <rect x="75" y="110" width="150" height="70" rx="12" fill="url(#batteryGradient)" stroke="#1a202c" stroke-width="1"/>
+  
+  <!-- Screen/display area -->
+  <rect x="85" y="120" width="40" height="20" rx="3" fill="#1a202c" stroke="#4a5568" stroke-width="1"/>
+  <text x="105" y="133" font-family="Arial, sans-serif" font-size="10" fill="#48bb78" text-anchor="middle" font-weight="bold">85%</text>
+  
+  <!-- Charge level indicators -->
+  <rect x="85" y="145" width="130" height="8" rx="4" fill="#1a202c"/>
+  <rect x="87" y="147" width="91" height="4" rx="2" fill="url(#chargeGradient)"/>
+  
+  <!-- USB-C port -->
+  <rect x="225" y="135" width="8" height="20" rx="4" fill="#1a202c" stroke="#4a5568" stroke-width="1"/>
+  <rect x="227" y="140" width="4" height="10" rx="2" fill="#4a5568"/>
+  
+  <!-- USB-A ports -->
+  <rect x="140" y="115" width="12" height="6" rx="1" fill="#1a202c" stroke="#4a5568" stroke-width="0.5"/>
+  <rect x="155" y="115" width="12" height="6" rx="1" fill="#1a202c" stroke="#4a5568" stroke-width="0.5"/>
+  
+  <!-- Power button -->
+  <circle cx="190" cy="130" r="6" fill="#4a5568" stroke="#2d3748" stroke-width="1"/>
+  <circle cx="190" cy="130" r="3" fill="url(#ledGradient)"/>
+  
+  <!-- LED indicators -->
+  <circle cx="135" cy="130" r="2" fill="#48bb78" opacity="0.8"/>
+  <circle cx="145" cy="130" r="2" fill="#48bb78" opacity="0.8"/>
+  <circle cx="155" cy="130" r="2" fill="#48bb78" opacity="0.8"/>
+  <circle cx="165" cy="130" r="2" fill="#e2e8f0" opacity="0.5"/>
+  
+  <!-- Brand label area -->
+  <rect x="85" y="160" width="50" height="12" rx="2" fill="#4a5568" opacity="0.3"/>
+  <text x="110" y="168" font-family="Arial, sans-serif" font-size="8" fill="#e2e8f0" text-anchor="middle">10000mAh</text>
+  
+  <!-- Micro texture -->
+  <path d="M80 115 L220 115" stroke="#4a5568" stroke-width="0.5" opacity="0.5"/>
+  <path d="M80 125 L220 125" stroke="#4a5568" stroke-width="0.5" opacity="0.3"/>
+  <path d="M80 135 L220 135" stroke="#4a5568" stroke-width="0.5" opacity="0.3"/>
+  <path d="M80 165 L220 165" stroke="#4a5568" stroke-width="0.5" opacity="0.3"/>
+  <path d="M80 175 L220 175" stroke="#4a5568" stroke-width="0.5" opacity="0.5"/>
+  
+  <!-- Charging cable (optional) -->
+  <path d="M240 145 Q260 145, 270 155" stroke="#4a5568" stroke-width="3" fill="none" opacity="0.6"/>
+  <rect x="268" y="152" width="8" height="6" rx="3" fill="#4a5568" opacity="0.6"/>
+  
+  <!-- Label -->
+  <text x="150" y="250" font-family="Arial, sans-serif" font-size="11" fill="#2d3748" text-anchor="middle" font-weight="bold">Power Bank 10000mAh</text>
+</svg>

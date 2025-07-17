@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <radialGradient id="cushionGradient" cx="30%" cy="30%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#68d391"/>
+      <stop offset="100%" stop-color="#48bb78"/>
+    </radialGradient>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0fff4"/>
+      <stop offset="100%" stop-color="#c6f6d5"/>
+    </linearGradient>
+    <pattern id="nordicPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#68d391"/>
+      <path d="M0 20 L20 0 L40 20 L20 40 Z" fill="#ffffff" opacity="0.3"/>
+      <circle cx="20" cy="20" r="8" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4"/>
+    </pattern>
+  </defs>
+  <rect width="300" height="300" fill="url(#bgGradient)"/>
+  
+  <!-- Shadow -->
+  <ellipse cx="155" cy="205" rx="80" ry="15" fill="#2f855a" opacity="0.2"/>
+  
+  <!-- Cushion main body -->
+  <path d="M75 120 Q75 90, 105 90 L195 90 Q225 90, 225 120 L225 180 Q225 210, 195 210 L105 210 Q75 210, 75 180 Z" fill="url(#cushionGradient)" stroke="#48bb78" stroke-width="2"/>
+  
+  <!-- Nordic pattern overlay -->
+  <path d="M80 125 Q80 95, 110 95 L190 95 Q220 95, 220 125 L220 175 Q220 205, 190 205 L110 205 Q80 205, 80 175 Z" fill="url(#nordicPattern)" opacity="0.7"/>
+  
+  <!-- Cushion piping/edge -->
+  <path d="M75 120 Q75 90, 105 90 L195 90 Q225 90, 225 120 L225 180 Q225 210, 195 210 L105 210 Q75 210, 75 180 Z" fill="none" stroke="#2f855a" stroke-width="3"/>
+  
+  <!-- Decorative stitching lines -->
+  <path d="M90 105 L210 105" stroke="#2f855a" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+  <path d="M90 150 L210 150" stroke="#2f855a" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+  <path d="M90 195 L210 195" stroke="#2f855a" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+  
+  <!-- Corner tufting buttons -->
+  <circle cx="110" cy="125" r="6" fill="#2f855a" stroke="#1a365d" stroke-width="1"/>
+  <circle cx="190" cy="125" r="6" fill="#2f855a" stroke="#1a365d" stroke-width="1"/>
+  <circle cx="110" cy="175" r="6" fill="#2f855a" stroke="#1a365d" stroke-width="1"/>
+  <circle cx="190" cy="175" r="6" fill="#2f855a" stroke="#1a365d" stroke-width="1"/>
+  
+  <!-- Button details -->
+  <circle cx="110" cy="125" r="2" fill="#1a365d"/>
+  <circle cx="190" cy="125" r="2" fill="#1a365d"/>
+  <circle cx="110" cy="175" r="2" fill="#1a365d"/>
+  <circle cx="190" cy="175" r="2" fill="#1a365d"/>
+  
+  <!-- Central decorative element -->
+  <path d="M140 140 L150 130 L160 140 L150 150 Z" fill="#ffffff" opacity="0.5"/>
+  <path d="M140 160 L150 150 L160 160 L150 170 Z" fill="#ffffff" opacity="0.5"/>
+  
+  <!-- Fabric texture highlight -->
+  <path d="M85 100 Q150 105, 215 100" stroke="#ffffff" stroke-width="2" opacity="0.3"/>
+  
+  <!-- Label -->
+  <text x="150" y="270" font-family="Arial, sans-serif" font-size="11" fill="#2f855a" text-anchor="middle" font-weight="bold">Nordic Cushion Cover</text>
+</svg>
