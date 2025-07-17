@@ -18,13 +18,18 @@ on:
         type: string
         required: false
         default: 'skip'
+      backend-dir:
+        description: バックエンドディレクトリ
+        type: string
+        required: false
+        default: "demo-application/multi-tenant/backend"
 
 env:
   AWS_REGION: "ap-northeast-1"
-  APP_DOCKER_CONTEXT: "./demo-application/backend"
-  WEB_DOCKER_CONTEXT: "./demo-application/backend/docker/nginx"
-  LOG_ROUTER_DOCKER_CONTEXT: "./demo-application/backend/docker/fluentbit"
-  MIGRATION_PATH: "./demo-application/backend/database/migrations/**"
+  APP_DOCKER_CONTEXT: "./${{ inputs.backend-dir }}"
+  WEB_DOCKER_CONTEXT: "./${{ inputs.backend-dir }}/docker/nginx"
+  LOG_ROUTER_DOCKER_CONTEXT: "./${{ inputs.backend-dir }}/docker/fluentbit"
+  MIGRATION_PATH: "./${{ inputs.backend-dir }}/database/migrations/**"
 
 defaults:
   run:

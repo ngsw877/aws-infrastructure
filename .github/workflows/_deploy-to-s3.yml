@@ -17,7 +17,7 @@ on:
         description: フロントエンドディレクトリ
         type: string
         required: false
-        default: "demo-application/frontend"
+        default: "demo-application/multi-tenant/frontend"
 
 env:
   AWS_REGION: "ap-northeast-1"
