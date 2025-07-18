@@ -21,12 +21,12 @@ const params = getParams(envName);
 // バージニアリージョン用のスタック
 const globalStack = new GlobalStack(
   app,
-  `${envName}-S3EcsWebServiceGlobal`,
+  `${envName}-MultiTenantGlobal`,
   params.globalStackProps,
 );
 
 // 東京リージョン用のスタック
-new MainStack(app, `${envName}-S3EcsWebServiceMain`, {
+new MainStack(app, `${envName}-MultiTenantMain`, {
   ...params.mainStackProps,
   cloudFrontTenantCertificates: globalStack.cloudFrontTenantCertificates,
   cloudFrontWebAcl: globalStack.cloudFrontWebAcl,

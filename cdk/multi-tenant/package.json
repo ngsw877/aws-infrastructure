@@ -1,8 +1,8 @@
 {
-  "name": "s3-ecs-web-service",
+  "name": "multi-tenant",
   "version": "0.1.0",
   "bin": {
-    "s3-ecs-web-service": "bin/s3-ecs-web-service.js"
+    "multi-tenant": "bin/multi-tenant.js"
   },
   "scripts": {
     "build": "tsc",

@@ -41,7 +41,7 @@ export class GlobalStack extends Stack {
     if (demoTenants.length > 0) {
       // デモテナント用のベースドメインを動的に取得
       const firstDemoTenant = demoTenants[0];
-      const demoBaseDomain = firstDemoTenant.appDomainName.split('.').slice(1).join('.'); // demo1.s3-ecs-web-service.hoge-app.click → s3-ecs-web-service.hoge-app.click
+      const demoBaseDomain = firstDemoTenant.appDomainName.split('.').slice(1).join('.'); // demo1.multi-tenant.hoge-app.click → multi-tenant.hoge-app.click
       const wildcardDomain = `*.${demoBaseDomain}`;
       
       wildcardCertificate = new acm.Certificate(
