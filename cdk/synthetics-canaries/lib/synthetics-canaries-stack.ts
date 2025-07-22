@@ -29,13 +29,17 @@ export class SyntheticsCanariesStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
-    // Canary実行用のIAMロール
-    const canaryRole = new iam.Role(this, 'CanaryRole', {
+    // ====================================
+    // Example.comアクセステスト用Canary
+    // ====================================
+
+    // Example.comテスト用のIAMロール
+    const exampleAccessCanaryRole = new iam.Role(this, 'ExampleAccessCanaryRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      roleName: `${this.stackName}-CanaryRole`,
+      roleName: `${this.stackName}-ExampleAccessCanaryRole`,
     });
 
-    // Canaryロールのポリシー
+    // Canary共通のIAMポリシー（S3アーティファクト保存、CloudWatch Logs書き込み権限）
     const canaryPolicy = new iam.Policy(this, 'CanaryPolicy', {
       policyName: `${this.stackName}-CanaryPolicy`,
       statements: [
@@ -77,19 +81,19 @@ export class SyntheticsCanariesStack extends cdk.Stack {
         }),
       ],
     });
-    canaryRole.attachInlinePolicy(canaryPolicy);
+    exampleAccessCanaryRole.attachInlinePolicy(canaryPolicy);
 
-    // Canaryの設定
-    const canary = new synthetics.Canary(this, 'ExampleAccessCanary', {
-      canaryName: 'example-access-monitor',
+    // Example.comアクセステスト用Canaryの設定
+    const exampleAccessCanary = new synthetics.Canary(this, 'ExampleAccessCanary', {
+      canaryName: 'example-com-access-monitor',
       artifactsBucketLocation: {
         bucket: bucket,
       },
       test: synthetics.Test.custom({
         code: synthetics.Code.fromAsset(path.join(__dirname, '../canary')),
-        handler: 'index.handler',
+        handler: 'example-access-test.handler',
       }),
-      role: canaryRole,
+      role: exampleAccessCanaryRole,
       runtime: synthetics.Runtime.SYNTHETICS_NODEJS_PLAYWRIGHT_2_0,
       schedule: synthetics.Schedule.rate(Duration.minutes(5)), // 5分ごとに実行
       successRetentionPeriod: Duration.days(7),
@@ -97,7 +101,11 @@ export class SyntheticsCanariesStack extends cdk.Stack {
       startAfterCreation: true,
     });
 
-    // SNSトピック（Slack通知用）
+    // ====================================
+    // 通知設定（SNS、Lambda、CloudWatchアラーム）
+    // ====================================
+
+    // SNSトピック（Slack通知用・共通利用）
     const alarmTopic = new sns.Topic(this, 'CanaryAlarmTopic', {
       topicName: `${this.stackName}-CanaryAlarmTopic`,
     });
@@ -138,11 +146,11 @@ export class SyntheticsCanariesStack extends cdk.Stack {
       new sns_subscriptions.LambdaSubscription(slackNotifierFunction)
     );
 
-    // CloudWatchアラーム（Canary失敗時）
-    const canaryFailureAlarm = new cloudwatch.Alarm(this, 'CanaryFailureAlarm', {
-      alarmName: `${canary.canaryName}-failure-alarm`,
+    // Example.comアクセステスト用のCloudWatchアラーム
+    const exampleAccessCanaryFailureAlarm = new cloudwatch.Alarm(this, 'ExampleAccessCanaryFailureAlarm', {
+      alarmName: `${exampleAccessCanary.canaryName}-failure-alarm`,
       alarmDescription: `Example.com アクセス監視失敗`,
-      metric: canary.metricFailed().with({ 
+      metric: exampleAccessCanary.metricFailed().with({ 
         period: Duration.seconds(300) 
       }),
       threshold: 1,
@@ -152,8 +160,57 @@ export class SyntheticsCanariesStack extends cdk.Stack {
     });
 
     // アラームアクションの追加
-    canaryFailureAlarm.addAlarmAction(
+    exampleAccessCanaryFailureAlarm.addAlarmAction(
       new cloudwatch_actions.SnsAction(alarmTopic)
+    );
+
+    // ====================================
+    // ログインテスト用Canaryの追加
+    // ====================================
+
+    // ログインCanary用のIAMロール（セキュリティ分離のため別ロール）
+    const loginCanaryRole = new iam.Role(this, 'LoginCanaryRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      roleName: `${this.stackName}-LoginCanaryRole`,
+    });
+
+    // 既存のcanaryPolicyをアタッチ（S3とCloudWatch Logsアクセス権限を再利用）
+    loginCanaryRole.attachInlinePolicy(canaryPolicy);
+
+    // ログインテスト用Canary
+    const loginCanary = new synthetics.Canary(this, 'LoginTestCanary', {
+      canaryName: 'login-test-monitor',
+      artifactsBucketLocation: {
+        bucket: bucket,  // 既存のS3バケットを共通利用
+      },
+      test: synthetics.Test.custom({
+        code: synthetics.Code.fromAsset(path.join(__dirname, '../canary')),
+        handler: 'login-test.handler',
+      }),
+      role: loginCanaryRole,
+      runtime: synthetics.Runtime.SYNTHETICS_NODEJS_PLAYWRIGHT_2_0,
+      schedule: synthetics.Schedule.rate(Duration.minutes(10)), // 10分ごとに実行（既存は5分ごと）
+      successRetentionPeriod: Duration.days(7),
+      failureRetentionPeriod: Duration.days(7),
+      startAfterCreation: true,
+    });
+
+    // ログインCanary用のCloudWatchアラーム
+    const loginCanaryFailureAlarm = new cloudwatch.Alarm(this, 'LoginCanaryFailureAlarm', {
+      alarmName: `${loginCanary.canaryName}-failure-alarm`,
+      alarmDescription: `ログインテスト監視失敗`,
+      metric: loginCanary.metricFailed().with({ 
+        period: Duration.seconds(300) 
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // 既存のSNSトピックとLambda関数を再利用してSlack通知
+    loginCanaryFailureAlarm.addAlarmAction(
+      new cloudwatch_actions.SnsAction(alarmTopic)  // 既存のSNSトピックを共通利用
     );
   }
 }
