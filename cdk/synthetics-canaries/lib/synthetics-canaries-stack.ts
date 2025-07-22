@@ -18,7 +18,6 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // S3バケット（アーティファクト保存用）
     const bucket = new s3.Bucket(this, 'CanaryArtifactsBucket', {
-      bucketName: `${this.stackName.toLowerCase()}-artifacts`,
       lifecycleRules: [
         {
           id: '30DaysExpiration',
@@ -36,12 +35,10 @@ export class SyntheticsCanariesStack extends cdk.Stack {
     // Example.comテスト用のIAMロール
     const exampleAccessCanaryRole = new iam.Role(this, 'ExampleAccessCanaryRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      roleName: `${this.stackName}-ExampleAccessCanaryRole`,
     });
 
     // Canary共通のIAMポリシー（S3アーティファクト保存、CloudWatch Logs書き込み権限）
     const canaryPolicy = new iam.Policy(this, 'CanaryPolicy', {
-      policyName: `${this.stackName}-CanaryPolicy`,
       statements: [
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
@@ -85,13 +82,13 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // Example.comアクセステスト用Canaryの設定
     const exampleAccessCanary = new synthetics.Canary(this, 'ExampleAccessCanary', {
-      canaryName: 'example-com-access-monitor',
+      canaryName: 'example-access',
       artifactsBucketLocation: {
         bucket: bucket,
       },
       test: synthetics.Test.custom({
-        code: synthetics.Code.fromAsset(path.join(__dirname, '../canary')),
-        handler: 'example-access-test.handler',
+        code: synthetics.Code.fromAsset(path.join(__dirname, '../canary/example-access')),
+        handler: 'index.handler',
       }),
       role: exampleAccessCanaryRole,
       runtime: synthetics.Runtime.SYNTHETICS_NODEJS_PLAYWRIGHT_2_0,
@@ -106,9 +103,7 @@ export class SyntheticsCanariesStack extends cdk.Stack {
     // ====================================
 
     // SNSトピック（Slack通知用・共通利用）
-    const alarmTopic = new sns.Topic(this, 'CanaryAlarmTopic', {
-      topicName: `${this.stackName}-CanaryAlarmTopic`,
-    });
+    const alarmTopic = new sns.Topic(this, 'CanaryAlarmTopic');
 
     // Parameter StoreからSlack Webhook URLを取得（デプロイ時）
     const slackWebhookUrlParameterName = `/${this.stackName}/slack-webhook-url`;
@@ -119,7 +114,6 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // Slack通知用Lambda関数
     const slackNotifierFunction = new lambda.Function(this, 'SlackNotifierFunction', {
-      functionName: `${this.stackName}-SlackNotifier`,
       runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'slack_notifier.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
@@ -148,7 +142,6 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // Example.comアクセステスト用のCloudWatchアラーム
     const exampleAccessCanaryFailureAlarm = new cloudwatch.Alarm(this, 'ExampleAccessCanaryFailureAlarm', {
-      alarmName: `${exampleAccessCanary.canaryName}-failure-alarm`,
       alarmDescription: `Example.com アクセス監視失敗`,
       metric: exampleAccessCanary.metricFailed().with({ 
         period: Duration.seconds(300) 
@@ -171,7 +164,6 @@ export class SyntheticsCanariesStack extends cdk.Stack {
     // ログインCanary用のIAMロール（セキュリティ分離のため別ロール）
     const loginCanaryRole = new iam.Role(this, 'LoginCanaryRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      roleName: `${this.stackName}-LoginCanaryRole`,
     });
 
     // 既存のcanaryPolicyをアタッチ（S3とCloudWatch Logsアクセス権限を再利用）
@@ -179,13 +171,13 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // ログインテスト用Canary
     const loginCanary = new synthetics.Canary(this, 'LoginTestCanary', {
-      canaryName: 'login-test-monitor',
+      canaryName: 'login-test',
       artifactsBucketLocation: {
         bucket: bucket,  // 既存のS3バケットを共通利用
       },
       test: synthetics.Test.custom({
-        code: synthetics.Code.fromAsset(path.join(__dirname, '../canary')),
-        handler: 'login-test.handler',
+        code: synthetics.Code.fromAsset(path.join(__dirname, '../canary/login-test')),
+        handler: 'index.handler',
       }),
       role: loginCanaryRole,
       runtime: synthetics.Runtime.SYNTHETICS_NODEJS_PLAYWRIGHT_2_0,
@@ -197,7 +189,6 @@ export class SyntheticsCanariesStack extends cdk.Stack {
 
     // ログインCanary用のCloudWatchアラーム
     const loginCanaryFailureAlarm = new cloudwatch.Alarm(this, 'LoginCanaryFailureAlarm', {
-      alarmName: `${loginCanary.canaryName}-failure-alarm`,
       alarmDescription: `ログインテスト監視失敗`,
       metric: loginCanary.metricFailed().with({ 
         period: Duration.seconds(300) 

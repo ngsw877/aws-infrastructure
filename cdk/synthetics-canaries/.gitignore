@@ -1,6 +1,6 @@
 *.js
 !jest.config.js
-!canary/*.js
+!canary/**/*.js
 *.d.ts
 node_modules
 
