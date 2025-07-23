@@ -97,6 +97,11 @@ export class SyntheticsCanariesStack extends cdk.Stack {
       failureRetentionPeriod: Duration.days(7),
       startAfterCreation: true,
     });
+    // 自動リトライ機能を追加（エスケープハッチ使用）
+    const cfnExampleCanary = exampleAccessCanary.node.defaultChild as synthetics.CfnCanary;
+    cfnExampleCanary.addPropertyOverride('Schedule.RetryConfig', {
+      MaxRetries: 2, // 最大2回までリトライ
+    });
 
     // ====================================
     // 通知設定（SNS、Lambda、CloudWatchアラーム）
@@ -185,6 +190,11 @@ export class SyntheticsCanariesStack extends cdk.Stack {
       successRetentionPeriod: Duration.days(7),
       failureRetentionPeriod: Duration.days(7),
       startAfterCreation: true,
+    });
+    // 自動リトライ機能を追加（エスケープハッチ使用）
+    const cfnLoginCanary = loginCanary.node.defaultChild as synthetics.CfnCanary;
+    cfnLoginCanary.addPropertyOverride('Schedule.RetryConfig', {
+      MaxRetries: 2, // 最大2回までリトライ
     });
 
     // ログインCanary用のCloudWatchアラーム
