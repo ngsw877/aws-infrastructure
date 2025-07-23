@@ -8,5 +8,4 @@ new SyntheticsCanariesStack(app, 'SyntheticsCanariesStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
   },
-  description: 'CloudWatch Synthetics Canary for monitoring Example.com availability'
 });

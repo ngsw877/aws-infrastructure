@@ -15,12 +15,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # SNSメッセージをパース
     sns_message = json.loads(event['Records'][0]['Sns']['Message'])
     alarm_name = sns_message.get('AlarmName')
+    alarm_description = sns_message.get('AlarmDescription', '')
     new_state = sns_message.get('NewStateValue')
     reason = sns_message.get('NewStateReason')
     
     # Slack用メッセージを作成
+    # alarm_descriptionがある場合はそれを使用、なければalarm_nameを使用
+    display_text = alarm_description if alarm_description else alarm_name
+    
     slack_message = {
-        'text': f'CloudWatch Alarm: {alarm_name}',
+        'text': f'CloudWatch Alarm: {display_text}',
         'attachments': [{
             'color': 'danger' if new_state == 'ALARM' else 'good',
             'fields': [
