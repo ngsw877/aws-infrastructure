@@ -52,4 +52,23 @@ export const devParams: ScheduledBatchStackParams = {
       isScheduleEnabled: false,
     },
   },
+
+  // CloudFormationスタック削除バッチ用設定
+  cleanupCfnStacksConfig: {
+    ...commonBatchSettings,
+    lambdaEntry: path.join(__dirname, "../lambda/cleanup-cfn-stacks/index.ts"),
+    environment: {
+      DAYS_BEFORE_DELETION: "7", // 何日経過後に削除するか
+    },
+    scheduleOption: {
+      scheduleCron: {
+        minute: "0",
+        hour: "2",
+        weekDay: "*",
+        month: "*",
+        year: "*",
+      }, // 日本時間の毎日午前2時に実行
+      isScheduleEnabled: false, // 初期は無効化
+    },
+  },
 };

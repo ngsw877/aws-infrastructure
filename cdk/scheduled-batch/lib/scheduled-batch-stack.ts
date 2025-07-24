@@ -27,5 +27,23 @@ export class ScheduledBatchStack extends cdk.Stack {
         ],
       })
     );
+
+    // CloudFormationスタック削除バッチ
+    const cleanupCfnStacksBatch = new ScheduledBatchConstruct(
+      this,
+      "CleanupCfnStacksBatch",
+      props.cleanupCfnStacksConfig,
+    );
+
+    // CloudFormation操作のポリシーを追加
+    cleanupCfnStacksBatch.lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "cloudformation:ListStacks",
+          "cloudformation:DeleteStack",
+        ],
+        resources: ["*"], // ListStacksは全リソースが必要
+      })
+    );
   }
 }
