@@ -1,7 +1,17 @@
 resource "aws_instance" "this" {
   ami           = "ami-07b3f199a3bed006a" # Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
   instance_type = "t2.micro"
+
   vpc_security_group_ids = [aws_security_group.this.id]
+
+  user_data = <<EOT
+#!/bin/bash
+
+sudo apt update
+sudo apt install -y nginx
+EOT
+
+  user_data_replace_on_change = true
 
   tags = {
     Name = "workshop-instance"
