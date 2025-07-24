@@ -18,6 +18,8 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_security_group_rule" "ssh" {
+  count = var.allow_ssh ? 1 : 0
+
   type              = "ingress"
   from_port         = 22
   to_port           = 22
