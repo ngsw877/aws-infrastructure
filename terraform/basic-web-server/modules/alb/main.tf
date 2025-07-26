@@ -1,4 +1,5 @@
 resource "aws_lb" "this" {
+  name = "basic-web-server-alb"
   load_balancer_type = "application"
   security_groups = [aws_security_group.this.id]
   subnets = var.subnet_ids
@@ -36,7 +37,7 @@ data "aws_subnet" "this" {
 
 resource "aws_security_group" "this" {
   vpc_id = data.aws_subnet.this.vpc_id
-  name = "sample-alb-sg-${random_id.this.hex}"
+  name = "basic-web-server-alb-sg-${random_id.this.hex}"
 }
 
 resource "aws_security_group_rule" "http" {

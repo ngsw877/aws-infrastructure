@@ -11,7 +11,7 @@ resource "aws_instance" "this" {
   user_data_replace_on_change = true
 
   tags = {
-    Name = "sample-instance"
+    Name = "basic-web-server-instance"
   }
 }
 
@@ -25,7 +25,7 @@ data "aws_subnet" "this" {
 
 resource "aws_security_group" "this" {
   vpc_id = data.aws_subnet.this.vpc_id
-  name = "sample-ec2-sg-${random_id.this.hex}"
+  name = "basic-web-server-ec2-sg-${random_id.this.hex}"
 }
 
 resource "aws_security_group_rule" "ssh" {
