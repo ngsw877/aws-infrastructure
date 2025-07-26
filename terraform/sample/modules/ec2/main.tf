@@ -9,7 +9,7 @@ resource "aws_instance" "this" {
   user_data_replace_on_change = true
 
   tags = {
-    Name = "workshop-instance"
+    Name = "sample-instance"
   }
 }
 
@@ -18,7 +18,7 @@ resource "random_id" "this" {
 }
 
 resource "aws_security_group" "this" {
-  name = "workshop-ec2-sg-${random_id.this.hex}"
+  name = "sample-ec2-sg-${random_id.this.hex}"
 }
 
 resource "aws_security_group_rule" "ssh" {
