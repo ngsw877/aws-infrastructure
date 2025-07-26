@@ -56,3 +56,12 @@ resource "aws_security_group_rule" "egress" {
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.this.id
 }
+
+resource "aws_security_group_rule" "alb_to_instance" {
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  source_security_group_id = aws_security_group.this.id
+  security_group_id = var.instance_security_group_id
+}

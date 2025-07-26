@@ -5,3 +5,7 @@ variable "subnet_ids" {
 variable "instance_id" {
   type = string
 }
+
+variable "instance_security_group_id" {
+  type = string
+}
