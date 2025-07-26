@@ -5,7 +5,7 @@ module "vpc" {
 module "ec2" {
   source = "../../modules/ec2"
   allow_ssh = false
-  subnet_id = module.vpc.public_subnet_ids[0]
+  subnet_id = module.vpc.private_subnet_ids[0]
 }
 
 module "alb" {

@@ -4,7 +4,7 @@ resource "aws_instance" "this" {
 
   subnet_id = var.subnet_id
   vpc_security_group_ids = [aws_security_group.this.id]
-  associate_public_ip_address = true
+  associate_public_ip_address = false
 
   user_data = file("${path.module}/user_data.sh")
 
