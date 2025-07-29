@@ -1,19 +1,14 @@
 /**
- * 現在のホスト名からAPI Base URLを動的に生成
- * @returns API Base URL (例: https://api.demo1.s3-ecs-web-service.hoge-app.click)
+ * API Base URLを取得
+ * @returns API Base URL
  */
 export const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    return `https://api.${hostname}`
-  }
-  // SSR時のフォールバック
-  return 'https://api.localhost'
+  return process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
 }
 
 /**
  * APIエンドポイントの完全URLを生成
- * @param endpoint - APIエンドポイント (例: '/domain', '/health_check')
+ * @param endpoint - APIエンドポイント (例: '/products', '/cart')
  * @returns 完全なAPI URL
  */
 export const getApiUrl = (endpoint: string): string => {

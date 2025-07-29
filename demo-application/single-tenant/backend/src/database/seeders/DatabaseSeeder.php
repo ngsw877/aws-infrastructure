@@ -13,9 +13,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // ユーザーを作成
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+        
+        User::factory(10)->create();
 
-        // migration_01からmigration_10までのテーブルにデータを挿入
-        $this->call(MigrationTablesSeeder::class);
+        // 商品関連のシーダーを実行
+        $this->call([
+            ProductCategorySeeder::class,
+            ProductSeeder::class,
+        ]);
     }
 }
