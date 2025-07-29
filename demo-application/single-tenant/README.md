@@ -127,6 +127,88 @@ DELETE /api/cart                   # カート全削除
    npm run dev
    ```
 
+## テスト実行
+
+### バックエンドテスト（PHPUnit）
+
+```bash
+# Dockerコンテナ内でテスト実行
+cd backend
+docker-compose exec app php artisan test
+
+# 特定のテストクラスを実行
+docker-compose exec app php artisan test --filter=ProductApiTest
+
+# カバレッジレポート付きで実行
+docker-compose exec app php artisan test --coverage
+
+# 並列実行
+docker-compose exec app php artisan test --parallel
+```
+
+**テストの種類：**
+- **Feature Tests**: API エンドポイントのテスト
+  - `ProductApiTest`: 商品関連APIテスト
+  - `CartApiTest`: カート関連APIテスト
+- **Unit Tests**: モデルとビジネスロジックのテスト
+  - `ProductModelTest`: 商品モデルテスト
+  - `CartModelTest`: カートモデルテスト
+
+### フロントエンドテスト（Jest）
+
+```bash
+# テスト実行
+cd frontend
+npm test
+
+# ウォッチモードでテスト実行
+npm run test:watch
+
+# カバレッジレポート付きで実行
+npm run test:coverage
+
+# 特定のテストファイルを実行
+npm test -- --testPathPattern=pages/index.test.js
+```
+
+**テストの種類：**
+- **Page Tests**: ページコンポーネントのテスト
+  - `pages/index.test.js`: ホームページテスト
+  - `pages/products/[id].test.js`: 商品詳細ページテスト
+  - `pages/cart.test.js`: カートページテスト
+- **Utility Tests**: ユーティリティ関数のテスト
+  - `utils/api.test.js`: API関数テスト
+
+### テスト設定
+
+**バックエンド（PHPUnit）：**
+- SQLiteインメモリデータベース使用
+- RefreshDatabaseトレイトで各テスト間でデータリセット
+- モックデータを使用したAPI応答テスト
+
+**フロントエンド（Jest）：**
+- JSDOM環境でVueコンポーネントテスト
+- Vue Test Utilsでコンポーネントマウントとインタラクションテスト
+- Nuxtコンポーザブルとルーターのモック
+
+### 継続的インテグレーション
+
+テストは以下のタイミングで自動実行されることを推奨します：
+
+```bash
+# プルリクエスト作成時
+docker-compose exec app php artisan test
+cd frontend && npm test
+
+# デプロイ前
+docker-compose exec app php artisan test --coverage
+cd frontend && npm run test:coverage
+```
+
+**テストカバレッジ目標：**
+- バックエンド: 80%以上
+- フロントエンド: 70%以上
+
 ### アクセス情報
 - **フロントエンド**: http://localhost:3000
 - **バックエンドAPI**: http://localhost:8080
