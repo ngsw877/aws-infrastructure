@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#f3e5f5"/>
+  <g transform="translate(150, 150)">
+    <rect x="-40" y="-60" width="80" height="120" rx="2" fill="#6a1b9a" stroke="#4a148c" stroke-width="2"/>
+    <rect x="-35" y="-55" width="70" height="110" fill="#4a148c"/>
+    <text x="0" y="-20" font-family="monospace" font-size="14" fill="#fff" text-anchor="middle">Python</text>
+    <text x="0" y="0" font-family="monospace" font-size="10" fill="#81c784" text-anchor="middle">def hello():</text>
+    <text x="0" y="15" font-family="monospace" font-size="10" fill="#81c784" text-anchor="middle">  print("Hi")</text>
+    <rect x="-40" y="-60" width="10" height="120" fill="#8e24aa"/>
+  </g>
+  <text x="150" y="220" font-family="Arial, sans-serif" font-size="16" fill="#6a1b9a" text-anchor="middle">プログラミング書籍</text>
+</svg>

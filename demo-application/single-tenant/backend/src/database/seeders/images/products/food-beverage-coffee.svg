@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#efebe9"/>
+  <g transform="translate(150, 150)">
+    <path d="M-35 -20 L-30 40 L30 40 L35 -20 Z" fill="#6d4c41" stroke="#4e342e" stroke-width="2"/>
+    <path d="M35 -10 Q55 -10 55 10 Q55 30 35 30" fill="none" stroke="#4e342e" stroke-width="2"/>
+    <ellipse cx="45" cy="10" rx="10" ry="20" fill="#5d4037"/>
+    <ellipse cx="0" cy="-20" rx="35" ry="5" fill="#8d6e63"/>
+    <path d="M-20 0 Q-10 10 0 0 Q10 -10 20 0" fill="none" stroke="#d7ccc8" stroke-width="2" opacity="0.6"/>
+    <ellipse cx="0" cy="40" rx="30" ry="3" fill="#4e342e"/>
+  </g>
+  <text x="150" y="220" font-family="Arial, sans-serif" font-size="16" fill="#6d4c41" text-anchor="middle">コーヒー</text>
+</svg>

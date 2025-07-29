@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#fffde7"/>
+  <g transform="translate(150, 150)">
+    <rect x="-45" y="-60" width="90" height="120" rx="2" fill="#fbc02d" stroke="#f57f17" stroke-width="2"/>
+    <rect x="-40" y="-55" width="80" height="110" fill="#fff"/>
+    <circle cx="0" cy="-20" r="20" fill="#ffeb3b" stroke="#f57f17" stroke-width="2"/>
+    <circle cx="-5" cy="-23" r="3" fill="#000"/>
+    <circle cx="5" cy="-23" r="3" fill="#000"/>
+    <path d="M-8 -15 Q0 -10 8 -15" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+    <text x="0" y="30" font-family="Arial, sans-serif" font-size="12" fill="#000" text-anchor="middle">まんが</text>
+  </g>
+  <text x="150" y="220" font-family="Arial, sans-serif" font-size="16" fill="#f57f17" text-anchor="middle">漫画</text>
+</svg>

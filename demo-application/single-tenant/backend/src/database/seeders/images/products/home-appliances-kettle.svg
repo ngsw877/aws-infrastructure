@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#e3f2fd"/>
+  <g transform="translate(150, 150)">
+    <path d="M-30 30 Q-40 30 -40 20 L-40 -20 Q-40 -40 -20 -40 L20 -40 Q40 -40 40 -20 L40 20 Q40 30 30 30 Z" fill="#2196f3" stroke="#1565c0" stroke-width="2"/>
+    <path d="M40 -10 Q60 -10 60 10 Q60 20 50 20 L40 20" fill="none" stroke="#1565c0" stroke-width="2"/>
+    <ellipse cx="55" cy="5" rx="8" ry="15" fill="#1976d2"/>
+    <rect x="-10" y="-50" width="20" height="10" rx="5" fill="#1565c0"/>
+    <rect x="-35" y="30" width="70" height="5" fill="#1565c0"/>
+    <circle cx="0" cy="0" r="15" fill="#64b5f6"/>
+  </g>
+  <text x="150" y="220" font-family="Arial, sans-serif" font-size="16" fill="#2196f3" text-anchor="middle">電気ケトル</text>
+</svg>
