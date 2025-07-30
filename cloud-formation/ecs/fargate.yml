@@ -323,36 +323,11 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId:
-        !Ref PrivateRouteTable
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-PrivateRouteTableId"
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
-  # プライベートサブネット用ルートテーブル
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-VpcId"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName} Private Routes
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnet1"
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnet2"
 
   GitHubActionsRole:
     Type: AWS::IAM::Role

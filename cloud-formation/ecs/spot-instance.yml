@@ -526,47 +526,12 @@ Resources:
   # NAT Gateway用のルーティングをプライベートサブネットのルートテーブルに追加する
   PrivateRoute:
     Type: AWS::EC2::Route
-    DependsOn: NatGateway
     Properties:
       RouteTableId:
-        !Ref PrivateRouteTable
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-PrivateRouteTableId"
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
-
-  # プライベートサブネット用ルートテーブル
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-VpcId"
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName} Private Routes
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnet1"
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnet2"
-
-  PrivateSubnet3RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId:
-        Fn::ImportValue:
-          !Sub  "${VpcStackName}-PrivateSubnet3"
 
   # スポットインスタンスの中断をテストするためのFIS実験テンプレート
   InterruptSpotInstanceFisExperimentTemplate:
