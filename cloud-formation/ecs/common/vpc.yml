@@ -16,6 +16,11 @@ Parameters:
     Type: CommaDelimitedList
     Default: "10.99.20.0/24, 10.99.21.0/24, 10.99.22.0/24"
 
+  # テストリスナーポート
+  TestListenerPort:
+    Type: Number
+    Default: 4430
+
 Resources:
   Vpc:
     Type: AWS::EC2::VPC
@@ -148,6 +153,83 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet3
 
+  #======================
+  # セキュリティグループ
+  #======================
+
+  # インターネット公開のALB用セキュリティグループ
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for ALB"
+      GroupName: !Sub "${AWS::StackName}-alb-sg"
+      VpcId: !Ref Vpc
+
+  LoadBalancerSecurityGroupHttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "Allow HTTP traffic"
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: "tcp"
+      FromPort: 80
+      ToPort: 80
+      CidrIp: "0.0.0.0/0"
+
+  LoadBalancerSecurityGroupHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "Allow HTTPS traffic"
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: "tcp"
+      FromPort: 443
+      ToPort: 443
+      CidrIp: "0.0.0.0/0"
+
+  LoadBalancerSecurityGroupHttpsForTestIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "Allow HTTPS traffic"
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: "tcp"
+      FromPort: !Ref TestListenerPort
+      ToPort: !Ref TestListenerPort
+      CidrIp: "0.0.0.0/0"
+
+  LoadBalancerSecurityGroupEgressAll:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: "Allow all outbound traffic"
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: -1
+      CidrIp: "0.0.0.0/0"
+
+  # コンテナアプリ用セキュリティグループ
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow Access From LoadBalancer to WebApp Service"
+      GroupName: !Sub "${AWS::StackName}-webapp-sg"
+      VpcId: !Ref Vpc
+
+  # Internet ALB -> WebApp Container
+  WebAppSecurityGroupIngressFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "Allow HTTP traffic from LoadBalancer to WebApp"
+      GroupId: !Ref WebAppSecurityGroup
+      IpProtocol: "tcp"
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  WebAppSecurityGroupEgressAllTraffic:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: "Allow all outbound traffic by default"
+      GroupId: !Ref WebAppSecurityGroup
+      IpProtocol: -1
+      CidrIp: "0.0.0.0/0"
+
 Outputs:
   ### VPC ###
   VpcId:
@@ -207,3 +289,22 @@ Outputs:
     Value: !Ref PrivateRouteTable
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTableId"
+
+  ### セキュリティグループ ###
+  LoadBalancerSecurityGroup:
+    Description: Common Security Group for ALB
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LoadBalancerSecurityGroup"
+
+  TestListenerPort:
+    Description: Test LoadBalancer Listener Port
+    Value: !Ref TestListenerPort
+    Export:
+      Name: !Sub "${AWS::StackName}-TestListenerPort"
+
+  WebAppSecurityGroup:
+    Description: Common Security Group for WebApp Container
+    Value: !Ref WebAppSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-WebAppSecurityGroup"

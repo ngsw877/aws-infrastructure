@@ -10,16 +10,12 @@ elif [[ "$2" = "ecr" ]]; then
   STACK_NAME="common-ecr"
   TEMPLATE="ecr.yml"
 
-elif [[ "$2" = "sg" ]]; then
-  STACK_NAME="common-sg"
-  TEMPLATE="security-group.yml"
-
 elif [[ "$2" = "lambda" ]]; then
   STACK_NAME="common-spot-instance-cleanup-lambda"
   TEMPLATE="spot-instance/cleanup-lambda.yml"
 
 else
-  echo "引数に vpc, ecr, sg のいずれかを指定してください"
+  echo "引数に vpc, ecr, lambda のいずれかを指定してください"
   exit 1
 fi
 
