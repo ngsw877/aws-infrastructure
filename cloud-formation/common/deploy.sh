@@ -2,16 +2,16 @@
 
 PROFILE="$1"
 
-elif [[ "$2" = "ecr" ]]; then
-  STACK_NAME="common-ecr"
-  TEMPLATE="ecr.yml"
+elif [[ "$2" = "vpc" ]]; then
+  STACK_NAME="common-vpc"
+  TEMPLATE="vpc.yml"
 
-elif [[ "$2" = "lambda" ]]; then
-  STACK_NAME="common-spot-instance-cleanup-lambda"
-  TEMPLATE="spot-instance/cleanup-lambda.yml"
+elif [[ "$2" = "oidc" ]]; then
+  STACK_NAME="github-actions-oidc-provider"
+  TEMPLATE="github-actions-oidc-provider.yml"
 
 else
-  echo "引数にecr, lambda のいずれかを指定してください"
+  echo "引数にvpc, oidc のいずれかを指定してください"
   exit 1
 fi
 
