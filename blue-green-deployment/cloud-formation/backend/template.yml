@@ -1,0 +1,1005 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      ALBAccountId: 127311923021
+    us-east-2:
+      ALBAccountId: 033677994240
+    us-west-1:
+      ALBAccountId: 027434742980
+    us-west-2:
+      ALBAccountId: 797873946194
+    ap-northeast-1:
+      ALBAccountId: 582318560864
+    ap-northeast-2:
+      ALBAccountId: 600734575887
+    ap-southeast-1:
+      ALBAccountId: 114774131450
+    ap-southeast-2:
+      ALBAccountId: 783225319266
+    ap-south-1:
+      ALBAccountId: 718504428378
+    eu-central-1:
+      ALBAccountId: 054676820928
+    eu-west-1:
+      ALBAccountId: 156460612806
+    eu-west-2:
+      ALBAccountId: 652711504416
+    eu-west-3:
+      ALBAccountId: 009996457667
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: "bg-backend"
+
+  EnvName:
+    Type: String
+    Default: "dev"
+
+  VpcStackName:
+    Type: String
+    Default: "common-vpc"
+
+  BackendHostedZoneId:
+    Type: String
+
+  BackendDomainName:
+    Type: String
+  
+  IsEcsServiceDeployed:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: "ECSサービスをecspressoでデプロイ後にtrueに設定"
+  
+  BackendEcsServiceName:
+    Type: String
+
+  BackendEcsMinContainers:
+    Type: Number
+    Default: 0
+
+  BackendEcsMaxContainers:
+    Type: Number
+    Default: 0
+
+  BackendEcsAutoScaleOutAlarmPeriods:
+    Type: Number
+    Default: 60
+
+  BackendEcsAutoScaleOutAlarmEvaluationPeriods:
+    Type: Number
+    Default: 1
+
+  BackendEcsAutoScaleInAlarmEvaluationPeriods:
+    Type: Number
+    Default: 2
+
+  BackendEcsAutoScaleOutCooldown:
+    Type: Number
+    Default: 100
+
+  BackendEcsAutoScaleInCooldown:
+    Type: Number
+    Default: 100
+
+  BackendEcsAutoScalingAdjustment:
+    Type: Number
+    Default: 50
+
+  ListenerRulePriority:
+    Type: Number
+    Default: 100
+
+  LogRetentionInDays:
+    Type: Number
+    Description: "CloudWatch Logsの保持期間（日数）"
+    Default: 30
+    AllowedValues: 
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+      - 60
+      - 90
+      - 120
+      - 150
+      - 180
+      - 365
+      - 400
+      - 545
+      - 731
+      - 1827
+      - 3653
+
+  TestListenerPort:
+    Type: Number
+    Default: 4430
+    Description: "Blue/Greenデプロイ時のテスト用リスナーポート"  
+
+Outputs:
+  PrivateSubnet1:
+    Value:
+      Fn::ImportValue:
+        !Sub "${VpcStackName}-PrivateSubnet1"
+
+  PrivateSubnet2:
+    Value:
+      Fn::ImportValue:
+        !Sub "${VpcStackName}-PrivateSubnet2"
+
+  PrivateSubnet3:
+    Value:
+      Fn::ImportValue:
+        !Sub "${VpcStackName}-PrivateSubnet3"
+
+  TargetGroupArn:
+    Value: !Ref BackendTaskBlueTargetGroup
+
+  BackendSecurityGroup:
+    Value:
+      Fn::ImportValue:
+        !Sub "${VpcStackName}-WebAppSecurityGroup"
+
+  ExecutionRoleArn:
+    Value: !GetAtt BackendEcsTaskExecutionRole.Arn
+
+  TaskRoleArn:
+    Value: !GetAtt BackendEcsTaskRole.Arn
+
+  EcrRepository:
+    Value: !Ref EcrRepository
+
+  EcrRepositoryUri:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}"
+
+  KinesisAppDeliveryStream:
+    Value: !Ref AppLogDeliveryStream
+
+  KinesisWebDeliveryStream:
+    Value: !Ref WebLogDeliveryStream
+
+  GitHubActionsRole:
+    Description: A reference to the github actions role
+    Value: !GetAtt GitHubActionsRole.Arn
+
+  BackendDomainName:
+    Value: !Ref BackendDomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendDomainName"
+
+  BackendAlbArn:
+    Value: !Ref BackendAlb
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendAlbArn"
+
+  BackendAlbDNSName:
+    Value: !GetAtt BackendAlb.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendAlbDNSName"
+
+  BackendAlbCanonicalHostedZoneID:
+    Value: !GetAtt BackendAlb.CanonicalHostedZoneID
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendAlbCanonicalHostedZoneID"
+
+Conditions:
+  CreateEcsServiceDependencies:
+    Fn::Equals: [ !Ref IsEcsServiceDeployed, "true" ]
+
+Resources:
+  # ECSクラスタ
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-ecs-cluster"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ロググループ
+  EcsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ECRリポジトリ
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ECSタスクロールに割り当てるIAMポリシー
+  TaskIamPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-TaskIamPolicy"
+      Roles:
+        - !Ref BackendEcsTaskRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ecs:RunTask"
+              - "ecs:ListTasks"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "ecs:UpdateService"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "firehose:PutRecordBatch"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/${AppLogDeliveryStream}"
+              - !Sub "arn:${AWS::Partition}:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/${WebLogDeliveryStream}"
+          - Effect: Allow
+            Action:
+              - "ssmmessages:CreateControlChannel"
+              - "ssmmessages:CreateDataChannel"
+              - "ssmmessages:OpenControlChannel"
+              - "ssmmessages:OpenDataChannel"
+            Resource: "*"
+
+  # 証明書
+  BackendAlbAcm:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref BackendDomainName
+      ValidationMethod: "DNS"
+      DomainValidationOptions:
+        - DomainName: !Ref BackendDomainName
+          HostedZoneId: !Ref BackendHostedZoneId
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Priority: !Ref ListenerRulePriority
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTaskBlueTargetGroup
+      Conditions:
+        - Field: host-header
+          Values:
+            - !Ref BackendDomainName
+      ListenerArn: !Ref BackendAlbHttpsListener
+
+  TestListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Priority: !Ref ListenerRulePriority
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTaskGreenTargetGroup
+      Conditions:
+        - Field: host-header
+          Values:
+            - !Ref BackendDomainName
+      ListenerArn: !Ref BackendAlbHttpsTestListener
+
+  # ドメイン
+  BackendRoute53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref BackendHostedZoneId
+      Type: A
+      Name: !Ref BackendDomainName
+      AliasTarget:
+        HostedZoneId: !GetAtt BackendAlb.CanonicalHostedZoneID
+        DNSName: !GetAtt BackendAlb.DNSName
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-GitHubActionsRole"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Principal:
+              Federated: !ImportValue GitHubActionsOidcProviderArn
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
+              StringLike:
+                token.actions.githubusercontent.com:sub: "repo:ngsw/aws-infrastructure:*"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  GitHubActionsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-GitHubActionsPolicy"
+      Roles:
+        - !Ref GitHubActionsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ecr:GetAuthorizationToken"
+              - "ecs:ListServices"
+              - "ecs:DescribeTaskDefinition"
+              - "ecs:RegisterTaskDefinition"
+              - "ecs:DeregisterTaskDefinition"
+              - "ecs:ListTasks"
+              - "events:ListRules"
+              - "sts:GetCallerIdentity"
+              - "application-autoscaling:DescribeScalableTargets"
+              - "application-autoscaling:DescribeScalingPolicies"
+              - "iam:PassRole"
+              - "codedeploy:BatchGetApplications"
+              - "codedeploy:BatchGetDeploymentGroups"
+              - "codedeploy:ListDeployments"
+              - "codedeploy:GetDeploymentTarget"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "ecs:DescribeServices"
+              - "codedeploy:GetDeploymentGroup"
+              - "codedeploy:CreateDeployment"
+              - "codedeploy:GetDeployment"
+              - "codedeploy:GetDeploymentConfig"
+              - "codedeploy:RegisterApplicationRevision"
+              - "codedeploy:GetApplicationRevision"
+              - "codedeploy:StopDeployment"
+            Resource: !If
+              - CreateEcsServiceDependencies
+              - - Fn::Join:
+                    - ""
+                    - - "arn:aws:ecs:"
+                      - !Ref "AWS::Region"
+                      - ":"
+                      - !Ref "AWS::AccountId"
+                      - ":service/"
+                      - !Ref EcsCluster
+                      - "/"
+                      - !Ref BackendEcsServiceName
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${CodeDeployApplication}/${CodeDeployDeploymentGroup}"
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*"
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:${CodeDeployApplication}"
+              - - Fn::Join:
+                    - ""
+                    - - "arn:aws:ecs:"
+                      - !Ref "AWS::Region"
+                      - ":"
+                      - !Ref "AWS::AccountId"
+                      - ":service/"
+                      - !Ref EcsCluster
+                      - "/"
+                      - !Ref BackendEcsServiceName
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${CodeDeployApplication}/*"
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*"
+                - !Sub "arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:${CodeDeployApplication}"
+          - Effect: Allow
+            Action:
+              - "events:PutTargets"
+              - "ecs:RunTask"
+              - "events:PutRule"
+              - "events:ListTargetsByRule"
+              - "events:TagResource"
+            Resource:
+              - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}*"
+              - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${AWS::StackName}*:*"
+          - Effect: Allow
+            Action:
+              - "cloudformation:DescribeStacks"
+              - "cloudformation:DescribeStackResources"
+            Resource: !Sub "arn:aws:cloudformation:*:*:stack/${AWS::StackName}/*"
+          - Effect: Allow
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:BatchGetImage"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:PutImage"
+              - "ecr:UploadLayerPart"
+            Resource:
+              - !GetAtt EcrRepository.Arn
+          - Effect: Allow
+            Action:
+              - "ecs:DescribeClusters"
+            Resource: !GetAtt EcsCluster.Arn
+          - Effect: Allow
+            Action:
+              - "ecs:UpdateService"
+            Resource:
+              Fn::Join:
+                - "/"
+                - - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service"
+                  - !Ref EcsCluster
+                  - !Ref BackendEcsServiceName
+
+  LogBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership:
+              ObjectWriter
+      VersioningConfiguration:
+        Status: "Enabled"
+      LifecycleConfiguration:
+        Rules:
+          - Id: backup
+            NoncurrentVersionExpirationInDays: 7
+            Status: Enabled
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # LogBucketポリシー（ALBアクセスログ用）
+  LogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LogBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AWSLogDeliveryWrite
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${LogBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+          - Sid: ALBAccessLogsWrite
+            Effect: Allow
+            Principal:
+              AWS: !Sub 
+                - arn:aws:iam::${ALBAccountId}:root
+                - ALBAccountId: !FindInMap [RegionMap, !Ref "AWS::Region", ALBAccountId]
+            Action: s3:PutObject
+            Resource: !Sub "${LogBucket.Arn}/*"
+
+  # アプリケーションコンテナアクセスログ配信先
+  AppLogDeliveryStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Sub "${AWS::StackName}-app-log"
+      DeliveryStreamType: DirectPut
+      DeliveryStreamEncryptionConfigurationInput:
+        KeyType: AWS_OWNED_CMK
+      S3DestinationConfiguration:
+        BucketARN: !Sub "${LogBucket.Arn}"
+        CompressionFormat: "GZIP"
+        EncryptionConfiguration:
+          KMSEncryptionConfig:
+            # AWS managed key
+            AWSKMSKeyARN: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+        ErrorOutputPrefix: ''
+        Prefix: "app/"
+        RoleARN: !Sub '${FirehoseRole.Arn}'
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: !Ref KinesisErrorLogGroup
+          LogStreamName: !Ref KinesisErrorAppLogStream
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # Webコンテナアクセスログ配信先
+  WebLogDeliveryStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Sub "${AWS::StackName}-web-log"
+      DeliveryStreamType: DirectPut
+      DeliveryStreamEncryptionConfigurationInput:
+        KeyType: AWS_OWNED_CMK
+      S3DestinationConfiguration:
+        BucketARN: !Sub "${LogBucket.Arn}"
+        CompressionFormat: "GZIP"
+        EncryptionConfiguration:
+          KMSEncryptionConfig:
+            # AWS managed key
+            AWSKMSKeyARN: !Sub "arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+        ErrorOutputPrefix: ''
+        Prefix: "web/"
+        RoleARN: !Sub '${FirehoseRole.Arn}'
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: !Ref KinesisErrorLogGroup
+          LogStreamName: !Ref KinesisErrorWebLogStream
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ログ配信時のエラー配信先ロググループ
+  KinesisErrorLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # アプリケーションログ配信時のエラー配信ログストリーム
+  KinesisErrorAppLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref KinesisErrorLogGroup
+      LogStreamName: kinesis_s3_app_delivery_error
+
+  # webログ配信時のエラー配信先ログストリーム
+  KinesisErrorWebLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref KinesisErrorLogGroup
+      LogStreamName: kinesis_s3_web_delivery_error
+
+  FirehoseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-FirehoseRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - glue:GetTable
+                  - glue:GetTableVersion
+                  - glue:GetTableVersions
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:glue:${AWS::Region}:${AWS::AccountId}:catalog"
+                  - !Sub "arn:${AWS::Partition}:glue:${AWS::Region}:${AWS::AccountId}:database/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%"
+                  - !Sub "arn:${AWS::Partition}:glue:${AWS::Region}:${AWS::AccountId}:table/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%"
+              - Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Effect: Allow
+                Resource:
+                  - !Sub "${LogBucket.Arn}"
+                  - !Sub "${LogBucket.Arn}/*"
+              - Action:
+                  - lambda:InvokeFunction
+                  - lambda:GetFunctionConfiguration
+                Effect: Allow
+                Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%"
+              - Action: logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${KinesisErrorLogGroup}:log-stream:*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%:log-stream:*"
+              - Action:
+                  - kinesis:DescribeStream
+                  - kinesis:GetShardIterator
+                  - kinesis:GetRecords
+                  - kinesis:ListShards
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:kinesis:${AWS::Region}:${AWS::AccountId}:stream/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%'
+              - Action:
+                  - kms:Decrypt
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:key/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%'
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "kinesis.${AWS::Region}.amazonaws.com"
+                  StringLike:
+                    kms:EncryptionContext:aws:kinesis:arn: !Sub "arn:${AWS::Partition}:kinesis:${AWS::Region}:${AWS::AccountId}:stream/%FIREHOSE_POLICY_TEMPLATE_PLACEHOLDER%"
+          PolicyName: !Sub "${AWS::StackName}-firehose_delivery_role_policy"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ECSタスクロール
+  BackendEcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+                - "events.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole
+      RoleName: !Sub "${AWS::StackName}-BackendEcsTaskRole"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ECS タスク実行ロール
+  BackendEcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ECSタスク実行ロールに割り当てるIAMポリシー
+  BackendEcsTaskExecutionRoleIamPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-TaskExecutionRoleIamPolicy"
+      Roles:
+        - !Ref BackendEcsTaskExecutionRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+          - Effect: Allow
+            Action:
+              - "ssm:DescribeParameters"
+              - "ssm:GetParameter"
+              - "ssm:GetParameterHistory"
+              - "ssm:GetParameters"
+              - "ssm:GetParametersByPath"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}*"
+
+  # ターゲットグループ(Blue環境)
+  BackendTaskBlueTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvName}-bg-backend-blue-tg"
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath: '/api/health_check'
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      Matcher:
+        HttpCode: "200"
+      TargetGroupAttributes:
+        - { Key: "deregistration_delay.timeout_seconds", Value: "10" }
+      TargetType: ip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # ターゲットグループ(Green環境)
+  BackendTaskGreenTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvName}-bg-backend-green-tg"
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath: '/api/health_check'
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcStackName}-VpcId"
+      Matcher:
+        HttpCode: "200"
+      TargetGroupAttributes:
+        - { Key: "deregistration_delay.timeout_seconds", Value: "10" }
+      TargetType: ip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  AutoScalingRole:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: application-autoscaling.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  BackendEcsAutoScalingTarget:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MinCapacity: !Ref BackendEcsMinContainers
+      MaxCapacity: !Ref BackendEcsMaxContainers
+      ResourceId: !Join ['/', [service, !Ref EcsCluster, !Ref BackendEcsServiceName]]
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      # "The Amazon Resource Name (ARN) of an AWS Identity and Access Management (IAM) role that allows Application Auto Scaling to modify your scalable target."
+      RoleARN: !GetAtt AutoScalingRole.Arn
+
+  BackendEcsAutoScaleOutPolicy:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-BackendEcsAutoScaleOutPolicy"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref BackendEcsAutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: !Ref BackendEcsAutoScaleOutCooldown
+        MetricAggregationType: Maximum
+        StepAdjustments:
+          - ScalingAdjustment: !Ref BackendEcsAutoScalingAdjustment
+            MetricIntervalLowerBound: 0
+
+  BackendEcsAutoScaleOutAlarm:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-BackendEcsAutoScaleOutAlarm"
+      MetricName: CPUUtilization
+      Statistic: Average
+      TreatMissingData: notBreaching
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 80
+      Period: !Ref BackendEcsAutoScaleOutAlarmPeriods
+      EvaluationPeriods: !Ref BackendEcsAutoScaleOutAlarmEvaluationPeriods
+      AlarmActions:
+        - !Ref BackendEcsAutoScaleOutPolicy
+        - !ImportValue SlackNotificationTopicWarningArn
+      OKActions:
+        - !ImportValue SlackNotificationTopicWarningArn
+      Namespace: AWS/ECS
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !Ref BackendEcsServiceName
+
+  BackendEcsAutoScaleInPolicy:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-BackendEcsAutoScaleInPolicy"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref BackendEcsAutoScalingTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: !Ref BackendEcsAutoScaleInCooldown
+        MetricAggregationType: Maximum
+        StepAdjustments:
+          - ScalingAdjustment: -20
+            MetricIntervalUpperBound: 0
+
+  BackendEcsAutoScaleInAlarm:
+    Condition: CreateEcsServiceDependencies
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-BackendEcsAutoScaleInAlarm"
+      MetricName: CPUUtilization
+      Statistic: Average
+      TreatMissingData: notBreaching
+      ComparisonOperator: LessThanThreshold
+      Threshold: 60
+      Period: 300
+      EvaluationPeriods: !Ref BackendEcsAutoScaleInAlarmEvaluationPeriods
+      AlarmActions:
+        - !Ref BackendEcsAutoScaleInPolicy
+      Namespace: AWS/ECS
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !Ref BackendEcsServiceName
+
+  # Backend用ロードバランサ (ALB)
+  BackendAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: LogBucketPolicy
+    Properties:
+      Type: application
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+        - { Key: idle_timeout.timeout_seconds, Value: 60 }
+        - { Key: routing.http2.enabled, Value: "true" }
+        - { Key: access_logs.s3.enabled, Value: "true" }
+        - { Key: access_logs.s3.bucket, Value: !Ref LogBucket }
+        - { Key: access_logs.s3.prefix, Value: "backend-alb" }
+        - { Key: routing.http.drop_invalid_header_fields.enabled, Value: "true" }
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-LoadBalancerSecurityGroup"
+      Subnets:
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PublicSubnet1"
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PublicSubnet2"
+        - Fn::ImportValue:
+            !Sub "${VpcStackName}-PublicSubnet3"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  # http -> httpsリダイレクトを行う
+  BackendAlbHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Host: "#{host}"
+            Path: "/#{path}"
+            Protocol: HTTPS
+            Port: 443
+            Query: "#{query}"
+            StatusCode: HTTP_301
+      LoadBalancerArn: !Ref BackendAlb
+      Port: 80
+      Protocol: HTTP
+
+  BackendAlbHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref BackendAlb
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: "text/plain"
+            MessageBody: ""
+            StatusCode: "200"
+      Certificates:
+        - CertificateArn: !Ref BackendAlbAcm
+
+  BackendAlbHttpsTestListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref BackendAlb
+      Port: !Ref TestListenerPort
+      Protocol: HTTPS
+      SslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: "text/plain"
+            MessageBody: ""
+            StatusCode: "200"
+      Certificates:
+        - CertificateArn: !Ref BackendAlbAcm
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Sub "${AWS::StackName}-blue-green-application"
+      ComputePlatform: "ECS"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Condition: CreateEcsServiceDependencies
+    DependsOn:
+      - CodeDeployApplication
+    Properties:
+      ApplicationName: !Ref CodeDeployApplication
+      DeploymentGroupName: !Sub "${CodeDeployApplication}-dg"
+      DeploymentConfigName: "CodeDeployDefault.ECSAllAtOnce"
+      AutoRollbackConfiguration:
+        Enabled: "true"
+        Events:
+          - "DEPLOYMENT_FAILURE"
+          - "DEPLOYMENT_STOP_ON_REQUEST"
+      BlueGreenDeploymentConfiguration:
+        DeploymentReadyOption:
+          ActionOnTimeout: "STOP_DEPLOYMENT"
+          WaitTimeInMinutes: "1440" # ひとまず１日後にトラフィックの再ルーティングを行う
+        TerminateBlueInstancesOnDeploymentSuccess:
+          Action: "TERMINATE"
+          TerminationWaitTimeInMinutes: "60" # ひとまず１時間後に古いタスクセットを削除
+      DeploymentStyle:
+        DeploymentOption: "WITH_TRAFFIC_CONTROL"
+        DeploymentType: "BLUE_GREEN"
+      LoadBalancerInfo:
+        TargetGroupPairInfoList:
+          - ProdTrafficRoute:
+              ListenerArns:
+                - !Ref BackendAlbHttpsListener
+            TestTrafficRoute:
+              ListenerArns:
+                - !Ref BackendAlbHttpsTestListener
+            TargetGroups:
+              - Name: !GetAtt BackendTaskBlueTargetGroup.TargetGroupName
+              - Name: !GetAtt BackendTaskGreenTargetGroup.TargetGroupName
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+      ECSServices:
+        - ClusterName: !Ref EcsCluster
+          ServiceName: !Ref BackendEcsServiceName
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
+
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-CodeDeployRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "codedeploy.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Env
+          Value: !Ref EnvName
