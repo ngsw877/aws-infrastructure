@@ -21,7 +21,7 @@
   },
   {
     "ParameterKey": "BackendEcsServiceName",
-    "ParameterValue": "dev-BackendEcsService"
+    "ParameterValue": "dev-bg-backend-ecs-service"
   },
   {
     "ParameterKey": "BackendEcsAutoScaleOutAlarmPeriods",
