@@ -1,0 +1,2 @@
+# これらの依存関係はLambda Layerで提供されるため、ここでは空にします
+# Lambda Layer: python-common に含まれています
