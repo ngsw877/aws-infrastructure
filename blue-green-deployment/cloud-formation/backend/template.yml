@@ -192,7 +192,7 @@ Conditions:
     Fn::Equals: [ !Ref IsEcsServiceDeployed, "true" ]
 
 Resources:
-  # ECSクラスタ
+  # ECSクラスター
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -218,6 +218,7 @@ Resources:
   # ECRリポジトリ
   EcrRepository:
     Type: AWS::ECR::Repository
+    DeletionPolicy: RetainExceptOnCreate
     Properties:
       Tags:
         - Key: Project

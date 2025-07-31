@@ -4,10 +4,6 @@
     "ParameterValue": "dev"
   },
   {
-    "ParameterKey": "VpcStackName",
-    "ParameterValue": "common-vpc"
-  },
-  {
     "ParameterKey": "BackendHostedZoneId",
     "ParameterValue": "Z00809001VCH369OHMQ3M"
   },
@@ -16,12 +12,16 @@
     "ParameterValue": "dev.api-bg.sample-app.click"
   },
   {
+    "ParameterKey": "VpcStackName",
+    "ParameterValue": "common-vpc"
+  },
+  {
     "ParameterKey": "IsEcsServiceDeployed",
     "ParameterValue": "false"
   },
   {
     "ParameterKey": "BackendEcsServiceName",
-    "ParameterValue": "dev-BackendEcsService"
+    "ParameterValue": "dev-bg-backend-ecs-service"
   },
   {
     "ParameterKey": "BackendEcsAutoScaleOutAlarmPeriods",

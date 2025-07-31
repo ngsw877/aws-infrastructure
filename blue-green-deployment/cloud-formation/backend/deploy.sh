@@ -5,7 +5,6 @@ set -euo pipefail
 # 引数チェック
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <profile> <environment>"
-    echo "Example: $0 study dev"
     exit 1
 fi
 
