@@ -777,7 +777,6 @@ export class MainStack extends Stack {
     // ECSクラスター
     const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
       vpc,
-      containerInsights: true,
       enableFargateCapacityProviders: true,
       clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
     });
@@ -1034,6 +1033,8 @@ export class MainStack extends Stack {
             weight: 1,
           },
         ],
+        minHealthyPercent: 100,
+        maxHealthyPercent: 200,
         securityGroups: [backendEcsServiceSecurityGroup],
         serviceName: PhysicalName.GENERATE_IF_NEEDED,
       },
