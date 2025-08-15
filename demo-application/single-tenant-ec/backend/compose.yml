@@ -1,4 +1,4 @@
-name: multi-tenant-ec
+name: single-tenant-ec-api
 services:
     web:
         build:
@@ -9,7 +9,7 @@ services:
         environment:
             BACKEND_APP_DOMAIN: "app"
             RESOLVER: "127.0.0.11"
-            LOG_SOURCE_NAME: "multi-tenant-nginx"
+            LOG_SOURCE_NAME: "single-tenant-ec-api-nginx"
         depends_on:
             - app
     app:

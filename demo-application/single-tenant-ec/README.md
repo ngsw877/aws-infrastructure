@@ -87,7 +87,7 @@ DELETE /api/cart                   # カート全削除
    ```bash
    cd /path/to/your/workspace
    git clone <repository-url>
-   cd single-tenant
+   cd single-tenant-ec
    ```
 
 2. **環境設定ファイルの準備**

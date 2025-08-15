@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-app",
+  "name": "single-tenant-ec-frontend",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,4 +1,4 @@
-name: demo-api
+name: multi-tenant-ec-api
 services:
     web:
         build:
@@ -9,7 +9,7 @@ services:
         environment:
             BACKEND_APP_DOMAIN: "app"
             RESOLVER: "127.0.0.11"
-            LOG_SOURCE_NAME: "demo-api-nginx"
+            LOG_SOURCE_NAME: "multi-tenant-ec-api-nginx"
         depends_on:
             - app
     app:
