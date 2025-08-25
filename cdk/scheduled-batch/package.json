@@ -11,22 +11,22 @@
     "cdk": "cdk"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.150",
-    "@aws-sdk/client-cloudformation": "^3.840.0",
-    "@aws-sdk/client-ecs": "^3.840.0",
-    "@aws-sdk/client-ssm": "^3.840.0",
+    "@types/aws-lambda": "^8.10.152",
+    "@aws-sdk/client-cloudformation": "^3.864.0",
+    "@aws-sdk/client-ecs": "^3.864.0",
+    "@aws-sdk/client-ssm": "^3.864.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "24.0.10",
+    "@types/node": "24.3.0",
     "@slack/web-api": "^7.9.3",
-    "aws-cdk": "2.1020.2",
-    "esbuild": "^0.25.5",
-    "jest": "^30.0.4",
-    "ts-jest": "^29.4.0",
+    "aws-cdk": "2.1025.0",
+    "esbuild": "^0.25.9",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
-    "typescript": "~5.8.3"
+    "typescript": "~5.9.2"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.204.0",
+    "aws-cdk-lib": "2.211.0",
     "constructs": "^10.4.2",
     "source-map-support": "^0.5.21"
   }
