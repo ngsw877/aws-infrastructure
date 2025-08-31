@@ -22,7 +22,7 @@ on:
         description: バックエンドディレクトリ
         type: string
         required: false
-        default: "demo-application/multi-tenant/backend"
+        default: "demo-application/multi-tenant-ec/backend"
 
 env:
   AWS_REGION: "ap-northeast-1"
