@@ -1,4 +1,4 @@
-# Multi-Tenant
+# Multi-Tenant EC
 
 このプロジェクトは、AWSのCDK（Cloud Development Kit）を使用してインフラストラクチャをコードとして管理するためのリポジトリです。S3によるフロントエンドホスティングとECSによるバックエンドサービスを組み合わせたマルチテナント型ウェブアプリケーション基盤を提供します。
 
@@ -45,7 +45,7 @@
 ## プロジェクト構造
 
 ```
-cdk/multi-tenant/
+cdk/multi-tenant-ec/
 ├── bin/                    # CDKアプリケーションのエントリーポイント
 ├── lib/                    # スタック定義
 │   ├── global-stack.ts     # バージニア北部リージョン用スタック

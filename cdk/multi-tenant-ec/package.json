@@ -1,8 +1,8 @@
 {
-  "name": "multi-tenant",
+  "name": "multi-tenant-ec",
   "version": "0.1.0",
   "bin": {
-    "multi-tenant": "bin/multi-tenant.js"
+    "multi-tenant-ec": "bin/multi-tenant-ec.js"
   },
   "scripts": {
     "build": "tsc",
