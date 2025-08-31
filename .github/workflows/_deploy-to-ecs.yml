@@ -238,8 +238,125 @@ jobs:
             fi
           fi
 
+  update-fixed-tags:
+    needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: ${{ inputs.deploy-to }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ needs.setup.outputs.GITHUB_ACTIONS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          mask-aws-account-id: false
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: true
+
+      - name: Update Fixed Tags
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+        run: |
+          echo "::group::appイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_APP=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          # NOTE: set -xは標準エラー出力であるからか、::group::で適切にグルーピングされないため2>&1でエラー出力を標準出力に変換
+          echo "::endgroup::"
+
+          echo "::group::webイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_WEB=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.WEB_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::log-routerイメージのマニフェストを取得"
+          {
+            set -x
+            MANIFEST_LOG_ROUTER=$(aws ecr batch-get-image \
+              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-ids imageTag=${{ needs.setup.outputs.LOG_ROUTER_IMAGE_TAG }} \
+              --output json | jq --raw-output --join-output '.images[0].imageManifest')
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECRのイメージのappタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
+                if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
+                  echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
+                  true
+                else
+                  cat app_log
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECRのイメージのwebタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
+              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
+                echo "Catch ImageAlreadyExistsException on web image deploy. It is OK, Ignored"
+                true
+              else
+                cat web_log
+                  false
+                fi
+              }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
+          echo "::group::ECRのイメージのlog-routerタグを更新"
+          {
+            set -x
+            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
+              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
+              --image-tag log-router --image-manifest "${MANIFEST_LOG_ROUTER}" > log-router_log 2>&1 || {
+              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' log-router_log ; then
+                echo "Catch ImageAlreadyExistsException on log-router image deploy. It is OK, Ignored"
+                true
+              else
+                cat log-router_log
+                false
+              fi
+            }
+            set +x
+          } 2>&1
+          echo "::endgroup::"
+
   run-database-migration:
-    needs: [setup, build-and-push-app-image, detect-migration-changes]
+    needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, update-fixed-tags]
     if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' }}
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -361,7 +478,7 @@ jobs:
           set +x
 
   deploy-to-ecs:
-    needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, run-database-migration]
+    needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, update-fixed-tags, run-database-migration]
     if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -382,107 +499,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: true
-
-      - name: Update Fixed Tags
-        env:
-          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-        run: |
-          echo "::group::appイメージのマニフェストを取得"
-          {
-            set -x
-            MANIFEST_APP=$(aws ecr batch-get-image \
-              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-              --image-ids imageTag=${{ needs.setup.outputs.APP_IMAGE_TAG }} \
-              --output json | jq --raw-output --join-output '.images[0].imageManifest')
-            set +x
-          } 2>&1
-          # NOTE: set -xは標準エラー出力であるからか、::group::で適切にグルーピングされないため2>&1でエラー出力を標準出力に変換
-          echo "::endgroup::"
-
-          echo "::group::webイメージのマニフェストを取得"
-          {
-            set -x
-            MANIFEST_WEB=$(aws ecr batch-get-image \
-              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-            --image-ids imageTag=${{ needs.setup.outputs.WEB_IMAGE_TAG }} \
-              --output json | jq --raw-output --join-output '.images[0].imageManifest')
-            set +x
-          } 2>&1
-          echo "::endgroup::"
-
-          echo "::group::log-routerイメージのマニフェストを取得"
-          {
-            set -x
-            MANIFEST_LOG_ROUTER=$(aws ecr batch-get-image \
-              --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-              --image-ids imageTag=${{ needs.setup.outputs.LOG_ROUTER_IMAGE_TAG }} \
-              --output json | jq --raw-output --join-output '.images[0].imageManifest')
-            set +x
-          } 2>&1
-          echo "::endgroup::"
-
-          echo "::group::ECRのイメージのappタグを更新"
-          {
-            set -x
-            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-              --image-tag app --image-manifest "${MANIFEST_APP}" > app_log 2>&1 || {
-                # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
-                if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' app_log ; then
-                  echo "Catch ImageAlreadyExistsException on app image deploy. It is OK, Ignored"
-                  true
-                else
-                  # その他のエラーの場合はログを出力してエラー終了
-                  cat app_log
-                  false
-                fi
-              }
-            set +x
-          } 2>&1
-          echo "::endgroup::"
-
-          echo "::group::ECRのイメージのwebタグを更新"
-          {
-            set -x
-            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-            --image-tag web --image-manifest "${MANIFEST_WEB}" > web_log 2>&1 || {
-              # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
-              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' web_log ; then
-                echo "Catch ImageAlreadyExistsException on web image deploy. It is OK, Ignored"
-                true
-              else
-                # その他のエラーの場合はログを出力してエラー終了
-                cat web_log
-                  false
-                fi
-              }
-            set +x
-          } 2>&1
-          echo "::endgroup::"
-
-          echo "::group::ECRのイメージのlog-routerタグを更新"
-          {
-            set -x
-            aws ecr put-image --registry-id ${{ env.AWS_ACCOUNT_ID }} \
-              --repository-name ${{ needs.setup.outputs.ECR_REPOSITORY_NAME }} \
-              --image-tag log-router --image-manifest "${MANIFEST_LOG_ROUTER}" > log-router_log 2>&1 || {
-              # ImageAlreadyExistsExceptionをキャッチした場合、エラーをスキップ
-              if [ $? -eq 254 ] && fgrep -q 'ImageAlreadyExistsException' log-router_log ; then
-                echo "Catch ImageAlreadyExistsException on log-router image deploy. It is OK, Ignored"
-                true
-              else
-                # その他のエラーの場合はログを出力してエラー終了
-                cat log-router_log
-                false
-              fi
-            }
-            set +x
-          } 2>&1
-          echo "::endgroup::"
 
       # ECSサービスの更新
       - name: Update ECS Service
