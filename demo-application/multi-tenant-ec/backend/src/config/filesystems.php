@@ -49,13 +49,15 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID', 'minioadmin'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY', 'minioadmin'),
-            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-            'bucket' => env('AWS_BUCKET', 'multi-tenant-ec'),
-            'url' => env('AWS_URL', 'http://localhost:9000/multi-tenant-ec'),
-            'endpoint' => env('AWS_ENDPOINT', 'http://minio:9000'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-northeast-1'),
+            'bucket' => env('AWS_BUCKET'),
+            // 完全ベースURL（例: https://<bucket>.s3.ap-northeast-1.amazonaws.com もしくは CDN）
+            'url' => env('AWS_URL'),
+            // MinIO 等の互換APIを使う場合のみ設定
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
         ],
