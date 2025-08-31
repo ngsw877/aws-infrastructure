@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 
 class ProductController extends Controller
 {
@@ -73,5 +75,65 @@ class ProductController extends Controller
                 'updated_at' => $product->updated_at
             ]
         ]);
+    }
+
+    /**
+     * 商品画像をアップロードして更新
+     *
+     * @param Request $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $tenant = $request->get('tenant');
+
+        $validated = $request->validate([
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,svg', 'max:5120'], // 5MB
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $validated['image'];
+
+        $product = Product::where('tenant_id', $tenant->id)
+            ->where('id', $id)
+            ->first();
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        $path = sprintf('tenant-%d/products/%s', $tenant->id, $file->hashName());
+        $disk = Storage::disk('s3');
+        $disk->put($path, file_get_contents($file->getRealPath()), ['visibility' => 'public']);
+
+        $publicUrl = $this->buildPublicUrl($path);
+        $product->image_url = $publicUrl;
+        $product->save();
+
+        return response()->json([
+            'id' => $product->id,
+            'image_url' => $publicUrl,
+        ], 201);
+    }
+
+    /**
+     * 公開URLを生成（origin + bucket + path）
+     */
+    private function buildPublicUrl(string $objectPath): string
+    {
+        $publicBase = config('filesystems.disks.s3.url');
+        $bucket = config('filesystems.disks.s3.bucket');
+        if ($publicBase) {
+            $scheme = parse_url($publicBase, PHP_URL_SCHEME) ?: 'http';
+            $host = parse_url($publicBase, PHP_URL_HOST) ?: 'localhost';
+            $port = parse_url($publicBase, PHP_URL_PORT);
+            $origin = $scheme . '://' . $host . ($port ? ':' . $port : '');
+        } else {
+            $origin = 'http://localhost:9000';
+        }
+        if ($bucket) {
+            return rtrim($origin, '/') . '/' . $bucket . '/' . ltrim($objectPath, '/');
+        }
+        return rtrim($origin, '/') . '/' . ltrim($objectPath, '/');
     }
 }

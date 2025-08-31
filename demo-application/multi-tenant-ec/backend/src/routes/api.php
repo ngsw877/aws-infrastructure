@@ -20,4 +20,5 @@ Route::middleware(['tenant'])->group(function () {
     // 商品API
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::post('/products/{id}/image', [ProductController::class, 'uploadImage']);
 });

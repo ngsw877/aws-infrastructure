@@ -1,6 +1,6 @@
 <template>
   <div class="product-detail-page">
-    <div v-if="pending" class="loading-container">
+    <div v-if="loading" class="loading-container">
       <div class="loading">
         <div class="loading__spinner"></div>
         <p class="loading__text">商品情報を読み込み中...</p>
@@ -23,45 +23,96 @@
       <div class="product-detail">
         <div class="product-detail__image-section">
           <img 
-            :src="productData?.product?.image_url" 
-            :alt="productData?.product?.name"
+            :src="product?.image_url" 
+            :alt="product?.name"
             class="product-detail__image"
           />
-          <div v-if="!productData?.product?.in_stock" class="product-detail__out-of-stock">
+          <div v-if="product && !product.in_stock" class="product-detail__out-of-stock">
             在庫切れ
           </div>
         </div>
         
         <div class="product-detail__info-section">
-          <h1 class="product-detail__name">{{ productData?.product?.name }}</h1>
-          <p class="product-detail__description">{{ productData?.product?.description }}</p>
+          <h1 class="product-detail__name">{{ product?.name }}</h1>
+          <p class="product-detail__description">{{ product?.description }}</p>
           
           <div class="product-detail__price-section">
-            <span class="product-detail__price">¥{{ productData?.product?.price?.toLocaleString() }}</span>
-            <span v-if="productData?.product?.in_stock" class="product-detail__stock">
-              在庫: {{ productData?.product?.stock }}点
+            <span class="product-detail__price">¥{{ product?.price?.toLocaleString() }}</span>
+            <span v-if="product?.in_stock" class="product-detail__stock">
+              在庫: {{ product?.stock }}点
             </span>
           </div>
           
-          <div v-if="productData?.product?.in_stock" class="product-detail__actions">
+          <div v-if="product?.in_stock" class="product-detail__actions">
             <button class="btn btn--primary" disabled>
               カートに追加（機能未実装）
             </button>
           </div>
         </div>
       </div>
+
+      <div class="upload">
+        <h2>画像アップロード</h2>
+        <input type="file" accept="image/png,image/jpeg,image/svg+xml" @change="onFileChange" />
+        <button :disabled="!file || uploading" @click="upload">{{ uploading ? 'アップロード中...' : 'アップロード' }}</button>
+        <p v-if="uploadError" style="color:#e11d48;">{{ uploadError }}</p>
+      </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { getApiUrl } from '~/utils/api'
 
 const route = useRoute()
-const productId = route.params.id
+const product = ref<any>(null)
+const loading = ref(true)
+const file = ref<File | null>(null)
+const uploading = ref(false)
+const error = ref('')
+const uploadError = ref('')
 
-// 商品詳細の取得
-const { data: productData, pending, error } = await useFetch(getApiUrl(`/products/${productId}`))
+const fetchProduct = async () => {
+  const id = route.params.id
+  const res = await fetch(getApiUrl(`/products/${id}`))
+  const data = await res.json()
+  product.value = data.product
+  loading.value = false
+}
+
+const onFileChange = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  file.value = target.files?.[0] || null
+}
+
+const upload = async () => {
+  if (!file.value) return
+  uploadError.value = ''
+  uploading.value = true
+  try {
+    const id = route.params.id
+    const form = new FormData()
+    form.append('image', file.value)
+    const res = await fetch(getApiUrl(`/products/${id}/image`), {
+      method: 'POST',
+      body: form,
+    })
+    if (!res.ok) {
+      const t = await res.text()
+      throw new Error(t || 'upload failed')
+    }
+    const data = await res.json()
+    product.value.image_url = data.image_url
+  } catch (e: any) {
+    uploadError.value = e.message || 'アップロードに失敗しました'
+  } finally {
+    uploading.value = false
+  }
+}
+
+onMounted(fetchProduct)
 </script>
 
 <style lang="scss" scoped>
