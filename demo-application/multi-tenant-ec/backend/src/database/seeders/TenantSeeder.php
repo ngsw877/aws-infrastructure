@@ -10,6 +10,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Aws\S3\S3Client;
 
 class TenantSeeder extends Seeder
 {
@@ -18,7 +19,22 @@ class TenantSeeder extends Seeder
      */
     public function run(): void
     {
+        // 画像配信用にS3(=MinIO)バケットの公開ポリシーを適用
+        $this->prepareS3Bucket();
+
         $tenants = [
+            [
+                'domain' => 'localhost',
+                'name' => 'デモショップ0',
+                'slug' => 'demo-shop-0',
+                'shop_name' => 'ファッションストア デモ0',
+                'shop_description' => 'デモ用メインショップです。',
+                'theme_settings' => [
+                    'primary_color' => '#805ad5',
+                    'secondary_color' => '#e9d8fd',
+                    'font_family' => 'Noto Sans JP'
+                ]
+            ],
             [
                 'domain' => 'demo1.localhost',
                 'name' => 'デモショップ1',
@@ -91,9 +107,97 @@ class TenantSeeder extends Seeder
         }
     }
 
+    /**
+     * MinIO/S3 バケットを作成し、匿名のGetObjectを許可するポリシーを適用
+     */
+    private function prepareS3Bucket(): void
+    {
+        try {
+            $key = config('filesystems.disks.s3.key');
+            $secret = config('filesystems.disks.s3.secret');
+            $region = config('filesystems.disks.s3.region', 'us-east-1');
+            $endpoint = config('filesystems.disks.s3.endpoint');
+            $bucket = config('filesystems.disks.s3.bucket');
+            if (!$bucket) {
+                return;
+            }
+
+            $client = new S3Client([
+                'version' => 'latest',
+                'region' => $region,
+                'credentials' => [
+                    'key' => $key,
+                    'secret' => $secret,
+                ],
+                'endpoint' => $endpoint,
+                'use_path_style_endpoint' => config('filesystems.disks.s3.use_path_style_endpoint', true),
+            ]);
+
+            // バケット存在確認 → なければ作成
+            try {
+                $client->headBucket(['Bucket' => $bucket]);
+            } catch (\Throwable $e) {
+                try {
+                    $client->createBucket(['Bucket' => $bucket]);
+                } catch (\Throwable $_) {
+                    // 作成失敗は無視（並行作成や既存など）
+                }
+            }
+
+            // 公開読み取りポリシーを適用
+            $policy = [
+                'Version' => '2012-10-17',
+                'Statement' => [[
+                    'Sid' => 'AllowPublicRead',
+                    'Effect' => 'Allow',
+                    'Principal' => '*',
+                    'Action' => ['s3:GetObject'],
+                    'Resource' => sprintf('arn:aws:s3:::%s/*', $bucket),
+                ]],
+            ];
+            try {
+                $client->putBucketPolicy([
+                    'Bucket' => $bucket,
+                    'Policy' => json_encode($policy, JSON_UNESCAPED_SLASHES),
+                ]);
+            } catch (\Throwable $_) {
+                // ポリシー適用失敗は無視（権限なし等）。画像URLが見えない場合のみ手動対応が必要
+            }
+        } catch (\Throwable $_) {
+            // 何もせず（ローカル最小限運用のため）
+        }
+    }
+
     private function getProductsByTenant(Tenant $tenant): array
     {
         switch ($tenant->slug) {
+            case 'demo-shop-0':
+                return [
+                    [
+                        'name' => 'サンプル商品1',
+                        'description' => 'これはサンプル商品1の説明です。',
+                        'price' => 1000,
+                        'stock' => 10,
+                        'image_url' => $this->uploadProductImage($tenant, 'sample-product-1', 'fashion-tshirt'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'サンプル商品2',
+                        'description' => 'これはサンプル商品2の説明です。',
+                        'price' => 2000,
+                        'stock' => 5,
+                        'image_url' => $this->uploadProductImage($tenant, 'sample-product-2', 'gadget-earphone'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'サンプル商品3',
+                        'description' => 'これはサンプル商品3の説明です。',
+                        'price' => 3000,
+                        'stock' => 0,
+                        'image_url' => $this->uploadProductImage($tenant, 'sample-product-3', 'lifestyle-diffuser'),
+                        'status' => 'active'
+                    ]
+                ];
             case 'main-shop':
                 return [
                     [
@@ -233,11 +337,26 @@ class TenantSeeder extends Seeder
             $filename = Str::slug($productSlug) . '-' . time() . '.svg';
             $path = "tenant-{$tenant->id}/products/{$filename}";
             
-            // ファイルをアップロード
-            $disk->put($path, file_get_contents($localPath), 'public');
+            // ファイルをアップロード（公開可視性）
+            $disk->put($path, file_get_contents($localPath), ['visibility' => 'public']);
             
-            // URLを生成
-            return $disk->url($path);
+            // URLを生成（ブラウザから到達できるオリジン + バケット + パス）
+            $publicBase = config('filesystems.disks.s3.url');
+            $bucket = config('filesystems.disks.s3.bucket');
+            // オリジンだけを抽出（スキーム + ホスト + ポート）。パス部は無視
+            if ($publicBase) {
+                $scheme = parse_url($publicBase, PHP_URL_SCHEME) ?: 'http';
+                $host = parse_url($publicBase, PHP_URL_HOST) ?: 'localhost';
+                $port = parse_url($publicBase, PHP_URL_PORT);
+                $origin = $scheme . '://' . $host . ($port ? ':' . $port : '');
+            } else {
+                // ローカル開発デフォルト
+                $origin = 'http://localhost:9000';
+            }
+            if ($bucket) {
+                return rtrim($origin, '/') . '/' . $bucket . '/' . ltrim($path, '/');
+            }
+            return rtrim($origin, '/') . '/' . ltrim($path, '/');
         } catch (\Exception $e) {
             // エラーが発生した場合はBase64のデフォルト画像を返す
             return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNlMmU4ZjAiLz4KICA8dGV4dCB4PSIxNTAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNzE4MDk2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5ZWG5ZOB55S75YOPPC90ZXh0Pgo8L3N2Zz4=';
