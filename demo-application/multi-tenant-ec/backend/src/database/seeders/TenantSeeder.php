@@ -22,7 +22,56 @@ class TenantSeeder extends Seeder
         // 画像配信用にS3(=MinIO)バケットの公開ポリシーを適用
         $this->prepareS3Bucket();
 
-        $tenants = [
+        $env = config('app.env');
+
+        if ($env === 'local') {
+            $tenants = $this->localTenants();
+        } elseif ($env === 'dev' || $env === 'development') {
+            $tenants = $this->devTenants();
+        } else {
+            // 他環境では何もしない（誤投入防止）
+            return;
+        }
+
+        foreach ($tenants as $tenantData) {
+            $tenant = Tenant::updateOrCreate([
+                'domain' => $tenantData['domain'],
+            ], [
+                'name' => $tenantData['name'],
+                'slug' => $tenantData['slug'],
+                'status' => 'active',
+            ]);
+
+            Shop::updateOrCreate([
+                'tenant_id' => $tenant->id,
+            ], [
+                'name' => $tenantData['shop_name'],
+                'description' => $tenantData['shop_description'],
+                'logo_url' => null,
+                'theme_settings' => $tenantData['theme_settings'],
+            ]);
+
+            foreach ($this->getProductsByTenant($tenant) as $productData) {
+                Product::updateOrCreate([
+                    'tenant_id' => $tenant->id,
+                    'name' => $productData['name'],
+                ], $productData);
+            }
+
+            Customer::updateOrCreate([
+                'tenant_id' => $tenant->id,
+                'email' => 'test' . $tenant->id . '@example.com',
+            ], [
+                'name' => 'テスト太郎' . $tenant->id,
+                'phone' => '090-1234-567' . $tenant->id,
+                'address' => '東京都渋谷区テスト1-2-' . $tenant->id,
+            ]);
+        }
+    }
+
+    private function localTenants(): array
+    {
+        return [
             [
                 'domain' => 'localhost',
                 'name' => 'デモショップ0',
@@ -72,39 +121,36 @@ class TenantSeeder extends Seeder
                 ]
             ]
         ];
+    }
 
-        foreach ($tenants as $tenantData) {
-            $tenant = Tenant::create([
-                'domain' => $tenantData['domain'],
-                'name' => $tenantData['name'],
-                'slug' => $tenantData['slug'],
-                'status' => 'active'
-            ]);
-
-            // ショップ情報
-            $shop = Shop::create([
-                'tenant_id' => $tenant->id,
-                'name' => $tenantData['shop_name'],
-                'description' => $tenantData['shop_description'],
-                'logo_url' => null,
-                'theme_settings' => $tenantData['theme_settings']
-            ]);
-
-            // テナント別のサンプル商品
-            $products = $this->getProductsByTenant($tenant);
-            foreach ($products as $productData) {
-                Product::create(array_merge(['tenant_id' => $tenant->id], $productData));
-            }
-
-            // サンプル顧客
-            Customer::create([
-                'tenant_id' => $tenant->id,
-                'name' => 'テスト太郎' . $tenant->id,
-                'email' => 'test' . $tenant->id . '@example.com',
-                'phone' => '090-1234-567' . $tenant->id,
-                'address' => '東京都渋谷区テスト1-2-' . $tenant->id
-            ]);
-        }
+    private function devTenants(): array
+    {
+        return [
+            [
+                'domain' => 'dev.multi-tenant-ec.sample-app.click',
+                'name' => 'Devショップ sample-app',
+                'slug' => 'dev-sample-app',
+                'shop_name' => 'Dev サンプルEC（sample-app）',
+                'shop_description' => '開発環境用のサンプルショップ（sample-appドメイン）。',
+                'theme_settings' => [
+                    'primary_color' => '#2563eb',
+                    'secondary_color' => '#bfdbfe',
+                    'font_family' => 'Noto Sans JP'
+                ]
+            ],
+            [
+                'domain' => 'dev.multi-tenant-ec.hoge-app.click',
+                'name' => 'Devショップ hoge-app',
+                'slug' => 'dev-hoge-app',
+                'shop_name' => 'Dev サンプルEC（hoge-app）',
+                'shop_description' => '開発環境用のサンプルショップ（hoge-appドメイン）。',
+                'theme_settings' => [
+                    'primary_color' => '#059669',
+                    'secondary_color' => '#a7f3d0',
+                    'font_family' => 'Noto Sans JP'
+                ]
+            ],
+        ];
     }
 
     /**
@@ -171,6 +217,60 @@ class TenantSeeder extends Seeder
     private function getProductsByTenant(Tenant $tenant): array
     {
         switch ($tenant->slug) {
+            case 'dev-sample-app':
+                return [
+                    [
+                        'name' => 'カジュアルTシャツ',
+                        'description' => '着心地の良いコットン100%のTシャツです。',
+                        'price' => 2980,
+                        'stock' => 15,
+                        'image_url' => $this->uploadProductImage($tenant, 'casual-tshirt', 'fashion-tshirt'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'デニムジャケット',
+                        'description' => 'ヴィンテージ風デニムジャケット。',
+                        'price' => 8900,
+                        'stock' => 3,
+                        'image_url' => $this->uploadProductImage($tenant, 'denim-jacket', 'fashion-jacket'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'スニーカー',
+                        'description' => 'スタイリッシュなスニーカー。',
+                        'price' => 12000,
+                        'stock' => 8,
+                        'image_url' => $this->uploadProductImage($tenant, 'sneakers', 'fashion-sneakers'),
+                        'status' => 'active'
+                    ]
+                ];
+            case 'dev-hoge-app':
+                return [
+                    [
+                        'name' => 'ワイヤレスイヤホン',
+                        'description' => 'ノイズキャンセリング機能付きワイヤレスイヤホン。',
+                        'price' => 15800,
+                        'stock' => 12,
+                        'image_url' => $this->uploadProductImage($tenant, 'wireless-earphone', 'gadget-earphone'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'スマートウォッチ',
+                        'description' => '健康管理機能付きスマートウォッチ。',
+                        'price' => 28000,
+                        'stock' => 7,
+                        'image_url' => $this->uploadProductImage($tenant, 'smart-watch', 'gadget-watch'),
+                        'status' => 'active'
+                    ],
+                    [
+                        'name' => 'モバイルバッテリー',
+                        'description' => '10000mAh大容量モバイルバッテリー。',
+                        'price' => 3200,
+                        'stock' => 25,
+                        'image_url' => $this->uploadProductImage($tenant, 'mobile-battery', 'gadget-battery'),
+                        'status' => 'active'
+                    ]
+                ];
             case 'demo-shop-0':
                 return [
                     [
