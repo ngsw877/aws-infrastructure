@@ -17,37 +17,37 @@ const commonIpRestrictionExcludedPaths = [
 const tenants: Tenant[] = [
     // テナント1
     {
-        route53HostedZoneId: "Z0201048170ZNG2QS3LN1",
-        appDomainName: "dev.s3-ecs-web-service.sample-app.click",
+        route53HostedZoneId: "Z003975221YWG8S8G01GX",
+        appDomainName: "dev.multi-tenant-ec.sample-app.click",
         allowedIpAddresses: devSecrets.allowedIpAddresses,
         ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
         isSesEnabled: true,
         isDemo: false,
     },
     // テナント2
-    {
-        route53HostedZoneId: "Z01140211URKT1J60WTA5",
-        appDomainName: "dev.s3-ecs-web-service.hoge-app.click",
-        // IP制限なし
-        isSesEnabled: false,
-        isDemo: false,
-    },
-    // テナント3（デモテナント）
-    {
-        route53HostedZoneId: "Z01140211URKT1J60WTA5",
-        appDomainName: "demo1.dev.s3-ecs-web-service.hoge-app.click",
-        // IP制限なし
-        isSesEnabled: false,
-        isDemo: true,
-    },
-    // テナント4（デモテナント）
-    {
-        route53HostedZoneId: "Z01140211URKT1J60WTA5",
-        appDomainName: "demo2.dev.s3-ecs-web-service.hoge-app.click",
-        // IP制限なし
-        isSesEnabled: false,
-        isDemo: true,
-    },
+    // {
+    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
+    //     appDomainName: "dev.multi-tenant-ec.hoge-app.click",
+    //     // IP制限なし
+    //     isSesEnabled: false,
+    //     isDemo: false,
+    // },
+    // // テナント3（デモテナント）
+    // {
+    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
+    //     appDomainName: "demo1.dev.multi-tenant-ec.hoge-app.click",
+    //     // IP制限なし
+    //     isSesEnabled: false,
+    //     isDemo: true,
+    // },
+    // // テナント4（デモテナント）
+    // {
+    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
+    //     appDomainName: "demo2.dev.multi-tenant-ec.hoge-app.click",
+    //     // IP制限なし
+    //     isSesEnabled: false,
+    //     isDemo: true,
+    // },
 ];
 
 const commonStackProps: CommonStackProps = {
@@ -78,9 +78,9 @@ const mainStackProps: MainStackProps = {
     healthCheckPath: "/",
     backendEcsTaskCpu: 1024,
     backendEcsTaskMemory: 2048,
-    backendMaxTaskCount: 1,
-    backendMinTaskCount: 1,
-    backendDesiredCount: 1,
+    backendMaxTaskCount: 0,
+    backendMinTaskCount: 0,
+    backendDesiredCount: 0,
     backendEcsScaleOutPeriod: Duration.seconds(300),
     backendEcsScaleOutEvaluationPeriods: 3,
     backendEcsScaleInPeriod: Duration.seconds(300),
