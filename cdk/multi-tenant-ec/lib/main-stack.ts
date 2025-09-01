@@ -131,11 +131,16 @@ export class MainStack extends Stack {
       autoDeleteObjects: true,
       cors: [
         {
-          allowedMethods: [s3.HttpMethods.GET],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+          ],
           // 全テナントドメイン
           allowedOrigins: props.tenants.map(
             (tenant) => `https://${tenant.appDomainName}`,
-          ), // 全テナントドメイン
+          ),
           allowedHeaders: ["*"],
           maxAge: 3600,
         },
@@ -543,6 +548,11 @@ export class MainStack extends Stack {
             managedRuleGroupStatement: {
               name: "AWSManagedRulesCommonRuleSet",
               vendorName: "AWS",
+              excludedRules: [
+                // CORSエラー対策
+                { name: "SizeRestrictions_BODY" },
+                { name: "CrossSiteScripting_BODY" },
+              ],
             },
           },
           visibilityConfig: {
