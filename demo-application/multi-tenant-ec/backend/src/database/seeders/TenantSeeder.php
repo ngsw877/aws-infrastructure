@@ -19,8 +19,10 @@ class TenantSeeder extends Seeder
      */
     public function run(): void
     {
-        // 画像配信用にS3(=MinIO)バケットの公開ポリシーを適用
-        $this->prepareS3Bucket();
+        // ローカル環境のみ、MinIOの公開設定を適用
+        if (config('app.env') === 'local') {
+            $this->prepareS3Bucket();
+        }
 
         $env = config('app.env');
 
@@ -437,26 +439,27 @@ class TenantSeeder extends Seeder
             $filename = Str::slug($productSlug) . '-' . time() . '.svg';
             $path = "tenant-{$tenant->id}/products/{$filename}";
             
-            // ファイルをアップロード（公開可視性）
-            $disk->put($path, file_get_contents($localPath), ['visibility' => 'public']);
-            
-            // URLを生成（ブラウザから到達できるオリジン + バケット + パス）
-            $publicBase = config('filesystems.disks.s3.url');
-            $bucket = config('filesystems.disks.s3.bucket');
-            // オリジンだけを抽出（スキーム + ホスト + ポート）。パス部は無視
-            if ($publicBase) {
-                $scheme = parse_url($publicBase, PHP_URL_SCHEME) ?: 'http';
-                $host = parse_url($publicBase, PHP_URL_HOST) ?: 'localhost';
-                $port = parse_url($publicBase, PHP_URL_PORT);
-                $origin = $scheme . '://' . $host . ($port ? ':' . $port : '');
+            // アップロード（localはMinIOのpublic運用、非localはデフォルトACLでOAC/ポリシーに委ねる）
+            if (config('app.env') === 'local') {
+                $disk->put($path, file_get_contents($localPath), ['visibility' => 'public']);
             } else {
-                // ローカル開発デフォルト
-                $origin = 'http://localhost:9000';
+                $disk->put($path, file_get_contents($localPath));
             }
-            if ($bucket) {
-                return rtrim($origin, '/') . '/' . $bucket . '/' . ltrim($path, '/');
+            
+            // URLを生成
+            $env = config('app.env');
+            if ($env === 'local') {
+                // ローカルはMinIOのPublicベースURLを使用（例: http://localhost:9000/multi-tenant-ec）
+                $minioBase = env('MINIO_PUBLIC_BASE_URL', 'http://localhost:9000/multi-tenant-ec');
+                return rtrim($minioBase, '/') . '/' . ltrim($path, '/');
             }
-            return rtrim($origin, '/') . '/' . ltrim($path, '/');
+
+            // 非ローカルはCloudFrontなどの配信用ベース（ASSET_URL）を必須にする
+            $assetBase = env('ASSET_URL');
+            if (!empty($assetBase)) {
+                return rtrim($assetBase, '/') . '/' . ltrim($path, '/');
+            }
+            throw new \RuntimeException('ASSET_URL is not configured for non-local environment.');
         } catch (\Exception $e) {
             // エラーが発生した場合はBase64のデフォルト画像を返す
             return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNlMmU4ZjAiLz4KICA8dGV4dCB4PSIxNTAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNzE4MDk2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5ZWG5ZOB55S75YOPPC90ZXh0Pgo8L3N2Zz4=';

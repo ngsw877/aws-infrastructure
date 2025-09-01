@@ -161,7 +161,29 @@ export class MainStack extends Stack {
       autoDeleteObjects: true,
     });
 
-    // CloudFrontFunction Frontendリクエスト用
+    // アップロードファイル配信用 CloudFront（S3は非公開、OAIで制御）
+    const uploadsCloudFrontToS3 = new CloudFrontToS3(
+      this,
+      "UploadsCloudFrontToS3",
+      {
+        existingBucketObj: uploadedFilesBucket,
+        insertHttpSecurityHeaders: false,
+        cloudFrontDistributionProps: {
+          defaultBehavior: {
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          },
+          httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+          logBucket: cloudFrontLogsBucket,
+          logFilePrefix: "UploadsCloudFront/",
+        },
+      },
+    );
+    const uploadsCloudFrontDistribution =
+      uploadsCloudFrontToS3.cloudFrontWebDistribution;
+
+    // CloudFrontFunction Frontendリクエスト用（フロント用CFのみ。アップロード用CFには関連付けない）
     const frontendIndexPageFunction = new cloudfront.Function(
       this,
       "FrontendIndexPageFunction",
@@ -940,6 +962,8 @@ export class MainStack extends Stack {
         APP_DEBUG: String(props.appDebug),
         AWS_BUCKET: uploadedFilesBucket.bucketName,
         AWS_URL: `https://${uploadedFilesBucket.bucketRegionalDomainName}`,
+        // 画像配信はCloudFront経由
+        ASSET_URL: `https://${uploadsCloudFrontDistribution.distributionDomainName}`,
         MAIL_MAILER: "ses",
       },
       secrets: {
