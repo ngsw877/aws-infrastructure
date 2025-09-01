@@ -104,7 +104,20 @@ class ProductController extends Controller
 
         $path = sprintf('tenant-%d/products/%s', $tenant->id, $file->hashName());
         $disk = Storage::disk('s3');
-        $disk->put($path, file_get_contents($file->getRealPath()), ['visibility' => 'public']);
+        try {
+            $uploadSucceeded = $disk->put($path, file_get_contents($file->getRealPath()));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Upload failed',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        if (!$uploadSucceeded || !$disk->exists($path)) {
+            return response()->json([
+                'error' => 'Upload failed',
+            ], 500);
+        }
 
         $publicUrl = $this->buildPublicUrl($path);
         $product->image_url = $publicUrl;
