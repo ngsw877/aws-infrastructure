@@ -117,23 +117,12 @@ class ProductController extends Controller
     }
 
     /**
-     * 公開URLを生成（origin + bucket + path）
+     * 公開URLを生成（ASSET_URL/CloudFront のみ使用）
      */
     private function buildPublicUrl(string $objectPath): string
     {
-        $publicBase = config('filesystems.disks.s3.url');
-        $bucket = config('filesystems.disks.s3.bucket');
-        if ($publicBase) {
-            $scheme = parse_url($publicBase, PHP_URL_SCHEME) ?: 'http';
-            $host = parse_url($publicBase, PHP_URL_HOST) ?: 'localhost';
-            $port = parse_url($publicBase, PHP_URL_PORT);
-            $origin = $scheme . '://' . $host . ($port ? ':' . $port : '');
-        } else {
-            $origin = 'http://localhost:9000';
-        }
-        if ($bucket) {
-            return rtrim($origin, '/') . '/' . $bucket . '/' . ltrim($objectPath, '/');
-        }
-        return rtrim($origin, '/') . '/' . ltrim($objectPath, '/');
+        $assetBase = (string) env('ASSET_URL', '');
+        $base = rtrim($assetBase, '/');
+        return ($base === '' ? '/' : $base . '/') . ltrim($objectPath, '/');
     }
 }
