@@ -1,0 +1,10 @@
+# GitHub Linguist の設定（言語統計の見え方を調整）
+
+# 生成物に準ずるイベントスキーマ群を generated として扱い、統計への影響を弱める
+sam/alternate-contacts/aws-account-alternate-contacts-bootstrap/account_contact_bootstrap/schema/** linguist-generated=true
+
+# ワークショップ／サンプルは documentation 扱いにして言語比率を歪めないようにする
+sam/workshop/** linguist-documentation=true
+sam/apigw_lambda_dynamodb/** linguist-documentation=true
+
+
