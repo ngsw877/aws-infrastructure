@@ -109,6 +109,14 @@ export class MainStack extends Stack {
       natGateways: props.natGatewaysCount,
     });
 
+    // S3 ゲートウェイエンドポイント（Private サブネットのルートテーブルにプレフィックスルートを追加）
+    const s3GatewayEndpoint = vpc.addGatewayEndpoint("S3GatewayEndpoint", {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+      subnets: [
+        { subnets: vpc.selectSubnets({ subnetGroupName: "Private" }).subnets },
+      ],
+    });
+
     /*************************************
      * フロントエンド用リソース
      *************************************/
@@ -146,6 +154,27 @@ export class MainStack extends Stack {
         },
       ],
     });
+
+    // S3 へのアップロードを VPC エンドポイント経由に限定（PUT 系のみ対象）
+    uploadedFilesBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.DENY,
+        principals: [new iam.AnyPrincipal()],
+        // S3 でのオブジェクト書き込みは最終的に PutObject 権限に集約される
+        actions: [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:PutObjectTagging",
+          "s3:AbortMultipartUpload",
+        ],
+        resources: [uploadedFilesBucket.arnForObjects("*")],
+        conditions: {
+          StringNotEquals: {
+            "aws:sourceVpce": s3GatewayEndpoint.vpcEndpointId,
+          },
+        },
+      }),
+    );
 
     // CloudFrontログ用S3バケット
     const cloudFrontLogsBucket = new s3.Bucket(this, "CloudFrontLogsBucket", {
