@@ -796,6 +796,8 @@ export class MainStack extends Stack {
       "BackendEcrRepository",
       {
         removalPolicy: RemovalPolicy.DESTROY,
+        // ECR リポジトリ削除時に中身のイメージも自動削除
+        emptyOnDelete: true,
         lifecycleRules: [
           {
             rulePriority: 10,
