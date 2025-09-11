@@ -19,35 +19,35 @@ const tenants: Tenant[] = [
     {
         route53HostedZoneId: "Z003975221YWG8S8G01GX",
         appDomainName: "dev.multi-tenant-ec.sample-app.click",
-        // allowedIpAddresses: devSecrets.allowedIpAddresses,
-        // ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
+        allowedIpAddresses: devSecrets.allowedIpAddresses,
+        ipRestrictionExcludedPaths: commonIpRestrictionExcludedPaths,
         isSesEnabled: true,
-        isDemo: false,
+        isTrial: false,
     },
     // テナント2
-    // {
-    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
-    //     appDomainName: "dev.multi-tenant-ec.hoge-app.click",
-    //     // IP制限なし
-    //     isSesEnabled: false,
-    //     isDemo: false,
-    // },
-    // // テナント3（デモテナント）
-    // {
-    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
-    //     appDomainName: "demo1.dev.multi-tenant-ec.hoge-app.click",
-    //     // IP制限なし
-    //     isSesEnabled: false,
-    //     isDemo: true,
-    // },
-    // // テナント4（デモテナント）
-    // {
-    //     route53HostedZoneId: "Z01140211URKT1J60WTA5",
-    //     appDomainName: "demo2.dev.multi-tenant-ec.hoge-app.click",
-    //     // IP制限なし
-    //     isSesEnabled: false,
-    //     isDemo: true,
-    // },
+    {
+        route53HostedZoneId: "Z075214917HXZ41DH00EY",
+        appDomainName: "dev.multi-tenant-ec.hoge-app.click",
+        // IP制限なし
+        isSesEnabled: false,
+        isTrial: false,
+    },
+    // テナント3（trial環境テナント）
+    {
+        route53HostedZoneId: "Z075214917HXZ41DH00EY",
+        appDomainName: "trial1.dev.multi-tenant-ec.hoge-app.click",
+        // IP制限なし
+        isSesEnabled: false,
+        isTrial: true,
+    },
+    // テナント4（trial環境テナント）
+    {
+        route53HostedZoneId: "Z075214917HXZ41DH00EY",
+        appDomainName: "trial2.dev.multi-tenant-ec.hoge-app.click",
+        // IP制限なし
+        isSesEnabled: false,
+        isTrial: true,
+    },
 ];
 
 const commonStackProps: CommonStackProps = {
@@ -78,9 +78,9 @@ const mainStackProps: MainStackProps = {
     healthCheckPath: "/",
     backendEcsTaskCpu: 1024,
     backendEcsTaskMemory: 2048,
-    backendMaxTaskCount: 1,
-    backendMinTaskCount: 1,
-    backendDesiredCount: 1,
+    backendMaxTaskCount: 0,
+    backendMinTaskCount: 0,
+    backendDesiredCount: 0,
     backendEcsScaleOutPeriod: Duration.seconds(300),
     backendEcsScaleOutEvaluationPeriods: 3,
     backendEcsScaleInPeriod: Duration.seconds(300),

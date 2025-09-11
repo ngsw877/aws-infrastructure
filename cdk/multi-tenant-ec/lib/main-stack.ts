@@ -349,9 +349,9 @@ export class MainStack extends Stack {
       }
     );
 
-    // 通常テナントとデモテナントを分離
-    const normalTenants = props.tenants.filter(tenant => !tenant.isDemo);
-    const demoTenants = props.tenants.filter(tenant => tenant.isDemo);
+    // 通常テナントとtrialテナントを分離
+    const normalTenants = props.tenants.filter(tenant => !tenant.isTrial);
+    const trialTenants = props.tenants.filter(tenant => tenant.isTrial);
 
     // 通常テナント用のDistributionTenantsを作成（個別）
     for (const tenant of normalTenants) {
@@ -392,40 +392,40 @@ export class MainStack extends Stack {
       );
     }
 
-    // デモテナント用に1つのDistributionTenantを作成（複数ドメインを登録）
-    if (demoTenants.length > 0) {
-      // デモテナント用のドメイン一覧を作成
-      const demoDomains = demoTenants.map(tenant => tenant.appDomainName);
-      // どのデモテナントの証明書も同じワイルドカード証明書なので、最初のものを使用
-      const demoCertificateArn = props.cloudFrontTenantCertificates[demoTenants[0].appDomainName].certificateArn;
+    // trialテナント用に1つのDistributionTenantを作成（複数ドメインを登録）
+    if (trialTenants.length > 0) {
+      // trialテナント用のドメイン一覧を作成
+      const trialDomains = trialTenants.map(tenant => tenant.appDomainName);
+      // どのtrialテナントの証明書も同じワイルドカード証明書なので、最初のものを使用
+      const trialCertificateArn = props.cloudFrontTenantCertificates[trialTenants[0].appDomainName].certificateArn;
       
-      // デモテナント用のDistributionTenantを作成
+      // trialテナント用のDistributionTenantを作成
       new cloudfront.CfnDistributionTenant(
         this,
-        `FrontendDistributionTenantDemo`,
+        `FrontendDistributionTenantTrial`,
         {
           distributionId: cloudFrontDistribution.distributionId,
           connectionGroupId: connectionGroup.attrId,
-          name: `${this.stackName}-frontend-tenant-demo`,
-          domains: demoDomains, // 複数のデモドメインを指定
+          name: `${this.stackName}-frontend-tenant-trial`,
+          domains: trialDomains, // 複数のtrialドメインを指定
           enabled: true,
           customizations: {
             certificate: {
-              arn: demoCertificateArn, // ワイルドカード証明書のARN
+              arn: trialCertificateArn, // ワイルドカード証明書のARN
             },
           },
         }
       );
       
-      // 各デモテナント用のRoute53レコードを作成
-      for (const demoTenant of demoTenants) {
-        const demoTenantId = demoTenant.appDomainName.replace(/\./g, "-");
+      // 各trialテナント用のRoute53レコードを作成
+      for (const trialTenant of trialTenants) {
+        const trialTenantId = trialTenant.appDomainName.replace(/\./g, "-");
         new route53.ARecord(
           this,
-          `CloudFrontAliasRecordDemo${demoTenantId}`,
+          `CloudFrontAliasRecordTrial${trialTenantId}`,
           {
-            zone: baseDomainZoneMap[demoTenant.appDomainName],
-            recordName: demoTenant.appDomainName,
+            zone: baseDomainZoneMap[trialTenant.appDomainName],
+            recordName: trialTenant.appDomainName,
             target: route53.RecordTarget.fromAlias({
               bind: () => ({
                 dnsName: Fn.getAtt(connectionGroup.logicalId, "RoutingEndpoint").toString(),
@@ -1750,11 +1750,11 @@ export class MainStack extends Stack {
       });
     }
     
-    // デモテナント用の共通ディストリビューションテナントIDをエクスポート
-    if (demoTenants.length > 0) {
-      new CfnOutput(this, "FrontendDistributionTenantIdDemo", {
-        value: "DistributionTenant-Demo",
-        description: "Frontend Distribution Tenant ID for demo tenants",
+    // trialテナント用の共通ディストリビューションテナントIDをエクスポート
+    if (trialTenants.length > 0) {
+      new CfnOutput(this, "FrontendDistributionTenantIdTrial", {
+        value: "DistributionTenant-Trial",
+        description: "Frontend Distribution Tenant ID for trial tenants",
       });
     }
   }

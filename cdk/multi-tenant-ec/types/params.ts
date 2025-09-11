@@ -20,7 +20,7 @@ export interface Tenant {
   // SESの作成を有効にするかどうか
   isSesEnabled?: boolean;
   // デモテナントかどうか（デモテナントの場合はワイルドカード証明書を使用）
-  isDemo?: boolean;
+  isTrial?: boolean;
 }
 
 // 共通のスタックプロパティ

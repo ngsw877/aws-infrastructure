@@ -34,15 +34,15 @@ export class GlobalStack extends Stack {
         );
     }
 
-    // デモテナント用ワイルドカード証明書を作成
-    const demoTenants = props.tenants.filter(tenant => tenant.isDemo);
+    // trialテナント用ワイルドカード証明書を作成
+    const trialTenants = props.tenants.filter(tenant => tenant.isTrial);
     let wildcardCertificate: acm.ICertificate | undefined;
     
-    if (demoTenants.length > 0) {
-      // デモテナント用のベースドメインを動的に取得
-      const firstDemoTenant = demoTenants[0];
-      const demoBaseDomain = firstDemoTenant.appDomainName.split('.').slice(1).join('.'); // demo1.multi-tenant.hoge-app.click → multi-tenant.hoge-app.click
-      const wildcardDomain = `*.${demoBaseDomain}`;
+    if (trialTenants.length > 0) {
+      // trialテナント用のベースドメインを動的に取得
+      const firstTrialTenant = trialTenants[0];
+      const trialBaseDomain = firstTrialTenant.appDomainName.split('.').slice(1).join('.'); // trial1.multi-tenant.hoge-app.click → multi-tenant.hoge-app.click
+      const wildcardDomain = `*.${trialBaseDomain}`;
       
       wildcardCertificate = new acm.Certificate(
         this,
@@ -52,8 +52,8 @@ export class GlobalStack extends Stack {
           domainName: wildcardDomain,
           validation: acm.CertificateValidation.fromDns(
             route53.HostedZone.fromHostedZoneAttributes(this, "WildcardHostedZone", {
-              hostedZoneId: firstDemoTenant.route53HostedZoneId, // デモテナントのHostedZoneIdを使用
-              zoneName: demoBaseDomain,
+              hostedZoneId: firstTrialTenant.route53HostedZoneId, // trialテナントのHostedZoneIdを使用
+              zoneName: trialBaseDomain,
             })
           ),
         }
@@ -70,11 +70,11 @@ export class GlobalStack extends Stack {
     for (const tenant of props.tenants) {
       const tenantId = tenant.appDomainName.replace(/\./g, "-");
       
-      if (tenant.isDemo && wildcardCertificate) {
-        // デモテナントはワイルドカード証明書を使用
+      if (tenant.isTrial && wildcardCertificate) {
+        // trialテナントはワイルドカード証明書を使用
         this.cloudFrontTenantCertificates[tenant.appDomainName] = wildcardCertificate;
         
-        // デモテナント用の証明書参照をエクスポート
+        // trialテナント用の証明書参照をエクスポート
         new CfnOutput(this, `FrontendCertificateArn-${tenantId}`, {
           value: wildcardCertificate.certificateArn,
           exportName: `${props.envName}-frontend-cert-arn-${tenantId}`,
