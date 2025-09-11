@@ -840,7 +840,7 @@ export class MainStack extends Stack {
     // ECSクラスター
     const ecsCluster = new ecs.Cluster(this, "EcsCluster", {
       vpc,
-      enableFargateCapacityProviders: true,
+      enableFargateCapacityProviders: false,
       clusterName: PhysicalName.GENERATE_IF_NEEDED, // for crossRegionReferences
     });
 
@@ -1091,13 +1091,6 @@ export class MainStack extends Stack {
         desiredCount: props.backendDesiredCount,
         enableExecuteCommand: true,
         platformVersion: ecs.FargatePlatformVersion.LATEST,
-        // https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ecs-readme.html#fargate-capacity-providers
-        capacityProviderStrategies: [
-          {
-            capacityProvider: "FARGATE",
-            weight: 1,
-          },
-        ],
         minHealthyPercent: 100,
         maxHealthyPercent: 200,
         securityGroups: [backendEcsServiceSecurityGroup],
