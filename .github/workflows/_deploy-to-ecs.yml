@@ -18,6 +18,11 @@ on:
         type: string
         required: false
         default: 'skip'
+      seeder-command:
+        description: 'マイグレーション成功時に続けて実行するシーダーコマンド（例: php artisan db:seed --class=UserSeeder --force）'
+        type: string
+        required: false
+        default: ':'
       backend-dir:
         description: バックエンドディレクトリ
         type: string
@@ -357,7 +362,7 @@ jobs:
 
   run-database-migration:
     needs: [setup, build-and-push-app-image, build-and-push-web-image, build-and-push-log-router-image, detect-migration-changes, update-fixed-tags]
-    if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' }}
+    if: ${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED == 'true' || inputs.seeder-command != ':' }}
     runs-on: ubuntu-24.04-arm
     permissions:
       id-token: write
@@ -423,24 +428,35 @@ jobs:
           echo "MIGRATION_TASK_DEF_ARN=$MIGRATION_TASK_DEF_ARN" >> $GITHUB_OUTPUT
           set +x
 
-      # マイグレーションの実行
-      - name: Run Migration
+      # マイグレーション/シーディングの実行（条件により分岐）
+      - name: Run Migration/Seeding
         id: migration
         run: |
+          set -euo pipefail
+          MIGRATION_REQUIRED="${{ needs.detect-migration-changes.outputs.MIGRATION_REQUIRED }}"
+          SEEDER_CMD="${{ inputs.seeder-command }}"
+          if [ "$MIGRATION_REQUIRED" = "true" ]; then
+            CMD="php artisan migrate --force && ${SEEDER_CMD} || (php artisan migrate:rollback --force && exit 1)"
+          else
+            # マイグレーション不要時はシーディングのみを実行
+            CMD="${SEEDER_CMD}"
+          fi
           set -x
           TASK_ARN=$(aws ecs run-task \
             --cluster ${{ needs.setup.outputs.ECS_CLUSTER_ARN }} \
             --task-definition ${{ steps.register-migration-task.outputs.MIGRATION_TASK_DEF_ARN }} \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ needs.setup.outputs.PRIVATE_SUBNET_ID }}],securityGroups=[${{ needs.setup.outputs.ECS_SG_ID }}],assignPublicIp=DISABLED}" \
-            --overrides '{
-              "containerOverrides": [
+            --overrides "$(jq -n --arg cmd \"$CMD\" '
+            {
+              containerOverrides: [
                 {
-                  "name": "app",
-                  "command": ["/bin/sh", "-c", "php artisan migrate --force || (php artisan migrate:rollback --force && exit 1)"]
+                  name: "app",
+                  command: ["/bin/sh", "-c", $cmd]
                 }
               ]
-            }' \
+            }
+            ')" \
             --query 'tasks[0].taskArn' \
             --output text)
           echo "TASK_ARN=$TASK_ARN" >> $GITHUB_OUTPUT
@@ -450,10 +466,10 @@ jobs:
       - name: Output Slack Channel URL
         env:
           APP_LOG_SLACK_CHANNEL_URL: ${{ vars.APP_LOG_SLACK_CHANNEL_URL }}
-        run: echo "::notice::マイグレーションが実行されました。ログの出力先Slackチャンネル：${{ env.APP_LOG_SLACK_CHANNEL_URL }}"
+        run: echo "::notice::マイグレーション/シーディングが実行されました。ログの出力先Slackチャンネル：${{ env.APP_LOG_SLACK_CHANNEL_URL }}"
 
-      # マイグレーションの完了を待機
-      - name: Wait for Migration to Complete
+      # タスクの完了を待機
+      - name: Wait for Task to Complete
         run: |
           set -x
           aws ecs wait tasks-stopped \
@@ -461,8 +477,8 @@ jobs:
             --tasks ${{ steps.migration.outputs.TASK_ARN }}
           set +x
 
-      # マイグレーションの終了ステータスをチェック
-      - name: Check Migration Status
+      # タスクの終了ステータスをチェック
+      - name: Check Task Status
         run: |
           set -x
           TASK_STATUS=$(aws ecs describe-tasks \

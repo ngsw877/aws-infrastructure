@@ -19,6 +19,11 @@ on:
         options:
           - 'run'    # マイグレーションを実行
           - 'skip'   # マイグレーションを実行しない
+      seeder-command:
+        description: 'マイグレーション成功時に続けて実行するシーダーコマンド（例: php artisan db:seed --class=UserSeeder --force）'
+        type: string
+        required: false
+        default: ':'
 
 permissions:
   id-token: write
@@ -32,3 +37,4 @@ jobs:
       deploy-to: ${{ inputs.deploy-to }}
       branch: ${{ inputs.branch }}
       migration-mode: ${{ inputs.migration-mode }}
+      seeder-command: ${{ inputs.seeder-command }}
