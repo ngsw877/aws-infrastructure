@@ -606,9 +606,85 @@ Resources:
       RetentionInDays: 7
       LogGroupName: !Sub "${AWS::StackName}/interrupt-spot-instance-fis"
 
-  # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため��これらを削除するためのLambda関数を呼び出すカスタムリソース
+  # スタック削除の際に、AutoScalingグループ内のコンテナインスタンスとAutoScalingグループを削除しないとスタック削除ができないため、これらを削除するためのLambda関数を呼び出すカスタムリソース
   CustomResourceCleanupAutoScalingGroup:
     Type: Custom::AutoScalingCleanup
     Properties:
-      ServiceToken: !ImportValue CleanupAutoScalingGroupFunctionArn
+      ServiceToken: !GetAtt CleanupAutoScalingGroupFunction.Arn
       AsgName: !Ref WebAppAutoScalingGroup
+
+  CleanupLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaEC2AutoScalingPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "autoscaling:DescribeAutoScalingGroups"
+                  - "autoscaling:UpdateAutoScalingGroup"
+                  - "autoscaling:DeleteAutoScalingGroup"
+                  - "ec2:TerminateInstances"
+                  - "ec2:DescribeInstances"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+
+  CleanupAutoScalingGroupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: "index.handler"
+      Role: !GetAtt CleanupLambdaExecutionRole.Arn
+      Runtime: "python3.13"
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              auto_scaling_client = boto3.client('autoscaling')
+              ec2_client = boto3.client('ec2')
+
+              asg_name = event['ResourceProperties']['AsgName']
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      response = auto_scaling_client.describe_auto_scaling_groups(
+                          AutoScalingGroupNames=[asg_name]
+                      )
+                      auto_scaling_groups = response.get('AutoScalingGroups', [])
+                      if auto_scaling_groups:
+                          instances = auto_scaling_groups[0].get('Instances', [])
+                          instance_ids = [instance['InstanceId'] for instance in instances]
+
+                          if instance_ids:
+                              ec2_client.terminate_instances(InstanceIds=instance_ids)
+                              print("Instances terminated:", instance_ids)
+
+                          auto_scaling_client.delete_auto_scaling_group(
+                              AutoScalingGroupName=asg_name,
+                              ForceDelete=True
+                          )
+                          print("Auto Scaling group deleted:", asg_name)
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as exc:
+                  print(exc)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  CleanupAutoScalingGroupLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CleanupAutoScalingGroupFunction}"
+      RetentionInDays: 7
