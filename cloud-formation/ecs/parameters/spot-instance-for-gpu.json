@@ -1,5 +1,13 @@
 [
   {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "sample-app.click"
+  },
+  {
+    "ParameterKey": "HostedZoneId",
+    "ParameterValue": "Z05580762DNJR53OQCHM2"
+  },
+  {
     "ParameterKey": "AmazonLinux2LatestAmiId",
     "ParameterValue": "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
   },

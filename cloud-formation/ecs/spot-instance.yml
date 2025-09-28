@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
+  DomainName:
+    Type: String
+  HostedZoneId:
+    Type: String
   AmazonLinux2LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
@@ -71,15 +75,9 @@ Parameters:
   VpcStackName:
     Type: String
     Default: "common-vpc"
-  SecurityGroupStackName:
-    Type: String
-    Default: "common-sg"
   EcrStackName:
     Type: String
     Default: "common-ecr"
-  AcmStackName:
-    Type: String
-    Default: "common-acm-for-alb"
   ContainerInsightsState:
     Type: String
     Default: "disabled"
@@ -268,7 +266,7 @@ Resources:
                 !Sub "${VpcStackName}-PrivateSubnet3"
           SecurityGroups:
             - Fn::ImportValue:
-                !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
+                !Sub "${VpcStackName}-WebAppSecurityGroup"
       LoadBalancers:
         - ContainerName: !Ref WebContainerName
           ContainerPort: 80
@@ -351,7 +349,7 @@ Resources:
       Type: application
       SecurityGroups:
         - Fn::ImportValue:
-            !Sub "${SecurityGroupStackName}-LoadBalancerSecurityGroup"
+            !Sub "${VpcStackName}-LoadBalancerSecurityGroup"
       Subnets:
         - Fn::ImportValue:
             !Sub "${VpcStackName}-PublicSubnet1"
@@ -380,6 +378,15 @@ Resources:
             Port: 443
             StatusCode: HTTP_301
 
+  WebAppCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+
   WebAppHttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -388,9 +395,7 @@ Resources:
       Protocol: HTTPS
       SslPolicy: !Ref ElbSecurityPolicy
       Certificates:
-        - CertificateArn:
-            Fn::ImportValue:
-              !Sub "${AcmStackName}-CertificateArn"
+        - CertificateArn: !Ref WebAppCertificate
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppTaskTargetGroup
@@ -399,12 +404,9 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       Type: A
-      HostedZoneId:
-        Fn::ImportValue:
-          !Sub "${AcmStackName}-HostedZoneId"
+      HostedZoneId: !Ref HostedZoneId
       Name:
-        Fn::ImportValue:
-          !Sub "${AcmStackName}-Fqdn"
+        !Ref DomainName
       AliasTarget:
         HostedZoneId: !GetAtt WebAppLoadBalancer.CanonicalHostedZoneID
         DNSName: !GetAtt WebAppLoadBalancer.DNSName

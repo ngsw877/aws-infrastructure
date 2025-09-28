@@ -23,9 +23,6 @@ Parameters:
   VpcStackName:
     Type: String
     Default: "common-vpc"
-  SecurityGroupStackName:
-    Type: String
-    Default: "common-sg"
   AcmStackName:
     Type: String
     Default: "common-acm-for-alb"
@@ -221,7 +218,7 @@ Resources:
                 !Sub "${VpcStackName}-PrivateSubnet2"
           SecurityGroups:
             - Fn::ImportValue:
-                !Sub "${SecurityGroupStackName}-WebAppSecurityGroup"
+                !Sub "${VpcStackName}-WebAppSecurityGroup"
 
   #======================
   # ターゲットグループ
@@ -253,7 +250,7 @@ Resources:
             !Sub "${VpcStackName}-PublicSubnet2"
       SecurityGroups:
         - Fn::ImportValue:
-            !Sub "${SecurityGroupStackName}-LoadBalancerSecurityGroup"
+            !Sub "${VpcStackName}-LoadBalancerSecurityGroup"
       LoadBalancerAttributes:
         - Key: routing.http.drop_invalid_header_fields.enabled
           Value: "true"

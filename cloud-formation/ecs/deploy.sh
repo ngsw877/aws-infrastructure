@@ -8,7 +8,7 @@ if [[ "$2" = "fargate" ]]; then
   PARAMETERS_FILE="fargate.json"
 
 elif [[ "$2" = "spot" ]]; then
-  BASE_STACK_NAME="spot-instance"
+  BASE_STACK_NAME="ecs-spot-instance"
   TEMPLATE="spot-instance.yml"
 
   # GPUインスタンスの使用を尋ねる
