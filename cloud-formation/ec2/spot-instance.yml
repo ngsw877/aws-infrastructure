@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Minimum configuration spot instance
+Description: Minimal isolated spot instance configuration with Auto Scaling Group
 
 Parameters:
   LatestAmiId:
@@ -7,6 +7,7 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 
 Resources:
+  # VPC
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -14,6 +15,7 @@ Resources:
       EnableDnsSupport: true
       EnableDnsHostnames: true
 
+  # Private Subnets
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -28,22 +30,42 @@ Resources:
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [1, !GetAZs '']
 
-  SpotInstanceLaunchTemplate:
+  # Security Group
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for isolated spot instances
+      VpcId: !Ref VPC
+      # No egress rules = completely isolated
+
+  # Launch Template
+  LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: t3.micro
+        SecurityGroupIds:
+          - !Ref SecurityGroup
         InstanceMarketOptions:
           MarketType: spot
           SpotOptions:
-            SpotInstanceType: persistent
-            InstanceInterruptionBehavior: stop
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
 
-  EC2Instance:
-    Type: AWS::EC2::Instance
+  # Auto Scaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      InstanceType: t3.micro
-      ImageId: !Ref LatestAmiId
-      SubnetId: !Ref PrivateSubnet1
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       LaunchTemplate:
-        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
-        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: 0
+      MaxSize: 2
+      DesiredCapacity: 1
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      CapacityRebalance: true
