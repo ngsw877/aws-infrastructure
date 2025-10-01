@@ -20,10 +20,9 @@ if [[ "$3" != "" ]]; then
   STACK_NAME="$3"
 fi
 
-aws cloudformation \
+aws cloudformation deploy \
   --profile "${PROFILE}" \
-  deploy \
-  --template-file ${TEMPLATE} \
-  --stack-name ${STACK_NAME}  \
+  --template-file "${TEMPLATE}" \
+  --stack-name "${STACK_NAME}" \
   --capabilities CAPABILITY_NAMED_IAM \
   --no-execute-changeset
