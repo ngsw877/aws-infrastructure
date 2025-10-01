@@ -15,7 +15,7 @@ Resources:
       EnableDnsSupport: true
       EnableDnsHostnames: true
 
-  # Private Subnets
+  # プライベートサブネット
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -30,42 +30,51 @@ Resources:
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [1, !GetAZs '']
 
-  # Security Group
+  # セキュリティグループ
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for isolated spot instances
+      GroupDescription: "Security group for isolated spot instances"
       VpcId: !Ref VPC
-      # No egress rules = completely isolated
+      # Egressルールなし = 完全隔離
 
-  # Launch Template
+  # 起動テンプレート（MixedInstancesPolicyでスポット設定するため、ここではスポット設定しない）
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
         ImageId: !Ref LatestAmiId
-        InstanceType: t3.micro
         SecurityGroupIds:
           - !Ref SecurityGroup
-        InstanceMarketOptions:
-          MarketType: spot
-          SpotOptions:
-            SpotInstanceType: one-time
-            InstanceInterruptionBehavior: terminate
 
-  # Auto Scaling Group
+  # 複数インスタンスタイプ対応のAuto Scaling Group
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-      LaunchTemplate:
-        LaunchTemplateId: !Ref LaunchTemplate
-        Version: !GetAtt LaunchTemplate.LatestVersionNumber
-      MinSize: 0
+      MinSize: 1
       MaxSize: 2
       DesiredCapacity: 1
       HealthCheckType: EC2
       HealthCheckGracePeriod: 300
       CapacityRebalance: true
+      MixedInstancesPolicy:
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateId: !Ref LaunchTemplate
+            Version: !GetAtt LaunchTemplate.LatestVersionNumber
+          Overrides:
+            # 同等の計算能力を持つインスタンスタイプ
+            - InstanceType: t3.micro
+              WeightedCapacity: 1
+            - InstanceType: t3a.micro
+              WeightedCapacity: 1
+            - InstanceType: t4g.micro  # ARM版（AMIが対応している場合のみ）
+              WeightedCapacity: 1
+            - InstanceType: t2.micro
+              WeightedCapacity: 1
+        InstancesDistribution:
+          OnDemandPercentageAboveBaseCapacity: 0  # 100%スポット
+          SpotAllocationStrategy: price-capacity-optimized  # ベストプラクティス
