@@ -6,6 +6,14 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 
+  SlackWorkspaceId:
+    Type: String
+    Description: "Slack Workspace ID for AWS Chatbot"
+
+  SlackChannelId:
+    Type: String
+    Description: "Slack Channel ID for notifications"
+
 Resources:
   # VPC
   VPC:
@@ -60,6 +68,13 @@ Resources:
       HealthCheckType: EC2
       HealthCheckGracePeriod: 300
       CapacityRebalance: true
+      Tags:
+        - Key: SpotInstance
+          Value: true
+          PropagateAtLaunch: true
+        - Key: Environment
+          Value: spot-testing
+          PropagateAtLaunch: true
       MixedInstancesPolicy:
         LaunchTemplate:
           LaunchTemplateSpecification:
@@ -78,3 +93,78 @@ Resources:
         InstancesDistribution:
           OnDemandPercentageAboveBaseCapacity: 0  # 100%スポット
           SpotAllocationStrategy: price-capacity-optimized  # ベストプラクティス
+
+  # SNSトピック（EventBridgeからChatbotへの橋渡し）
+  SpotInterruptionTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Spot Instance Interruption Notifications"
+      TopicName: spot-interruption-notifications
+
+  # SNSトピックポリシー
+  SpotInterruptionTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref SpotInterruptionTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgeToPublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - SNS:Publish
+            Resource: !Ref SpotInterruptionTopic
+
+  # EventBridge Rule（スポット中断通知）
+  SpotInterruptionEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: spot-interruption-notification-rule
+      Description: "Send spot instance interruption notices to SNS"
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Spot Instance Interruption Warning
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SpotInterruptionTopic
+          Id: SpotInterruptionSNSTarget
+
+  # AWS Chatbot用IAMロール
+  ChatbotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: chatbot.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ChatbotPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:Describe*
+                  - cloudwatch:Get*
+                  - cloudwatch:List*
+                Resource: '*'
+
+  # AWS Chatbot Slack Channel設定
+  SlackChannelConfiguration:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Properties:
+      ConfigurationName: spot-interruption-slack-channel
+      SlackWorkspaceId: !Ref SlackWorkspaceId
+      SlackChannelId: !Ref SlackChannelId
+      IamRoleArn: !GetAtt ChatbotRole.Arn
+      SnsTopicArns:
+        - !Ref SpotInterruptionTopic
+      LoggingLevel: INFO
