@@ -14,6 +14,11 @@ Parameters:
     Type: String
     Description: "Slack Channel ID for notifications"
 
+  FisResourceTagValue:
+    Type: String
+    Default: "interruptMe"
+    Description: "Tag value for FIS experiment to target specific instances"
+
 Resources:
   # VPC
   VPC:
@@ -54,6 +59,15 @@ Resources:
         ImageId: !Ref LatestAmiId
         SecurityGroupIds:
           - !Ref SecurityGroup
+        TagSpecifications:
+          - ResourceType: "instance"
+            Tags:
+              - Key: "Test"
+                Value: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+              - Key: "Name"
+                Value: !Ref AWS::StackName
+              - Key: "SpotInstance"
+                Value: "true"
 
   # 複数インスタンスタイプ対応のAuto Scaling Group
   AutoScalingGroup:
@@ -69,12 +83,9 @@ Resources:
       HealthCheckGracePeriod: 300
       CapacityRebalance: true
       Tags:
-        - Key: SpotInstance
-          Value: true
-          PropagateAtLaunch: true
-        - Key: Environment
-          Value: spot-testing
-          PropagateAtLaunch: true
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-auto-scaling-group"
+          PropagateAtLaunch: false
       MixedInstancesPolicy:
         LaunchTemplate:
           LaunchTemplateSpecification:
@@ -168,3 +179,75 @@ Resources:
       SnsTopicArns:
         - !Ref SpotInterruptionTopic
       LoggingLevel: INFO
+
+  # スポットインスタンスの中断をテストするためのFIS実験テンプレート
+  InterruptSpotInstanceFisExperimentTemplate:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: "interrupt-spot-instance-test"
+      Actions:
+        interruptSpotInstance:
+          ActionId: "aws:ec2:send-spot-instance-interruptions"
+          Targets:
+            SpotInstances: "oneSpotInstance"
+          Parameters:
+            durationBeforeInterruption: "PT2M" # PT2M = 2分...スポットインスタンスを中断する2分前に、中断の通知を送る
+      ExperimentOptions:
+        EmptyTargetResolutionMode: "fail"
+        AccountTargeting: "single-account"
+      StopConditions:
+        - Source: "none"
+      Targets:
+        oneSpotInstance:
+          Filters:
+            - Path: "State.Name"
+              Values:
+                - "running"
+          ResourceType: "aws:ec2:spot-instance"  # ECSと同じ設定に戻す
+          ResourceTags:
+            Test: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+          SelectionMode: "COUNT(1)"
+      LogConfiguration:
+        CloudWatchLogsConfiguration:
+          LogGroupArn: !GetAtt InterruptSpotInstanceFisLogGroup.Arn
+        LogSchemaVersion: 2
+      RoleArn: !GetAtt InterruptSpotInstanceFisRole.Arn
+      Tags:
+        Name: !Sub "${AWS::StackName}-interrupt-spot-instance-test"
+
+  # FIS実行用のIAMロール
+  InterruptSpotInstanceFisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/service-role/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "fis.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: CustomCloudWatchLogsPolicyForFIS
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogDelivery"
+                  - "logs:PutResourcePolicy"
+                  - "logs:DescribeResourcePolicies"
+                  - "logs:DescribeLogGroups"
+                Resource: "*"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
+      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
+      MaxSessionDuration: 3600
+
+  # FISログ用のCloudWatch Logsグループ
+  InterruptSpotInstanceFisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: "STANDARD"
+      RetentionInDays: 7
+      LogGroupName: !Sub "${AWS::StackName}/interrupt-spot-instance-fis"
