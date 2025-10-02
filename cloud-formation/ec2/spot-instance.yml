@@ -134,12 +134,13 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: spot-interruption-notification-rule
-      Description: "Send spot instance interruption notices to SNS"
+      Description: "EC2スポットインスタンスのリバランス推奨通知と中断警告をSNSに送信するルール"
       EventPattern:
         source:
           - aws.ec2
         detail-type:
-          - EC2 Spot Instance Interruption Warning
+          - EC2 Spot Instance Rebalance Recommended  # 中断リスク上昇の早期警告（予防的対応可能）
+          - EC2 Spot Instance Interruption Warning   # 終了2分前の最終警告（回避不可）
       State: ENABLED
       Targets:
         - Arn: !Ref SpotInterruptionTopic
