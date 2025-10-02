@@ -16,7 +16,7 @@ Parameters:
 
   FisResourceTagValue:
     Type: String
-    Default: "interruptMe"
+    Default: "interrupt-me"
     Description: "Tag value for FIS experiment to target specific instances"
 
 Resources:
@@ -63,7 +63,7 @@ Resources:
           - ResourceType: "instance"
             Tags:
               - Key: "Test"
-                Value: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+                Value: !Ref FisResourceTagValue
               - Key: "Name"
                 Value: !Ref AWS::StackName
               - Key: "SpotInstance"
@@ -204,9 +204,9 @@ Resources:
             - Path: "State.Name"
               Values:
                 - "running"
-          ResourceType: "aws:ec2:spot-instance"  # ECSと同じ設定に戻す
+          ResourceType: "aws:ec2:spot-instance"
           ResourceTags:
-            Test: !Sub "${AWS::StackName}-${FisResourceTagValue}"
+            Test: !Ref FisResourceTagValue
           SelectionMode: "COUNT(1)"
       LogConfiguration:
         CloudWatchLogsConfiguration:
