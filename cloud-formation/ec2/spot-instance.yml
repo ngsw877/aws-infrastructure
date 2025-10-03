@@ -188,27 +188,27 @@ Resources:
       Description: "interrupt-spot-instance-test"
       Actions:
         interruptSpotInstance:
-          ActionId: "aws:ec2:send-spot-instance-interruptions"
+          ActionId: "aws:ec2:send-spot-instance-interruptions" # スポットインスタンスを中断するアクション 参考：https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html#send-spot-instance-interruptions
           Targets:
             SpotInstances: "oneSpotInstance"
           Parameters:
-            durationBeforeInterruption: "PT2M" # PT2M = 2分...スポットインスタンスを中断する2分前に、中断の通知を送る
-      ExperimentOptions:
-        EmptyTargetResolutionMode: "fail"
-        AccountTargeting: "single-account"
-      StopConditions:
-        - Source: "none"
+            durationBeforeInterruption: "PT2M" # PT2M(Period Time 2 Minutes) = 2分...スポットインスタンスを中断する2分前に、中断の通知を送る
       Targets:
-        oneSpotInstance:
-          Filters:
+        oneSpotInstance:  # 中断対象の特定: スポットインスタンス AND タグ(Test=interrupt-me) AND 状態(running) でフィルタリング
+          ResourceType: "aws:ec2:spot-instance"
+          ResourceTags:  # タグで絞り込み（複数指定時はAND条件）
+            Test: !Ref FisResourceTagValue
+          Filters:  # 実行中のインスタンスのみを対象
             - Path: "State.Name"
               Values:
                 - "running"
-          ResourceType: "aws:ec2:spot-instance"
-          ResourceTags:
-            Test: !Ref FisResourceTagValue
-          SelectionMode: "COUNT(1)"
-      LogConfiguration:
+          SelectionMode: "COUNT(1)"  # 条件に該当するインスタンスが複数ある場合、ランダムに1個だけを選択
+      ExperimentOptions:
+        EmptyTargetResolutionMode: "fail"  # ターゲットが0個の場合は実験を失敗させる（skipの場合は続行）
+        AccountTargeting: "single-account"  # 現在のアカウントのみで実験を実行（multi-accountで複数アカウント対応）
+      StopConditions:
+        - Source: "none"
+      LogConfiguration: # FISのログ設定　参考：https://docs.aws.amazon.com/fis/latest/userguide/monitoring-logging.html
         CloudWatchLogsConfiguration:
           LogGroupArn: !GetAtt InterruptSpotInstanceFisLogGroup.Arn
         LogSchemaVersion: 2
@@ -221,6 +221,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Path: "/service-role/"
+      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -228,6 +229,8 @@ Resources:
             Principal:
               Service: "fis.amazonaws.com"
             Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
       Policies:
         - PolicyName: CustomCloudWatchLogsPolicyForFIS
           PolicyDocument:
@@ -240,9 +243,6 @@ Resources:
                   - "logs:DescribeResourcePolicies"
                   - "logs:DescribeLogGroups"
                 Resource: "*"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEC2Access"
-      RoleName: !Sub "${AWS::StackName}-InterruptSpotInstanceFisRole"
       MaxSessionDuration: 3600
 
   # FISログ用のCloudWatch Logsグループ
