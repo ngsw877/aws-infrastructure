@@ -146,6 +146,28 @@ Resources:
         - Arn: !Ref SpotInterruptionTopic
           Id: SpotInterruptionSNSTarget
 
+
+  # EventBridge Rule（実際のスポット中断検知）
+  # BidEvictedEventはAWSリソース不足による自然なスポット中断時のみ発生
+  # 要件：CloudTrailの有効化が必要
+  BidEvictedEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: spot-bid-evicted-rule
+      Description: "AWS側によるスポットインスタンス中断を検知"
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - AWS Service Event via CloudTrail
+        detail:
+          eventName:
+            - BidEvictedEvent
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SpotInterruptionTopic
+          Id: BidEvictedTarget
+
   # AWS Chatbot用IAMロール
   ChatbotRole:
     Type: AWS::IAM::Role
