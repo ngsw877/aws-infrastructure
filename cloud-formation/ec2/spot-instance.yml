@@ -150,7 +150,6 @@ Resources:
         - Arn: !Ref SpotInterruptionTopic
           Id: SpotInterruptionSNSTarget
 
-
   # EventBridge Rule（実際のスポット中断検知）
   # BidEvictedEventはAWSリソース不足による自然なスポット中断時のみ発生
   # 要件：CloudTrailの有効化が必要
@@ -171,6 +170,20 @@ Resources:
       Targets:
         - Arn: !Ref SpotInterruptionTopic
           Id: BidEvictedTarget
+          InputTransformer:
+            InputPathsMap:
+              eventName: "$.detail.eventName"
+              time: "$.time"
+              region: "$.region"
+              account: "$.account"
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "content": {
+                  "description": "⚠️ Spot Instance Actually Interrupted\n\nEvent: <eventName>\nAccount: <account>\nRegion: <region>\nTime: <time>\n\nNote: Spot instance was actually interrupted due to AWS resource shortage"
+                }
+              }
 
   # AWS Chatbot用IAMロール
   ChatbotRole:
