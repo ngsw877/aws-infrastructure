@@ -231,7 +231,7 @@ Resources:
           Targets:
             SpotInstances: "oneSpotInstance"
           Parameters:
-            durationBeforeInterruption: "PT2M" # PT2M(Period Time 2 Minutes) = 2分...スポットインスタンスを中断する2分前に、中断の通知を送る
+            durationBeforeInterruption: "PT3M" # PT3M(Period Time 3 Minutes) = 実験開始から3分後にスポットインスタンスを中断
       Targets:
         oneSpotInstance:  # 中断対象の特定: スポットインスタンス AND タグ(Test=interrupt-me) AND 状態(running) でフィルタリング
           ResourceType: "aws:ec2:spot-instance"
