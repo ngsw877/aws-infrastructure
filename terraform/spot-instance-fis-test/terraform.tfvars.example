@@ -1,0 +1,28 @@
+# AWS Region
+aws_region = "ap-northeast-1"
+
+# Project Name
+project_name = "spot-instance-fis-test"
+
+# VPC Configuration
+vpc_cidr             = "10.0.0.0/16"
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+
+# Slack Configuration (Required)
+slack_workspace_id = "T0XXXXXXXXX"  # Replace with your Slack Workspace ID
+slack_channel_id   = "C0XXXXXXXXX"  # Replace with your Slack Channel ID
+
+# FIS Configuration
+fis_resource_tag_value      = "interrupt-me"
+fis_interruption_duration   = "PT3M" # PT3M = 3 minutes
+
+# Auto Scaling Group Configuration
+asg_min_size         = 1
+asg_max_size         = 2
+asg_desired_capacity = 1
+
+# Spot Instance Types
+spot_instance_types = ["t3.micro", "t3a.micro", "t4g.micro", "t2.micro"]
+
+# CloudWatch Logs
+cloudwatch_log_retention_days = 7
