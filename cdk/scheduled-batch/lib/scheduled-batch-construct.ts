@@ -4,7 +4,7 @@ import { Schedule, ScheduleExpression } from "aws-cdk-lib/aws-scheduler";
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import { TimeZone } from "aws-cdk-lib/core";
 import * as iam from "aws-cdk-lib/aws-iam";
-import * as lambda from "aws-cdk-lib/aws-lambda";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
@@ -19,9 +19,7 @@ export interface BatchConfig {
 }
 
 export class ScheduledBatchConstruct extends Construct {
-  public readonly lambda: NodejsFunction;
   public readonly lambdaRole: iam.Role;
-  public readonly schedule: Schedule;
 
   constructor(scope: Construct, id: string, config: BatchConfig) {
     super(scope, id);
@@ -50,10 +48,10 @@ export class ScheduledBatchConstruct extends Construct {
     );
 
     // Lambda
-    this.lambda = new NodejsFunction(this, "Lambda", {
+    const lambda = new NodejsFunction(this, "Lambda", {
       entry: config.lambdaEntry,
       handler: "handler",
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_18_X,
       role: this.lambdaRole,
       environment: {
         BATCH_SUCCESS_WEBHOOK_PARAMETER_STORE_NAME: config.batchSuccessWebhookParameterStoreName,
@@ -63,19 +61,19 @@ export class ScheduledBatchConstruct extends Construct {
     });
 
     // Lambdaのロググループ
-    new logs.LogGroup(this, `${this.lambda.node.id}LogGroup`, {
-      logGroupName: `/aws/lambda/${this.lambda.functionName}`,
+    new logs.LogGroup(this, `${lambda.node.id}LogGroup`, {
+      logGroupName: `/aws/lambda/${lambda.functionName}`,
       retention: logs.RetentionDays.THREE_MONTHS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // スケジュール
-    this.schedule = new Schedule(this, "Schedule", {
+    new Schedule(this, "Schedule", {
       schedule: ScheduleExpression.cron({
         ...config.scheduleOption.scheduleCron,
         timeZone: TimeZone.of("Asia/Tokyo"),
       }),
-      target: new LambdaInvoke(this.lambda),
+      target: new LambdaInvoke(lambda),
       enabled: config.scheduleOption.isScheduleEnabled,
     });
   }
