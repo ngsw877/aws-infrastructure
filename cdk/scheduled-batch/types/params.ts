@@ -19,5 +19,5 @@ export interface BatchConfig {
 export interface ScheduledBatchStackParams extends cdk.StackProps {
   helloWorldBatchConfig: BatchConfig;
   restartEcsTasksBatchConfig: BatchConfig;
-  cleanupCfnStacksConfig: BatchConfig;
+  cleanupCfnStacksBatchConfig: BatchConfig;
 }

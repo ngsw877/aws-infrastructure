@@ -17,7 +17,6 @@ export class ScheduledBatchStack extends cdk.Stack {
       "RestartEcsTasksBatch", 
       props.restartEcsTasksBatchConfig,
     );
-
     // ECS固有のポリシーを追加
     restartEcsBatch.lambdaRole.addToPolicy(
       new iam.PolicyStatement({
@@ -32,9 +31,8 @@ export class ScheduledBatchStack extends cdk.Stack {
     const cleanupCfnStacksBatch = new ScheduledBatchConstruct(
       this,
       "CleanupCfnStacksBatch",
-      props.cleanupCfnStacksConfig,
+      props.cleanupCfnStacksBatchConfig,
     );
-
     // CloudFormation操作のポリシーを追加
     cleanupCfnStacksBatch.lambdaRole.addToPolicy(
       new iam.PolicyStatement({
