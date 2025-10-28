@@ -51,7 +51,7 @@ export class ScheduledBatchConstruct extends Construct {
     const lambda = new NodejsFunction(this, "Lambda", {
       entry: config.lambdaEntry,
       handler: "handler",
-      runtime: Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_22_X,
       role: this.lambdaRole,
       environment: {
         BATCH_SUCCESS_WEBHOOK_PARAMETER_STORE_NAME: config.batchSuccessWebhookParameterStoreName,
