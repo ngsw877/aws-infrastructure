@@ -1,0 +1,12 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+
+# Build directory (Lambda zip files)
+build/
+
+# OS files
+.DS_Store
