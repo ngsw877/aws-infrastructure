@@ -8,7 +8,7 @@ def handler(event, context):
     """
     # コンテキスト情報を辞書化
     context_info = {
-        'request_id': context.request_id,
+        'aws_request_id': context.aws_request_id,
         'function_name': context.function_name,
         'function_version': context.function_version,
         'memory_limit_in_mb': context.memory_limit_in_mb,
