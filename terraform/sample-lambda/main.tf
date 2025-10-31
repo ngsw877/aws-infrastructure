@@ -20,8 +20,14 @@ provider "aws" {
 # Lambda関数のコードをzip化
 data "archive_file" "sample_lambda" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/src"
+  source_dir  = "${path.module}/lambda/hello-world"
   output_path = "${path.module}/build/sample-lambda.zip"
+}
+
+data "archive_file" "timestamp_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/timestamp"
+  output_path = "${path.module}/build/timestamp-lambda.zip"
 }
 
 # Lambda実行用のIAMロール
@@ -48,7 +54,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Lambda関数
+# Lambda関数（Hello World）
 resource "aws_lambda_function" "sample_lambda" {
   filename         = data.archive_file.sample_lambda.output_path
   function_name    = "sample-lambda-function"
@@ -59,6 +65,21 @@ resource "aws_lambda_function" "sample_lambda" {
 
   tags = {
     Name        = "sample-lambda"
+    Environment = "development"
+  }
+}
+
+# Lambda関数（日本時間タイムスタンプ）
+resource "aws_lambda_function" "timestamp_lambda" {
+  filename         = data.archive_file.timestamp_lambda.output_path
+  function_name    = "timestamp-lambda-function"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.timestamp_lambda.output_base64sha256
+  runtime         = "python3.12"
+
+  tags = {
+    Name        = "timestamp-lambda"
     Environment = "development"
   }
 }
