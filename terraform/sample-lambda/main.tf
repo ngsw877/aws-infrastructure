@@ -17,25 +17,6 @@ provider "aws" {
   region = "ap-northeast-1"
 }
 
-# Lambda関数のコードをzip化
-data "archive_file" "sample_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/hello-world"
-  output_path = "${path.module}/build/sample-lambda.zip"
-}
-
-data "archive_file" "timestamp_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/timestamp"
-  output_path = "${path.module}/build/timestamp-lambda.zip"
-}
-
-data "archive_file" "event_echo_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/event-echo"
-  output_path = "${path.module}/build/event-echo-lambda.zip"
-}
-
 # Lambda実行用のIAMロール
 resource "aws_iam_role" "lambda_role" {
   name = "sample-lambda-role"
@@ -53,85 +34,65 @@ resource "aws_iam_role" "lambda_role" {
     ]
   })
 }
-
 # CloudWatch Logsへの書き込み権限を付与
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# CloudWatch Logs ロググループ
-resource "aws_cloudwatch_log_group" "sample_lambda" {
-  name              = "/aws/lambda/sample-lambda-function"
-  retention_in_days = 7
-}
-
-resource "aws_cloudwatch_log_group" "timestamp_lambda" {
-  name              = "/aws/lambda/timestamp-lambda-function"
-  retention_in_days = 7
-}
-
-resource "aws_cloudwatch_log_group" "event_echo_lambda" {
-  name              = "/aws/lambda/event-echo-lambda-function"
-  retention_in_days = 7
-}
-
 # Lambda関数（Hello World）
-resource "aws_lambda_function" "sample_lambda" {
-  filename         = data.archive_file.sample_lambda.output_path
-  function_name    = "sample-lambda-function"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  source_code_hash = data.archive_file.sample_lambda.output_base64sha256
-  runtime         = "python3.12"
+module "hello_world_lambda" {
+  source = "./modules/lambda-function"
 
-  depends_on = [
-    aws_cloudwatch_log_group.sample_lambda,
-    aws_iam_role_policy_attachment.lambda_basic_execution
-  ]
+  function_name = "sample-lambda-function"
+  source_dir    = "${path.module}/lambda/hello-world"
+  build_dir     = "${path.module}/build"
+  role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
     Name        = "sample-lambda"
     Environment = "development"
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.lambda_basic_execution
+  ]
 }
 
 # Lambda関数（日本時間タイムスタンプ）
-resource "aws_lambda_function" "timestamp_lambda" {
-  filename         = data.archive_file.timestamp_lambda.output_path
-  function_name    = "timestamp-lambda-function"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  source_code_hash = data.archive_file.timestamp_lambda.output_base64sha256
-  runtime         = "python3.12"
+module "timestamp_lambda" {
+  source = "./modules/lambda-function"
 
-  depends_on = [
-    aws_cloudwatch_log_group.timestamp_lambda,
-    aws_iam_role_policy_attachment.lambda_basic_execution
-  ]
+  function_name = "timestamp-lambda-function"
+  source_dir    = "${path.module}/lambda/timestamp"
+  build_dir     = "${path.module}/build"
+  role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
     Name        = "timestamp-lambda"
     Environment = "development"
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.lambda_basic_execution
+  ]
 }
 
 # Lambda関数（イベントエコー）
-resource "aws_lambda_function" "event_echo_lambda" {
-  filename         = data.archive_file.event_echo_lambda.output_path
-  function_name    = "event-echo-lambda-function"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  source_code_hash = data.archive_file.event_echo_lambda.output_base64sha256
-  runtime         = "python3.12"
+module "event_echo_lambda" {
+  source = "./modules/lambda-function"
 
-  depends_on = [
-    aws_cloudwatch_log_group.event_echo_lambda,
-    aws_iam_role_policy_attachment.lambda_basic_execution
-  ]
+  function_name = "event-echo-lambda-function"
+  source_dir    = "${path.module}/lambda/event-echo"
+  build_dir     = "${path.module}/build"
+  role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
     Name        = "event-echo-lambda"
     Environment = "development"
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.lambda_basic_execution
+  ]
 }
