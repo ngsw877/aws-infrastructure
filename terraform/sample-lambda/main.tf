@@ -50,8 +50,9 @@ module "hello_world_lambda" {
   role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
-    Name        = "sample-lambda"
-    Environment = "development"
+    Name      = "sample-lambda"
+    Project   = "terraform-sample-lambda"
+    ManagedBy = "Terraform"
   }
 
   depends_on = [
@@ -69,8 +70,9 @@ module "timestamp_lambda" {
   role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
-    Name        = "timestamp-lambda"
-    Environment = "development"
+    Name      = "timestamp-lambda"
+    Project   = "terraform-sample-lambda"
+    ManagedBy = "Terraform"
   }
 
   depends_on = [
@@ -88,11 +90,35 @@ module "event_echo_lambda" {
   role_arn      = aws_iam_role.lambda_role.arn
 
   tags = {
-    Name        = "event-echo-lambda"
-    Environment = "development"
+    Name      = "event-echo-lambda"
+    Project   = "terraform-sample-lambda"
+    ManagedBy = "Terraform"
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_execution
   ]
+}
+
+# リソースグループ
+resource "aws_resourcegroups_group" "sample_lambda" {
+  name = "terraform-sample-lambda"
+
+  resource_query {
+    query = jsonencode({
+      ResourceTypeFilters = ["AWS::AllSupported"]
+      TagFilters = [
+        {
+          Key    = "Project"
+          Values = ["terraform-sample-lambda"]
+        }
+      ]
+    })
+  }
+
+  tags = {
+    Name      = "terraform-sample-lambda-resource-group"
+    Project   = "terraform-sample-lambda"
+    ManagedBy = "Terraform"
+  }
 }
