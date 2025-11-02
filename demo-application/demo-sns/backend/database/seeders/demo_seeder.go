@@ -8,12 +8,15 @@ import (
 )
 
 func RunDemoSeeder() error {
+	database.DB.Exec("DELETE FROM comment_likes")
+	database.DB.Exec("DELETE FROM comments")
 	database.DB.Exec("DELETE FROM likes")
 	database.DB.Exec("DELETE FROM follows")
 	database.DB.Exec("DELETE FROM posts")
 	database.DB.Exec("DELETE FROM users")
 	database.DB.Exec("ALTER SEQUENCE users_id_seq RESTART WITH 1")
 	database.DB.Exec("ALTER SEQUENCE posts_id_seq RESTART WITH 1")
+	database.DB.Exec("ALTER SEQUENCE comments_id_seq RESTART WITH 1")
 
 	users := []models.User{
 		{Name: "Guest User", Email: "guest@example.com", Password: hashPassword("password"), Bio: "ゲストユーザーです。自由にお試しください。"},
@@ -73,6 +76,53 @@ func RunDemoSeeder() error {
 		database.DB.Create(&follow)
 	}
 	log.Printf("Created %d follows", len(follows))
+
+	// コメント（トップレベル）
+	comments := []models.Comment{
+		{PostID: 2, UserID: 3, Content: "初投稿おめでとうございます！🎉"},
+		{PostID: 2, UserID: 4, Content: "よろしくお願いします！"},
+		{PostID: 3, UserID: 3, Content: "わかります！最新版は型推論も強化されましたよね"},
+		{PostID: 4, UserID: 2, Content: "app/ディレクトリ便利ですよね〜"},
+		{PostID: 5, UserID: 4, Content: "setup scriptの書き心地最高です"},
+		{PostID: 6, UserID: 5, Content: "Docker便利ですよね！"},
+		{PostID: 7, UserID: 6, Content: "MinIO使ったことないです。今度試してみます！"},
+		{PostID: 8, UserID: 6, Content: "デザインシステム興味あります"},
+	}
+
+	for _, comment := range comments {
+		database.DB.Create(&comment)
+	}
+	log.Printf("Created %d comments", len(comments))
+
+	// コメントへのリプライ（ネスト）
+	parentID1 := uint(1) // "初投稿おめでとうございます！"へのリプライ
+	parentID3 := uint(3) // "わかります！最新版は型推論も..."へのリプライ
+	parentID6 := uint(6) // "Docker便利ですよね！"へのリプライ
+
+	replies := []models.Comment{
+		{PostID: 2, UserID: 2, ParentID: &parentID1, Content: "ありがとうございます！Bobさん😊"},
+		{PostID: 3, UserID: 2, ParentID: &parentID3, Content: "そうなんです！型安全性が向上して開発体験が良くなりました"},
+		{PostID: 3, UserID: 4, ParentID: &parentID3, Content: "私もLaravel使ってみたいです"},
+		{PostID: 6, UserID: 4, ParentID: &parentID6, Content: "docker-composeで全部まとまるから楽ですよね"},
+	}
+
+	for _, reply := range replies {
+		database.DB.Create(&reply)
+	}
+	log.Printf("Created %d replies", len(replies))
+
+	// コメントいいね
+	commentLikes := []models.CommentLike{
+		{CommentID: 1, UserID: 2}, {CommentID: 1, UserID: 4}, {CommentID: 1, UserID: 5},
+		{CommentID: 3, UserID: 2}, {CommentID: 3, UserID: 4},
+		{CommentID: 4, UserID: 3}, {CommentID: 5, UserID: 3},
+		{CommentID: 9, UserID: 3}, {CommentID: 9, UserID: 4},
+	}
+
+	for _, commentLike := range commentLikes {
+		database.DB.Create(&commentLike)
+	}
+	log.Printf("Created %d comment likes", len(commentLikes))
 
 	log.Println("Demo data seeding completed!")
 	log.Println("Test accounts: guest@example.com, alice@example.com, bob@example.com / password")

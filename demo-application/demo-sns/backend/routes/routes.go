@@ -14,6 +14,7 @@ func SetupRoutes(e *echo.Echo, cfg *config.Config) {
 	likeController := controllers.NewLikeController()
 	followController := controllers.NewFollowController()
 	profileController := controllers.NewProfileController(cfg)
+	commentController := controllers.NewCommentController(cfg)
 
 	api := e.Group("/api")
 
@@ -47,5 +48,11 @@ func SetupRoutes(e *echo.Echo, cfg *config.Config) {
 		authorized.GET("/users/:id", profileController.Show)
 		authorized.PUT("/profile", profileController.Update)
 		authorized.POST("/profile", profileController.Update)
+
+		// Comments
+		authorized.GET("/posts/:postId/comments", commentController.Index)
+		authorized.POST("/posts/:postId/comments", commentController.Create)
+		authorized.DELETE("/comments/:id", commentController.Delete)
+		authorized.POST("/comments/:id/like", commentController.ToggleLike)
 	}
 }

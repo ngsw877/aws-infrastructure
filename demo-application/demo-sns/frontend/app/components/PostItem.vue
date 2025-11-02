@@ -1,48 +1,50 @@
 <template>
-  <div class="post">
-    <div class="post-header">
-      <NuxtLink :to="`/users/${post.user_id}`" class="user-link">
-        <div class="post-avatar">{{ post.user?.name?.charAt(0).toUpperCase() }}</div>
-      </NuxtLink>
-      <div>
-        <NuxtLink :to="`/users/${post.user_id}`" class="user-link">
-          <div class="post-author">{{ post.user?.name }}</div>
+  <NuxtLink :to="`/posts/${post.id}`" class="post-card">
+    <div class="post">
+      <div class="post-header">
+        <NuxtLink :to="`/users/${post.user_id}`" class="user-link" @click.stop>
+          <div class="post-avatar">{{ post.user?.name?.charAt(0).toUpperCase() }}</div>
         </NuxtLink>
-        <div class="post-date">
-          {{ formatDate(post.created_at) }}
+        <div>
+          <NuxtLink :to="`/users/${post.user_id}`" class="user-link" @click.stop>
+            <div class="post-author">{{ post.user?.name }}</div>
+          </NuxtLink>
+          <div class="post-date">
+            {{ formatDate(post.created_at) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="post-content">{{ post.content }}</div>
+
+      <img
+        v-if="post.image_url"
+        :src="post.image_url"
+        alt="投稿画像"
+        class="post-image"
+      />
+
+      <div class="post-actions" @click.stop>
+        <div
+          class="post-action"
+          :class="{ liked: isLiked }"
+          @click="handleLike"
+        >
+          <span>{{ isLiked ? '❤️' : '🤍' }}</span>
+          <span>{{ likesCount }}</span>
+        </div>
+
+        <div
+          v-if="canDelete"
+          class="post-action delete"
+          @click="handleDelete"
+        >
+          <span>🗑️</span>
+          <span>削除</span>
         </div>
       </div>
     </div>
-
-    <div class="post-content">{{ post.content }}</div>
-
-    <img
-      v-if="post.image_url"
-      :src="post.image_url"
-      alt="投稿画像"
-      class="post-image"
-    />
-
-    <div class="post-actions">
-      <div
-        class="post-action"
-        :class="{ liked: isLiked }"
-        @click="handleLike"
-      >
-        <span>{{ isLiked ? '❤️' : '🤍' }}</span>
-        <span>{{ likesCount }}</span>
-      </div>
-
-      <div
-        v-if="canDelete"
-        class="post-action delete"
-        @click="handleDelete"
-      >
-        <span>🗑️</span>
-        <span>削除</span>
-      </div>
-    </div>
-  </div>
+  </NuxtLink>
 </template>
 
 <script setup lang="ts">
@@ -109,6 +111,27 @@ const handleDelete = async () => {
 </script>
 
 <style scoped lang="scss">
+// カード全体のリンク
+.post-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-radius: $radius-md;
+  transition: all 0.2s ease;
+  margin-bottom: $spacing-lg;
+
+  &:hover {
+    background-color: rgba($primary-color, 0.03);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+// 投稿カード本体
+.post {
+  @include card;
+  margin-bottom: 0;
+}
+
 // ユーザーリンク
 .user-link {
   text-decoration: none;

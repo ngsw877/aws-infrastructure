@@ -42,6 +42,8 @@ func AutoMigrate() error {
 		&models.Post{},
 		&models.Like{},
 		&models.Follow{},
+		&models.Comment{},
+		&models.CommentLike{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to auto migrate: %w", err)
