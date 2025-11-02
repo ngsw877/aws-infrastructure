@@ -8,7 +8,7 @@
         <NuxtLink :to="`/users/${post.user_id}`" class="user-link">
           <div class="post-author">{{ post.user?.name }}</div>
         </NuxtLink>
-        <div style="font-size: 13px; color: #657786;">
+        <div class="post-date">
           {{ formatDate(post.created_at) }}
         </div>
       </div>
@@ -35,9 +35,8 @@
 
       <div
         v-if="canDelete"
-        class="post-action"
+        class="post-action delete"
         @click="handleDelete"
-        style="color: #e0245e;"
       >
         <span>🗑️</span>
         <span>削除</span>
@@ -109,20 +108,34 @@ const handleDelete = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+// ユーザーリンク
 .user-link {
   text-decoration: none;
   color: inherit;
   display: flex;
   align-items: center;
   transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.7;
+
+    .post-author {
+      text-decoration: underline;
+    }
+  }
 }
 
-.user-link:hover {
-  opacity: 0.7;
+// 投稿日時
+.post-date {
+  font-size: $font-sm;
+  color: $text-secondary;
 }
 
-.user-link:hover .post-author {
-  text-decoration: underline;
+// アクション
+.post-action {
+  &.delete {
+    color: $danger-color;
+  }
 }
 </style>

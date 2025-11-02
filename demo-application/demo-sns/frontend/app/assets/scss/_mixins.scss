@@ -1,0 +1,66 @@
+// ============================================
+// Mixins
+// ============================================
+
+// Card Style
+@mixin card {
+  background-color: $bg-white;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+}
+
+// Button Base
+@mixin btn-base {
+  padding: $spacing-sm $spacing-lg;
+  border: none;
+  border-radius: $radius-full;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: $font-md;
+  transition: background-color 0.2s;
+}
+
+// Input Base
+@mixin input-base {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  font-size: $font-md;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+  }
+}
+
+// Flexbox Center
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Avatar
+@mixin avatar($size: $avatar-size) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background-color: $primary-color;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+// Hover Effect
+@mixin hover-opacity {
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}

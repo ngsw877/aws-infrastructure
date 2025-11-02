@@ -1,0 +1,205 @@
+// ============================================
+// Import Variables and Mixins
+// ============================================
+@import 'variables';
+@import 'mixins';
+
+// ============================================
+// Global Styles
+// ============================================
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: $bg-primary;
+  color: $text-primary;
+}
+
+.container {
+  max-width: $container-width;
+  margin: 0 auto;
+  padding: $spacing-lg;
+}
+
+// ============================================
+// Header
+// ============================================
+.header {
+  background-color: $bg-white;
+  border-bottom: 1px solid $border-color;
+  padding: $spacing-md $spacing-lg;
+  position: sticky;
+  top: 0;
+  z-index: $z-header;
+}
+
+.header-content {
+  max-width: $container-width;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: $font-lg;
+  font-weight: bold;
+}
+
+.nav-links {
+  display: flex;
+  gap: $spacing-lg;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: $primary-color;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ============================================
+// Buttons
+// ============================================
+.btn {
+  @include btn-base;
+}
+
+.btn-primary {
+  background-color: $primary-color;
+  color: white;
+
+  &:hover {
+    background-color: $primary-hover;
+  }
+}
+
+.btn-secondary {
+  background-color: $bg-white;
+  color: $primary-color;
+  border: 1px solid $primary-color;
+
+  &:hover {
+    background-color: $primary-light;
+  }
+}
+
+.btn-danger {
+  background-color: $danger-color;
+  color: white;
+
+  &:hover {
+    background-color: $danger-hover;
+  }
+}
+
+// ============================================
+// Card
+// ============================================
+.card {
+  @include card;
+}
+
+// ============================================
+// Form
+// ============================================
+.form-group {
+  margin-bottom: $spacing-md;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: $spacing-xs;
+  font-weight: 500;
+  font-size: $font-md;
+}
+
+.form-group input,
+.form-group textarea {
+  @include input-base;
+}
+
+.error {
+  color: $danger-color;
+  font-size: $font-xs;
+  margin-top: $spacing-xs;
+}
+
+// ============================================
+// Post
+// ============================================
+.post {
+  border-bottom: 1px solid $border-color;
+  padding: $spacing-md 0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.post-avatar {
+  @include avatar;
+  margin-right: $spacing-sm;
+}
+
+.post-author {
+  font-weight: bold;
+  font-size: $font-base;
+}
+
+.post-content {
+  margin-bottom: $spacing-sm;
+  font-size: $font-base;
+  line-height: 1.5;
+}
+
+.post-image {
+  width: 100%;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+}
+
+.post-actions {
+  display: flex;
+  gap: $spacing-xl;
+  color: $text-secondary;
+  font-size: $font-sm;
+}
+
+.post-action {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover {
+    color: $primary-color;
+  }
+
+  &.liked {
+    color: $danger-color;
+  }
+}
+
+// ============================================
+// Loading
+// ============================================
+.loading {
+  text-align: center;
+  padding: $spacing-xl;
+  color: $text-secondary;
+}

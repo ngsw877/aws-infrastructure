@@ -2,23 +2,23 @@
   <div class="container">
     <div class="card" v-if="profileUser">
       <!-- プロフィールヘッダー -->
-      <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <div class="post-avatar" style="width: 80px; height: 80px; font-size: 32px;">
+      <div class="profile-header">
+        <div class="profile-avatar">
           {{ profileUser.name.charAt(0).toUpperCase() }}
         </div>
-        <div style="margin-left: 20px; flex: 1;">
+        <div class="profile-info">
           <h2>{{ profileUser.name }}</h2>
-          <p style="color: #657786;">{{ profileUser.email }}</p>
+          <p>{{ profileUser.email }}</p>
         </div>
       </div>
 
       <!-- 自己紹介 -->
-      <div v-if="profileUser.bio" style="margin-bottom: 20px;">
+      <div v-if="profileUser.bio" class="bio">
         <p>{{ profileUser.bio }}</p>
       </div>
 
       <!-- 統計情報 -->
-      <div style="display: flex; gap: 20px; color: #657786; font-size: 14px; margin-bottom: 20px;">
+      <div class="stats">
         <div>
           <strong>{{ postsCount }}</strong> 投稿
         </div>
@@ -48,13 +48,13 @@
     </div>
 
     <!-- ユーザーの投稿一覧 -->
-    <div class="card" style="margin-top: 20px;">
-      <h2 style="margin-bottom: 20px;">投稿</h2>
+    <div class="card posts-section">
+      <h2>投稿</h2>
 
       <div v-if="postsLoading" class="loading">読み込み中...</div>
 
       <div v-else-if="userPosts.length === 0">
-        <p style="text-align: center; color: #657786;">まだ投稿がありません</p>
+        <p class="empty-message">まだ投稿がありません</p>
       </div>
 
       <div v-else>
@@ -69,7 +69,7 @@
     </div>
 
     <div v-if="!profileUser && !loading" class="card">
-      <p style="text-align: center; color: #657786;">ユーザーが見つかりません</p>
+      <p class="empty-message">ユーザーが見つかりません</p>
     </div>
 
     <div v-if="loading" class="loading">読み込み中...</div>
@@ -165,14 +165,65 @@ watch(() => route.params.id, async (newId) => {
 })
 </script>
 
-<style scoped>
-.user-link {
-  text-decoration: none;
-  color: inherit;
+<style scoped lang="scss">
+// プロフィールヘッダー
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-lg;
 }
 
-.user-link:hover .post-author {
-  text-decoration: underline;
+.profile-avatar {
+  @include avatar(80px);
+  font-size: 32px;
+}
+
+.profile-info {
+  margin-left: $spacing-lg;
+  flex: 1;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  p {
+    color: $text-secondary;
+    margin: $spacing-xs 0 0 0;
+  }
+}
+
+// 自己紹介
+.bio {
+  margin-bottom: $spacing-lg;
+  line-height: 1.5;
+}
+
+// 統計情報
+.stats {
+  display: flex;
+  gap: $spacing-lg;
+  color: $text-secondary;
+  font-size: $font-md;
+  margin-bottom: $spacing-lg;
+
+  strong {
+    color: $text-primary;
+  }
+}
+
+// セクション
+.posts-section {
+  margin-top: $spacing-lg;
+
+  h2 {
+    margin-bottom: $spacing-lg;
+  }
+}
+
+.empty-message {
+  text-align: center;
+  color: $text-secondary;
 }
 </style>
 
