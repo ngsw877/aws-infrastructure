@@ -25,6 +25,14 @@ class DemoDataSeeder extends Seeder
 
         // デモユーザー作成
         $users = [
+            // ゲストユーザー（ID=1）
+            [
+                'name' => 'Guest User',
+                'email' => 'guest@example.com',
+                'password' => Hash::make('password'),
+                'bio' => 'ゲストユーザーです。自由にお試しください。',
+            ],
+            // 通常のデモユーザー（ID=2以降）
             [
                 'name' => 'Alice',
                 'email' => 'alice@example.com',
@@ -64,19 +72,20 @@ class DemoDataSeeder extends Seeder
 
         // 投稿作成
         $posts = [
-            ['user_id' => 1, 'content' => 'こんにちは！初めての投稿です 👋'],
-            ['user_id' => 1, 'content' => 'Laravel 12すごく使いやすい！'],
-            ['user_id' => 2, 'content' => 'Nuxt 4の新しいディレクトリ構造いいね'],
-            ['user_id' => 2, 'content' => 'Composition API最高！'],
-            ['user_id' => 3, 'content' => 'Docker Composeでサクッと環境構築'],
-            ['user_id' => 3, 'content' => 'MinIOでローカルS3環境構築した'],
-            ['user_id' => 4, 'content' => 'デザインシステム作ってます'],
-            ['user_id' => 4, 'content' => 'Figma便利すぎる'],
-            ['user_id' => 5, 'content' => '新機能のリリース準備中！'],
-            ['user_id' => 5, 'content' => 'ユーザーフィードバック集めてます'],
-            ['user_id' => 1, 'content' => 'PHPカンファレンス行きたい'],
-            ['user_id' => 2, 'content' => 'Viteのビルド速度やばい'],
-            ['user_id' => 3, 'content' => 'k8s勉強中'],
+            ['user_id' => 1, 'content' => 'ゲストユーザーとしてログインしました。お試しください！'],
+            ['user_id' => 2, 'content' => 'こんにちは！初めての投稿です 👋'],
+            ['user_id' => 2, 'content' => 'Laravel 12すごく使いやすい！'],
+            ['user_id' => 3, 'content' => 'Nuxt 4の新しいディレクトリ構造いいね'],
+            ['user_id' => 3, 'content' => 'Composition API最高！'],
+            ['user_id' => 4, 'content' => 'Docker Composeでサクッと環境構築'],
+            ['user_id' => 4, 'content' => 'MinIOでローカルS3環境構築した'],
+            ['user_id' => 5, 'content' => 'デザインシステム作ってます'],
+            ['user_id' => 5, 'content' => 'Figma便利すぎる'],
+            ['user_id' => 6, 'content' => '新機能のリリース準備中！'],
+            ['user_id' => 6, 'content' => 'ユーザーフィードバック集めてます'],
+            ['user_id' => 2, 'content' => 'PHPカンファレンス行きたい'],
+            ['user_id' => 3, 'content' => 'Viteのビルド速度やばい'],
+            ['user_id' => 4, 'content' => 'k8s勉強中'],
         ];
 
         $createdPosts = [];
@@ -89,13 +98,13 @@ class DemoDataSeeder extends Seeder
             ['user_id' => 2, 'post_id' => 1],
             ['user_id' => 3, 'post_id' => 1],
             ['user_id' => 4, 'post_id' => 1],
-            ['user_id' => 1, 'post_id' => 3],
-            ['user_id' => 1, 'post_id' => 4],
-            ['user_id' => 5, 'post_id' => 2],
+            ['user_id' => 5, 'post_id' => 1],
+            ['user_id' => 2, 'post_id' => 4],
             ['user_id' => 2, 'post_id' => 5],
-            ['user_id' => 3, 'post_id' => 7],
-            ['user_id' => 4, 'post_id' => 9],
-            ['user_id' => 5, 'post_id' => 11],
+            ['user_id' => 3, 'post_id' => 6],
+            ['user_id' => 4, 'post_id' => 8],
+            ['user_id' => 5, 'post_id' => 10],
+            ['user_id' => 6, 'post_id' => 12],
         ];
 
         foreach ($likes as $likeData) {
@@ -104,15 +113,15 @@ class DemoDataSeeder extends Seeder
 
         // フォロー関係作成
         $follows = [
-            ['follower_id' => 1, 'following_id' => 2],
-            ['follower_id' => 1, 'following_id' => 3],
             ['follower_id' => 2, 'following_id' => 1],
             ['follower_id' => 2, 'following_id' => 3],
             ['follower_id' => 3, 'following_id' => 1],
-            ['follower_id' => 4, 'following_id' => 1],
+            ['follower_id' => 3, 'following_id' => 2],
             ['follower_id' => 4, 'following_id' => 2],
-            ['follower_id' => 5, 'following_id' => 1],
+            ['follower_id' => 5, 'following_id' => 2],
             ['follower_id' => 5, 'following_id' => 3],
+            ['follower_id' => 6, 'following_id' => 2],
+            ['follower_id' => 6, 'following_id' => 4],
         ];
 
         foreach ($follows as $followData) {

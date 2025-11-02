@@ -30,9 +30,19 @@
           type="submit"
           class="btn btn-primary"
           style="width: 100%; margin-top: 10px;"
-          :disabled="loading"
+          :disabled="loading || guestLoading"
         >
           {{ loading ? 'ログイン中...' : 'ログイン' }}
+        </button>
+
+        <button
+          type="button"
+          class="btn"
+          style="width: 100%; margin-top: 10px; background-color: #657786; color: white;"
+          :disabled="loading || guestLoading"
+          @click="handleGuestLogin"
+        >
+          {{ guestLoading ? 'ログイン中...' : 'ゲストログイン' }}
         </button>
       </form>
 
@@ -45,12 +55,13 @@
 </template>
 
 <script setup lang="ts">
-const { login } = useAuth()
+const { login, guestLogin } = useAuth()
 
 const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const guestLoading = ref(false)
 
 const handleLogin = async () => {
   error.value = ''
@@ -62,6 +73,19 @@ const handleLogin = async () => {
     error.value = e.data?.message || 'ログインに失敗しました'
   } finally {
     loading.value = false
+  }
+}
+
+const handleGuestLogin = async () => {
+  error.value = ''
+  guestLoading.value = true
+
+  try {
+    await guestLogin()
+  } catch (e: any) {
+    error.value = e.data?.message || 'ゲストログインに失敗しました'
+  } finally {
+    guestLoading.value = false
   }
 }
 </script>

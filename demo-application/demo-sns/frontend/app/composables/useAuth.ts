@@ -19,6 +19,21 @@ export const useAuth = () => {
     }
   }
 
+  const guestLogin = async () => {
+    try {
+      const data: any = await api('/guest-login', {
+        method: 'POST',
+      })
+
+      token.value = data.token
+      user.value = data.user
+
+      await router.push('/')
+    } catch (error: any) {
+      throw error
+    }
+  }
+
   const register = async (name: string, email: string, password: string, password_confirmation: string) => {
     try {
       const data: any = await api('/register', {
@@ -68,6 +83,7 @@ export const useAuth = () => {
   return {
     user,
     login,
+    guestLogin,
     register,
     logout,
     fetchUser,

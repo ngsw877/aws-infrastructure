@@ -11,6 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private const GUEST_USER_ID = 1;
+
     public function register(Request $request)
     {
         $validated = $request->validate([
@@ -68,5 +70,23 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user());
+    }
+
+    public function guestLogin()
+    {
+        $guestUser = User::find(self::GUEST_USER_ID);
+
+        if (!$guestUser) {
+            return response()->json([
+                'error' => 'Guest user not found. Please run database seeder.',
+            ], 404);
+        }
+
+        $token = $guestUser->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'user' => $guestUser,
+            'token' => $token,
+        ]);
     }
 }
