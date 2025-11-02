@@ -55,7 +55,8 @@ const loadPosts = async () => {
   loading.value = true
   try {
     const data: any = await api('/posts')
-    posts.value = data.data || []
+    // Go Echoは配列を直接返す
+    posts.value = Array.isArray(data) ? data : (data.data || [])
   } catch (error) {
     console.error('Failed to load posts:', error)
   } finally {
@@ -64,6 +65,7 @@ const loadPosts = async () => {
 }
 
 onMounted(async () => {
+  // ログイン済みの場合のみユーザー情報を取得
   if (isAuthenticated.value) {
     await fetchUser()
     await loadPosts()

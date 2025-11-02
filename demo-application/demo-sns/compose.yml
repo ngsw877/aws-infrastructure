@@ -13,24 +13,28 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - demo-sns-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo_sns_user -d demo_sns"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # Laravel Backend (PHP-FPM)
+  # Go Backend (Echo)
   backend:
     build:
       context: ./backend
-      dockerfile: docker/php/Dockerfile
+      dockerfile: Dockerfile
     container_name: demo-sns-backend
-    working_dir: /var/www
-    volumes:
-      - ./backend:/var/www
-      - ./backend/storage:/var/www/storage
+    ports:
+      - "8080:8080"
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       - demo-sns-network
     environment:
-      DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
       DB_DATABASE: demo_sns
@@ -42,21 +46,8 @@ services:
       AWS_DEFAULT_REGION: ap-northeast-1
       AWS_BUCKET: demo-sns
       AWS_ENDPOINT: http://minio:9000
-      AWS_USE_PATH_STYLE_ENDPOINT: true
-
-  # Nginx Web Server
-  nginx:
-    image: nginx:alpine
-    container_name: demo-sns-nginx
-    ports:
-      - "8000:80"
-    volumes:
-      - ./backend:/var/www
-      - ./backend/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - backend
-    networks:
-      - demo-sns-network
+      JWT_SECRET: your-secret-key-change-this
+      PORT: 8080
 
   # Nuxt Frontend
   frontend:
@@ -71,11 +62,11 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - nginx
+      - backend
     networks:
       - demo-sns-network
     environment:
-      NUXT_PUBLIC_API_BASE: http://localhost:8000/api
+      NUXT_PUBLIC_API_BASE: http://localhost:8080/api
 
   # MinIO (S3互換オブジェクトストレージ)
   minio:

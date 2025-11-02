@@ -73,9 +73,12 @@ export const useAuth = () => {
       const data: any = await api('/me')
       user.value = data
       return data
-    } catch (error) {
-      token.value = null
-      user.value = null
+    } catch (error: any) {
+      // トークンが無効な場合はクリアする
+      if (error.statusCode === 401) {
+        token.value = null
+        user.value = null
+      }
       return null
     }
   }
