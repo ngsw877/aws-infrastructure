@@ -21,11 +21,45 @@ func NewProfileController(cfg *config.Config) *ProfileController {
 }
 
 func (pc *ProfileController) Show(c echo.Context) error {
+	currentUser, _ := middleware.GetCurrentUser(c)
+
 	var user models.User
 	if err := database.DB.First(&user, c.Param("id")).Error; err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
-	return c.JSON(http.StatusOK, user)
+
+	// フォロワー数を計算
+	var followersCount int64
+	database.DB.Model(&models.Follow{}).Where("following_id = ?", user.ID).Count(&followersCount)
+
+	// フォロー中数を計算
+	var followingCount int64
+	database.DB.Model(&models.Follow{}).Where("follower_id = ?", user.ID).Count(&followingCount)
+
+	// 投稿数を計算
+	var postsCount int64
+	database.DB.Model(&models.Post{}).Where("user_id = ?", user.ID).Count(&postsCount)
+
+	// 現在のユーザーがこのユーザーをフォローしているかチェック
+	var follow models.Follow
+	isFollowing := database.DB.Where("follower_id = ? AND following_id = ?", currentUser.ID, user.ID).First(&follow).Error == nil
+
+	// レスポンスを構築
+	response := map[string]interface{}{
+		"id":              user.ID,
+		"name":            user.Name,
+		"email":           user.Email,
+		"bio":             user.Bio,
+		"avatar_url":      user.AvatarURL,
+		"created_at":      user.CreatedAt,
+		"updated_at":      user.UpdatedAt,
+		"followers_count": followersCount,
+		"following_count": followingCount,
+		"posts_count":     postsCount,
+		"is_following":    isFollowing,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 func (pc *ProfileController) Update(c echo.Context) error {

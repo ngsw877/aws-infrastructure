@@ -1,9 +1,13 @@
 <template>
   <div class="post">
     <div class="post-header">
-      <div class="post-avatar">{{ post.user?.name?.charAt(0).toUpperCase() }}</div>
+      <NuxtLink :to="`/users/${post.user_id}`" class="user-link">
+        <div class="post-avatar">{{ post.user?.name?.charAt(0).toUpperCase() }}</div>
+      </NuxtLink>
       <div>
-        <div class="post-author">{{ post.user?.name }}</div>
+        <NuxtLink :to="`/users/${post.user_id}`" class="user-link">
+          <div class="post-author">{{ post.user?.name }}</div>
+        </NuxtLink>
         <div style="font-size: 13px; color: #657786;">
           {{ formatDate(post.created_at) }}
         </div>
@@ -104,3 +108,21 @@ const handleDelete = async () => {
   }
 }
 </script>
+
+<style scoped>
+.user-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s;
+}
+
+.user-link:hover {
+  opacity: 0.7;
+}
+
+.user-link:hover .post-author {
+  text-decoration: underline;
+}
+</style>
