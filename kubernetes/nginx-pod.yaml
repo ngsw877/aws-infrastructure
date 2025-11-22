@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        # localhostでアクセスする場合はポートフォワードが必要
+        # コマンド： kubectl port-forward nginx-pod 8080:80
+        - containerPort: 80
