@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrator-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: db-migrator
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+          image: 043309350350.dkr.ecr.ap-northeast-1.amazonaws.com/db-migrator-stg:b9b12c6
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: host
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+      # Pod内のコンテナが失敗（exit code != 0）したときに、Pod自体を再起動しないという意味
+      # Job においては、通常は Never または OnFailure のいずれかを使いますが、Never の場合、Podが1回こけたら、それで終了扱いになる（ただし、後述の backoffLimit によってJob自体はリトライされ得る）
+      restartPolicy: Never
+  # Jobが失敗したとき、何回まで再実行（再スケジューリング）するかを指定します。この例だと 1 なので、最大2回までPodが実行される可能性がある
+  # つまり、Pod自体はコンテナが終了してもリトライしないが、Job自体は2回まで頑実行されるという設定です。
+  backoffLimit: 1
