@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slack-metrics-config
+  labels:
+    app: slack-metrics
+data:
+  GOCONF: "/app/config/config.toml.tmpl"
+  LOG_LEVEL: "info"
+  API_ENABLE_LOG_EXCLUSION: "true"
+  SLACK_USE_MOCK: "false"
+  SQS_USE_MOCK: "true"
+  SES_USE_MOCK: "true"
