@@ -5,11 +5,12 @@ metadata:
   labels:
     app: slack-metrics
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: slack-metrics
   ports:
     - name: http
       port: 80 # Service port
       targetPort: 8080 # Container port
+      nodePort: 30000 # Node port
       protocol: TCP
