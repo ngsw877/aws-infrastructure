@@ -1,0 +1,5 @@
+# 以下の設定を/etc/hostsに追記する
+
+# minikube ipコマンド実行結果のIPアドレスを指定する
+192.168.49.2    slack-metrics.local
+192.168.49.2    nginx.local
