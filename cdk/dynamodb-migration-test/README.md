@@ -41,7 +41,7 @@ cdk deploy
 
 ### 2. テーブルにデータ挿入
 ```bash
-./scripts/seed-data.sh
+python scripts/seed-data.py
 ```
 SourceTableとSampleTableの両方に400件ずつデータが挿入される。
 
@@ -90,7 +90,7 @@ AWS_PROFILE=study python scripts/old-sample-table-to-new-sample-table/import-new
 
 | スクリプト | 説明 |
 |-----------|------|
-| `seed-data.sh` | SourceTableとSampleTableに400件ずつサンプルデータを挿入 |
+| `seed-data.py` | SourceTableとSampleTableに400件ずつサンプルデータを挿入 |
 | `migrate-table.py` | SourceTable → DestinationTable にデータ移行 |
 | `old-sample-table-to-new-sample-table/export-old-sample-table.py` | SampleTableのデータをJSONファイルにエクスポート |
 | `old-sample-table-to-new-sample-table/import-new-sample-table.py` | JSONファイルからSampleTableにデータをインポート |
