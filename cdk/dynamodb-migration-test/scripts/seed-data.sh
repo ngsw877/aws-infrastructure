@@ -1,14 +1,18 @@
 #!/bin/bash
 
-# DynamoDB SourceTable にサンプルデータを挿入するスクリプト
-# ユーザー100人 × (PROFILE 1件 + ORDER 3件) = 400件
+# DynamoDB テーブルにサンプルデータを挿入するスクリプト
+# SourceTable と SampleTable の両方に同じデータを挿入する
+# ユーザー100人 × (PROFILE 1件 + ORDER 3件) = 400件 × 2テーブル = 800件
 # 使用方法: ./seed-data.sh
 
-TABLE_NAME="SourceTable"
+TABLES=("SourceTable" "SampleTable")
 TOTAL_USERS=100
 ORDERS_PER_USER=3
 BATCH_SIZE=25
 
+for TABLE_NAME in "${TABLES[@]}"; do
+
+echo "=========================================="
 echo "DynamoDB テーブル '${TABLE_NAME}' にデータを挿入します..."
 echo "  ユーザー数: ${TOTAL_USERS}"
 echo "  各ユーザーの注文数: ${ORDERS_PER_USER}"
@@ -115,7 +119,14 @@ if [ $item_count -gt 0 ]; then
 fi
 
 echo ""
-echo "完了！$((TOTAL_USERS * (1 + ORDERS_PER_USER))) 件のデータを挿入しました。"
+echo "完了！${TABLE_NAME} に $((TOTAL_USERS * (1 + ORDERS_PER_USER))) 件のデータを挿入しました。"
+
+done
+
+echo ""
+echo "=========================================="
+echo "全テーブルへのデータ挿入が完了しました！"
 echo ""
 echo "データ確認コマンド:"
-echo "  aws dynamodb scan --table-name ${TABLE_NAME} --select COUNT"
+echo "  aws dynamodb scan --table-name SourceTable --select COUNT"
+echo "  aws dynamodb scan --table-name SampleTable --select COUNT"

@@ -35,15 +35,24 @@ export class DynamodbMigrationTestStack extends cdk.Stack {
       ...tableProps,
     });
 
+    // サンプルテーブル（スタック再作成での移行検証用）
+    const sampleTable = new dynamodb.Table(this, 'SampleTable', {
+      tableName: 'SampleTable',
+      ...tableProps,
+    });
+
     // テーブル名を出力
     new cdk.CfnOutput(this, 'SourceTableName', {
       value: sourceTable.tableName,
       description: 'Source DynamoDB Table Name',
     });
-
     new cdk.CfnOutput(this, 'DestinationTableName', {
       value: destinationTable.tableName,
       description: 'Destination DynamoDB Table Name',
+    });
+    new cdk.CfnOutput(this, 'SampleTableName', {
+      value: sampleTable.tableName,
+      description: 'Sample DynamoDB Table Name',
     });
   }
 }
