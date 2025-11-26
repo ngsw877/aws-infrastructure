@@ -6,9 +6,8 @@ export class DynamodbMigrationTestStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // DynamoDBテーブルの作成
-    const table = new dynamodb.Table(this, 'SampleTable', {
-      tableName: 'SampleTable',
+    // 共通のテーブル設定
+    const tableProps = {
       partitionKey: {
         name: 'id',
         type: dynamodb.AttributeType.STRING,
@@ -22,17 +21,29 @@ export class DynamodbMigrationTestStack extends cdk.Stack {
         pointInTimeRecoveryEnabled: true,
       },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    };
+
+    // ソーステーブル（データ移行元）
+    const sourceTable = new dynamodb.Table(this, 'SourceTable', {
+      tableName: 'SourceTable',
+      ...tableProps,
     });
 
-    // テーブル名とARNを出力
-    new cdk.CfnOutput(this, 'TableName', {
-      value: table.tableName,
-      description: 'DynamoDB Table Name',
+    // ターゲットテーブル（データ移行先）
+    const destinationTable = new dynamodb.Table(this, 'DestinationTable', {
+      tableName: 'DestinationTable',
+      ...tableProps,
     });
 
-    new cdk.CfnOutput(this, 'TableArn', {
-      value: table.tableArn,
-      description: 'DynamoDB Table ARN',
+    // テーブル名を出力
+    new cdk.CfnOutput(this, 'SourceTableName', {
+      value: sourceTable.tableName,
+      description: 'Source DynamoDB Table Name',
+    });
+
+    new cdk.CfnOutput(this, 'DestinationTableName', {
+      value: destinationTable.tableName,
+      description: 'Destination DynamoDB Table Name',
     });
   }
 }

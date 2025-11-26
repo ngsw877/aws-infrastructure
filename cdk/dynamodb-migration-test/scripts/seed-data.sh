@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# DynamoDB SampleTable にサンプルデータを挿入するスクリプト
+# DynamoDB SourceTable にサンプルデータを挿入するスクリプト
 # ユーザー100人 × (PROFILE 1件 + ORDER 3件) = 400件
 # 使用方法: ./seed-data.sh
 
-TABLE_NAME="SampleTable"
+TABLE_NAME="SourceTable"
 TOTAL_USERS=100
 ORDERS_PER_USER=3
 BATCH_SIZE=25
