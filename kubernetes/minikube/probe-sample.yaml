@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-probe-sample
+spec:
+  selector:
+    app: nginx-probe-sample
+  ports:
+    - protocol: TCP
+      port: 80          # サービスのポート（クラスタ内で使われる）
+      targetPort: 80    # コンテナがリッスンするポート
+      nodePort: 30001   # 外部からアクセスできるポート（任意のポート番号）
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-probe-sample
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-probe-sample
+  template:
+    metadata:
+      labels:
+        app: nginx-probe-sample
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+          # startupProbe:
+          #   exec:
+          #     command:
+          #       - cat
+          #       - /tmp/ready
+          #   initialDelaySeconds: 0
+          #   periodSeconds: 10
+          #   failureThreshold: 6 # 6回以上失敗したらコンテナを再起動 (60秒の猶予)
+          # readinessProbe:
+          #   exec:
+          #     command:
+          #       - cat
+          #       - /tmp/ready
+          #   initialDelaySeconds: 0
+          #   periodSeconds: 5
+          #   failureThreshold: 1 # 1回以上失敗したらリクエストを停止
+          # livenessProbe:
+          #   exec:
+          #     command:
+          #       - cat
+          #       - /tmp/ready
+          #   initialDelaySeconds: 0 # StartProbeが終わったら即チェックが始まる
+          #   periodSeconds: 5
+          #   failureThreshold: 1 # 1回以上失敗したらコンテナを再起動
