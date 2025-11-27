@@ -15,7 +15,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Env = "stg"
+      Environment = "stg"
     }
   }
 }
@@ -27,7 +27,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Env = "stg"
+      Environment = "stg"
     }
   }
 }
