@@ -3,7 +3,6 @@ kind: Deployment
 metadata:
   name: slack-metrics-deployment
 spec:
-  replicas: 2
   selector:
     matchLabels:
       app: slack-metrics
