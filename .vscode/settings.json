@@ -1,4 +1,8 @@
 {
+  // ====================================
+  // YAML設定（CloudFormation用）
+  // ====================================
+  // CloudFormationの組み込み関数（!Ref, !Sub等）をエラーとして扱わないようにする設定
   "yaml.customTags": [
     "!And",
     "!And sequence",
@@ -27,14 +31,16 @@
     "!Split sequence",
     "!Join sequence"
   ],
-  "[terraform]": {
+
+  // ====================================
+  // Terraform設定（.tf, .tfvarsファイル用）
+  // ====================================
+  "[terraform][terraform-vars]": {
+    // フォーマッターとしてHashiCorp Terraform拡張機能を使用
     "editor.defaultFormatter": "hashicorp.terraform",
+    // ファイル保存時に自動フォーマットを実行
     "editor.formatOnSave": true,
-    "editor.formatOnSaveMode": "file"
-  },
-  "[terraform-vars]": {
-    "editor.defaultFormatter": "hashicorp.terraform",
-    "editor.formatOnSave": true,
+    // フォーマット範囲: ファイル全体を対象
     "editor.formatOnSaveMode": "file"
   }
 }
