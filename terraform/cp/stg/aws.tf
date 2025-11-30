@@ -19,18 +19,3 @@ module "subnet" {
   env    = "stg"
   vpc_id = module.vpc.cp_vpc_id
 }
-
-import {
-  to = module.subnet.aws_subnet.private_subnet_1c
-  id = "subnet-0b2da9f839075af0e"
-}
-
-import {
-  to = module.subnet.aws_subnet.public_subnet_1a
-  id = "subnet-095a60362edd6c77c"
-}
-
-import {
-  to = module.subnet.aws_subnet.public_subnet_1c
-  id = "subnet-07330fbaec4138aa2"
-}
