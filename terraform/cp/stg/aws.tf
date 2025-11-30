@@ -10,15 +10,8 @@
 #   image_tag_mutability = "IMMUTABLE"
 # }
 
-import {
-  to = aws_vpc.tmp
-  id = "vpc-092b7ae2d585fb553"
-}
-
-resource "aws_vpc" "tmp" {
-  cidr_block = "10.0.0.0/16"
-  tags = {
-    Name = "cp-stg"
-  }
+module "vpc" {
+  source = "../modules/aws/vpc"
+  env    = "stg"
 }
 
