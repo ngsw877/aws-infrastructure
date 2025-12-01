@@ -31,9 +31,19 @@ import {
   id = "rtb-0a0762ccb0d3e0fdf"
 }
 
+import {
+  to = module.route_table.aws_route_table_association.public["subnet-095a60362edd6c77c"]
+  id = "subnet-095a60362edd6c77c/rtb-0a0762ccb0d3e0fdf"
+}
+
+import {
+  to = module.route_table.aws_route_table_association.public["subnet-07330fbaec4138aa2"]
+  id = "subnet-07330fbaec4138aa2/rtb-0a0762ccb0d3e0fdf"
+}
 module "route_table" {
   source              = "../modules/aws/route_table"
   env                 = local.env
   vpc_id              = module.vpc.cp_vpc_id
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
+  public_subnet_ids   = local.public_subnet_ids
 }

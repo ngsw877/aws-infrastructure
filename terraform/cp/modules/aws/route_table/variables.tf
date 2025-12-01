@@ -9,3 +9,7 @@ variable "vpc_id" {
 variable "internet_gateway_id" {
   type = string
 }
+
+variable "public_subnet_ids" {
+  type = list(string)
+}
