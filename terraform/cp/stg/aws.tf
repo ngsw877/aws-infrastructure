@@ -45,5 +45,22 @@ module "route_table" {
   env                 = local.env
   vpc_id              = module.vpc.cp_vpc_id
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
+  nat_gateway_id      = "nat-010a67ccea6c64eb6"
   public_subnet_ids   = local.public_subnet_ids
+  private_subnet_ids  = local.private_subnet_ids
+}
+
+import {
+  to = module.route_table.aws_route_table.private
+  id = "rtb-00b3a65088795399e"
+}
+
+import {
+  to = module.route_table.aws_route_table_association.private["subnet-0ab04c255c12ed5f3"]
+  id = "subnet-0ab04c255c12ed5f3/rtb-00b3a65088795399e"
+}
+
+import {
+  to = module.route_table.aws_route_table_association.private["subnet-0b2da9f839075af0e"]
+  id = "subnet-0b2da9f839075af0e/rtb-00b3a65088795399e"
 }
