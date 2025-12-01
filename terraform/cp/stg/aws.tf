@@ -19,3 +19,15 @@ module "subnet" {
   env    = "stg"
   vpc_id = module.vpc.cp_vpc_id
 }
+
+import {
+  to = aws_internet_gateway.tmp
+  id = "igw-0e3198982b74c7dd8"
+}
+
+resource "aws_internet_gateway" "tmp" {
+  tags = {
+    Name = "cp-igw-stg"
+  }
+  vpc_id = "vpc-092b7ae2d585fb553"
+}
