@@ -25,3 +25,15 @@ module "internet_gateway" {
   env    = local.env
   vpc_id = module.vpc.cp_vpc_id
 }
+
+import {
+  to = module.route_table.aws_route_table.public
+  id = "rtb-0a0762ccb0d3e0fdf"
+}
+
+module "route_table" {
+  source              = "../modules/aws/route_table"
+  env                 = local.env
+  vpc_id              = module.vpc.cp_vpc_id
+  internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
+}
