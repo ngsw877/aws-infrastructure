@@ -26,20 +26,6 @@ module "internet_gateway" {
   vpc_id = module.vpc.cp_vpc_id
 }
 
-import {
-  to = module.route_table.aws_route_table.public
-  id = "rtb-0a0762ccb0d3e0fdf"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.public["subnet-095a60362edd6c77c"]
-  id = "subnet-095a60362edd6c77c/rtb-0a0762ccb0d3e0fdf"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.public["subnet-07330fbaec4138aa2"]
-  id = "subnet-07330fbaec4138aa2/rtb-0a0762ccb0d3e0fdf"
-}
 module "route_table" {
   source              = "../modules/aws/route_table"
   env                 = local.env
@@ -48,19 +34,4 @@ module "route_table" {
   nat_gateway_id      = "nat-010a67ccea6c64eb6"
   public_subnet_ids   = local.public_subnet_ids
   private_subnet_ids  = local.private_subnet_ids
-}
-
-import {
-  to = module.route_table.aws_route_table.private
-  id = "rtb-00b3a65088795399e"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.private["subnet-0ab04c255c12ed5f3"]
-  id = "subnet-0ab04c255c12ed5f3/rtb-00b3a65088795399e"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.private["subnet-0b2da9f839075af0e"]
-  id = "subnet-0b2da9f839075af0e/rtb-00b3a65088795399e"
 }
