@@ -31,7 +31,7 @@ module "route_table" {
   env                 = local.env
   vpc_id              = module.vpc.cp_vpc_id
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
-  nat_gateway_id      = "nat-010a67ccea6c64eb6"
+  nat_gateway_id      = "nat-04bc5c17546fc8eb6"
   public_subnets      = local.public_subnets
   private_subnets     = local.private_subnets
 }
