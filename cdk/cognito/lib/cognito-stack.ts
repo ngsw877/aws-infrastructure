@@ -31,7 +31,7 @@ export class CognitoStack extends cdk.Stack {
         requireSymbols: true,
       },
       accountRecovery: cognito.AccountRecovery.NONE,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       mfa: cognito.Mfa.OFF,
       lambdaTriggers: {
         preSignUp: new lambda.Function(this, "PreSignUpAutoConfirmFunction", {
