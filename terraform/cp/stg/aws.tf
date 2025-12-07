@@ -44,3 +44,19 @@ module "iam_role" {
   source = "../modules/aws/iam_role"
   env = local.env
 }
+
+module "ec2" {
+  source = "../modules/aws/ec2"
+  env = local.env
+  public_subnet_id = module.subnet.public_subnet_1a_id
+  bastion = {
+    iam_instance_profile = module.iam_role.instance_profile_cp_bastion
+    security_group_id    = module.security_group.id_bastion
+    volume_size          = 8
+  }
+}
+
+import {
+  to = module.ec2.aws_instance.bastion
+  id = "i-026b02ab473538e15"
+}
