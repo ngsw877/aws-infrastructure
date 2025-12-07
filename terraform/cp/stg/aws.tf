@@ -40,7 +40,62 @@ module "secrets_manager" {
   env = local.env
 }
 
+module "iam_role" {
+  source = "../modules/aws/iam_role"
+  env = local.env
+}
+
 import {
-  to = module.secrets_manager.aws_secretsmanager_secret.db_main_instance
-  id = "arn:aws:secretsmanager:ap-northeast-1:422752180329:secret:db-main-instance-stg-BgWwm3"
+  to = module.iam_role.aws_iam_role.cp_db_migrator
+  id = "cp-db-migrator-stg"
+}
+
+import {
+  to = module.iam_role.aws_iam_role.cp_bastion
+  id = "cp-bastion-stg"
+}
+
+import {
+  to = module.iam_role.aws_iam_role_policy_attachment.cp_bastion["ssm_core"]
+  id = "cp-bastion-stg/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+import {
+  to = module.iam_role.aws_iam_instance_profile.cp_bastion_profile
+  id = "cp-bastion-stg"
+}
+
+import {
+  to = module.iam_role.aws_iam_role.ecs_task_execution
+  id = "ecs-task-execution-stg"
+}
+
+import {
+  to = module.iam_role.aws_iam_policy.secrets_manager_read
+  id = "arn:aws:iam::422752180329:policy/secrets-manager-readonly-stg"
+}
+
+import {
+  for_each = {
+    task_execution  = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    s3              = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+    cloudwatch      = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+    secrets_manager = "arn:aws:iam::422752180329:policy/secrets-manager-readonly-stg"
+  }
+  to = module.iam_role.aws_iam_role_policy_attachment.ecs_task_execution[each.key]
+  id = "ecs-task-execution-stg/${each.value}"
+}
+
+import {
+  to = module.iam_role.aws_iam_role.cp_slack_metrics_backend
+  id = "cp-slack-metrics-backend-stg"
+}
+
+import {
+  for_each = {
+    cloudwatch = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+    ssm_core   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
+  to = module.iam_role.aws_iam_role_policy_attachment.cp_slack_metrics_backend[each.key]
+  id = "cp-slack-metrics-backend-stg/${each.value}"
 }
