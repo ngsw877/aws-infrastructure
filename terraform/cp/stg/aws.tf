@@ -34,3 +34,13 @@ module "ecr" {
   source = "../modules/aws/ecr"
   env = local.env
 }
+
+module "secrets_manager" {
+  source = "../modules/aws/secrets_manager"
+  env = local.env
+}
+
+import {
+  to = module.secrets_manager.aws_secretsmanager_secret.db_main_instance
+  id = "arn:aws:secretsmanager:ap-northeast-1:422752180329:secret:db-main-instance-stg-BgWwm3"
+}
