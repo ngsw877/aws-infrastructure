@@ -16,10 +16,10 @@ variable "nat_gateway_id" {
 
 variable "public_subnets" {
   description = "Map of public subnet IDs (key: subnet name, value: subnet ID)"
-  type        = map(string)
+  type        = list(string)
 }
 
 variable "private_subnets" {
   description = "Map of private subnet IDs (key: subnet name, value: subnet ID)"
-  type        = map(string)
+  type        = list(string)
 }
