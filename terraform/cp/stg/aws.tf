@@ -78,7 +78,17 @@ module "acm_sample_app_click_ap_northeast_1" {
   }
 }
 
+module "ecs" {
+  source = "../modules/aws/ecs"
+  env = local.env
+}
+
 import {
-  to = module.acm_sample_app_click_ap_northeast_1.aws_acm_certificate.main
-  id = "arn:aws:acm:ap-northeast-1:422752180329:certificate/fe5a6a72-117a-4da5-af05-2c66301c1be2"
+  to = module.ecs.aws_ecs_cluster.cp_backend
+  id = "cp-backend-stg"
+}
+
+import {
+  to = module.ecs.aws_ecs_cluster_capacity_providers.cp_backend
+  id = "cp-backend-stg"
 }
