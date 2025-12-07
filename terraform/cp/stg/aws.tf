@@ -70,17 +70,15 @@ module "rds_cp" {
   iam_database_authentication_enabled = true
 }
 
-import {
-  to = module.rds_cp.aws_db_instance.main
-  id = "cp-stg"
+module "acm_sample_app_click_ap_northeast_1" {
+  source      = "../modules/aws/acm_unit"
+  domain_name = "*.${local.base_host}"
+  providers = {
+    aws = aws
+  }
 }
 
 import {
-  to = module.rds_cp.aws_db_subnet_group.subnet_group
-  id = "cp-db-subnet-group-stg"
-}
-
-import {
-  to = module.rds_cp.aws_db_parameter_group.parameter_group
-  id = "cp-db-parameter-group-stg"
+  to = module.acm_sample_app_click_ap_northeast_1.aws_acm_certificate.main
+  id = "arn:aws:acm:ap-northeast-1:422752180329:certificate/fe5a6a72-117a-4da5-af05-2c66301c1be2"
 }
