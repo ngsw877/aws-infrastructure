@@ -41,28 +41,3 @@ module "security_group" {
   env    = local.env
   vpc_id = module.vpc.cp_vpc_id
 }
-
-import {
-  to = module.security_group.aws_security_group.alb_cp
-  id = "sg-040d898742c6ef80a"
-}
-
-import {
-  to = module.security_group.aws_security_group.bastion
-  id = "sg-0809731f682d5b4ae"
-}
-
-import {
-  to = module.security_group.aws_security_group.slack_metrics_backend
-  id = "sg-0efb3107ca24f4c6c"
-}
-
-import {
-  to = module.security_group.aws_security_group.db_migrator
-  id = "sg-04961f409d0fcf9ad"
-}
-
-import {
-  to = module.security_group.aws_security_group.db
-  id = "sg-0f13fac5306891bc8"
-}
