@@ -1,9 +1,9 @@
-resource "aws_ecr_repository" "db_migrator" {
-  name                 = "db-migrator-${var.env}"
-  image_tag_mutability = "IMMUTABLE"
+module "ecr_db_migrator" {
+  source = "../ecr_unit"
+  name   = "db-migrator-${var.env}"
 }
 
-resource "aws_ecr_repository" "slack_metrics" {
-  name                 = "slack-metrics-${var.env}"
-  image_tag_mutability = "IMMUTABLE"
+module "ecr_slack_metrics" {
+  source = "../ecr_unit"
+  name   = "slack-metrics-${var.env}"
 }
