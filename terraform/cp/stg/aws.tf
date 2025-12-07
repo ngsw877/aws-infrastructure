@@ -29,3 +29,18 @@ module "security_group" {
   env    = local.env
   vpc_id = module.vpc.cp_vpc_id
 }
+
+module "ecr" {
+  source = "../modules/aws/ecr"
+  env = local.env
+}
+
+import {
+  to = module.ecr.aws_ecr_repository.db_migrator
+  id = "db-migrator-stg"
+}
+
+import {
+  to = module.ecr.aws_ecr_repository.slack_metrics
+  id = "slack-metrics-stg"
+}
