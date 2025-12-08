@@ -62,3 +62,50 @@ resource "aws_ecs_service" "slack_metrics_api" {
     ]
   }
 }
+
+resource "aws_appautoscaling_target" "slack_metrics_api" {
+  service_namespace  = "ecs"
+  resource_id        = "service/${aws_ecs_cluster.cp_backend.name}/${var.slack_metrics_api.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity       = 1
+  max_capacity       = 2
+  depends_on         = [aws_ecs_service.slack_metrics_api]
+}
+
+resource "aws_appautoscaling_policy" "slack_metrics_api_cpu" {
+  name               = "target-tracking-cpu"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.slack_metrics_api.resource_id
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  target_tracking_scaling_policy_configuration {
+    disable_scale_in   = false
+    scale_out_cooldown = 60
+    scale_in_cooldown  = 300
+    target_value       = 70
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "slack_metrics_api_memory" {
+  name               = "target-tracking-memory"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.slack_metrics_api.resource_id
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  target_tracking_scaling_policy_configuration {
+    disable_scale_in   = false
+    scale_out_cooldown = 60
+    scale_in_cooldown  = 300
+    target_value       = 70
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+  }
+}
