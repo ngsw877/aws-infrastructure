@@ -5,19 +5,19 @@ module "vpc" {
 module "subnet" {
   source = "../modules/aws/subnet"
   env    = local.env
-  vpc_id = module.vpc.cp_vpc_id
+  vpc_id = module.vpc.id_cp
 }
 
 module "internet_gateway" {
   source = "../modules/aws/internet_gateway"
   env    = local.env
-  vpc_id = module.vpc.cp_vpc_id
+  vpc_id = module.vpc.id_cp
 }
 
 module "route_table" {
   source              = "../modules/aws/route_table"
   env                 = local.env
-  vpc_id              = module.vpc.cp_vpc_id
+  vpc_id              = module.vpc.id_cp
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
   nat_gateway_id      = "nat-04bc5c17546fc8eb6"
   public_subnets      = local.public_subnet_ids
@@ -27,7 +27,7 @@ module "route_table" {
 module "security_group" {
   source = "../modules/aws/security_group"
   env    = local.env
-  vpc_id = module.vpc.cp_vpc_id
+  vpc_id = module.vpc.id_cp
 }
 
 module "ecr" {
@@ -92,7 +92,7 @@ module "ecs" {
     task_definition        = module.ecs_task_definition.arn_slack_metrics_api
     enable_execute_command = true
     capacity_provider      = "FARGATE_SPOT"
-    target_group_arn       = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:targetgroup/slack-metrics-api-stg/4c169473adc645fb"
+    target_group_arn       = module.target_group.arn_slack_metrics_api
     security_group_ids     = [module.security_group.id_slack_metrics_backend]
     subnet_ids             = local.private_subnet_ids
   }
@@ -120,7 +120,13 @@ module "ecs_task_definition" {
   }
 }
 
+module "target_group" {
+  source = "../modules/aws/target_group"
+  env    = local.env
+  vpc_id = module.vpc.id_cp
+}
+
 import {
-  to = module.ecs.aws_ecs_service.slack_metrics_api
-  id = "cp-backend-stg/slack-metrics-api-stg"
+  to = module.target_group.aws_lb_target_group.slack_metrics_api
+  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:targetgroup/slack-metrics-api-stg/4c169473adc645fb"
 }
