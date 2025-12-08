@@ -78,32 +78,44 @@ module "acm_sample_app_click_ap_northeast_1" {
   }
 }
 
+module "s3" {
+  source = "../modules/aws/s3"
+  env = local.env
+}
+
 module "ecs" {
   source = "../modules/aws/ecs"
   env = local.env
 }
 
-module "s3" {
-  source = "../modules/aws/s3"
-  env    = local.env
+module "ecs_task_definition" {
+  source                                            = "../modules/aws/ecs_task_definition"
+  env                                               = local.env
+  ecr_url_slack_metrics                             = "${module.ecr.url_slack_metrics}:46b4430"
+  ecr_url_db_migrator                               = "${module.ecr.url_db_migrator}:46b4430"
+  ecs_task_execution_role_arn                       = module.iam_role.role_arn_ecs_task_execution
+  ecs_task_role_arn_slack_metrics                   = module.iam_role.role_arn_cp_slack_metrics_backend
+  ecs_task_role_arn_db_migrator                     = module.iam_role.role_arn_cp_db_migrator
+  secrets_manager_arn_db_main_instance              = module.secrets_manager.arn_db_main_instance
+  arn_cp_config_bucket                              = module.s3.arn_cp_config_bucket
+  ecs_task_specs = {
+    slack_metrics_api = {
+      cpu    = 256
+      memory = 512
+    }
+    db_migrator = {
+      cpu    = 256
+      memory = 512
+    }
+  }
 }
 
 import {
-  to = module.s3.module.cp_config.aws_s3_bucket.this[0]
-  id = "cp-ngsw-config-stg"
+  to = module.ecs_task_definition.aws_ecs_task_definition.slack_metrics_api
+  id = "arn:aws:ecs:ap-northeast-1:422752180329:task-definition/slack-metrics-api-stg:4"
 }
 
 import {
-  to = module.s3.module.cp_config.aws_s3_bucket_public_access_block.this[0]
-  id = "cp-ngsw-config-stg"
-}
-
-import {
-  to = module.s3.module.cp_config.aws_s3_bucket_server_side_encryption_configuration.this[0]
-  id = "cp-ngsw-config-stg"
-}
-
-import {
-  to = module.s3.module.cp_config.aws_s3_bucket_versioning.this[0]
-  id = "cp-ngsw-config-stg"
+  to = module.ecs_task_definition.aws_ecs_task_definition.db_migrator
+  id = "arn:aws:ecs:ap-northeast-1:422752180329:task-definition/db-migrator-stg:2"
 }
