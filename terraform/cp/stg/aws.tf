@@ -126,7 +126,29 @@ module "target_group" {
   vpc_id = module.vpc.id_cp
 }
 
+module "alb" {
+  source = "../modules/aws/alb"
+  env    = local.env
+  cp = {
+    security_group_ids                 = [module.security_group.id_alb_cp]
+    subnet_ids                         = local.public_subnet_ids
+    certificate_arn                    = module.acm_sample_app_click_ap_northeast_1.arn
+    target_group_arn_slack_metrics_api = module.target_group.arn_slack_metrics_api
+    slack_metrics_api_host             = local.slack_metrics_api_host
+  }
+}
+
 import {
-  to = module.target_group.aws_lb_target_group.slack_metrics_api
-  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:targetgroup/slack-metrics-api-stg/4c169473adc645fb"
+  to = module.alb.aws_lb.cp
+  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:loadbalancer/app/cp-alb-stg/e89e5d47568289ad"
+}
+
+import {
+  to = module.alb.aws_lb_listener.cp_https
+  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:listener/app/cp-alb-stg/e89e5d47568289ad/97e6a3b914798175"
+}
+
+import {
+  to = module.alb.aws_lb_listener_rule.slack_metrics_api
+  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:listener-rule/app/cp-alb-stg/e89e5d47568289ad/97e6a3b914798175/f846651028cc2527"
 }
