@@ -83,12 +83,27 @@ module "ecs" {
   env = local.env
 }
 
-import {
-  to = module.ecs.aws_ecs_cluster.cp_backend
-  id = "cp-backend-stg"
+module "s3" {
+  source = "../modules/aws/s3"
+  env    = local.env
 }
 
 import {
-  to = module.ecs.aws_ecs_cluster_capacity_providers.cp_backend
-  id = "cp-backend-stg"
+  to = module.s3.module.cp_config.aws_s3_bucket.this[0]
+  id = "cp-ngsw-config-stg"
+}
+
+import {
+  to = module.s3.module.cp_config.aws_s3_bucket_public_access_block.this[0]
+  id = "cp-ngsw-config-stg"
+}
+
+import {
+  to = module.s3.module.cp_config.aws_s3_bucket_server_side_encryption_configuration.this[0]
+  id = "cp-ngsw-config-stg"
+}
+
+import {
+  to = module.s3.module.cp_config.aws_s3_bucket_versioning.this[0]
+  id = "cp-ngsw-config-stg"
 }
