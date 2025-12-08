@@ -86,6 +86,16 @@ module "s3" {
 module "ecs" {
   source = "../modules/aws/ecs"
   env = local.env
+  // cloud-pratica-backendクラスター
+  slack_metrics_api = {
+    name                   = "slack-metrics-api-${local.env}"
+    task_definition        = module.ecs_task_definition.arn_slack_metrics_api
+    enable_execute_command = true
+    capacity_provider      = "FARGATE_SPOT"
+    target_group_arn       = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:targetgroup/slack-metrics-api-stg/4c169473adc645fb"
+    security_group_ids     = [module.security_group.id_slack_metrics_backend]
+    subnet_ids             = local.private_subnet_ids
+  }
 }
 
 module "ecs_task_definition" {
@@ -111,11 +121,6 @@ module "ecs_task_definition" {
 }
 
 import {
-  to = module.ecs_task_definition.aws_ecs_task_definition.slack_metrics_api
-  id = "arn:aws:ecs:ap-northeast-1:422752180329:task-definition/slack-metrics-api-stg:4"
-}
-
-import {
-  to = module.ecs_task_definition.aws_ecs_task_definition.db_migrator
-  id = "arn:aws:ecs:ap-northeast-1:422752180329:task-definition/db-migrator-stg:2"
+  to = module.ecs.aws_ecs_service.slack_metrics_api
+  id = "cp-backend-stg/slack-metrics-api-stg"
 }
