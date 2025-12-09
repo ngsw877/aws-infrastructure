@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メンテナンス中 | sample-app.click</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      text-align: center;
+      color: white;
+      padding: 2rem;
+      max-width: 600px;
+    }
+
+    .icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .message {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+    }
+
+    .status {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50px;
+      padding: 0.8rem 2rem;
+      display: inline-block;
+      font-size: 0.9rem;
+      backdrop-filter: blur(10px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔧</div>
+    <h1>メンテナンス中です</h1>
+    <p class="message">
+      現在、システムメンテナンスを実施しております。<br>
+      ご不便をおかけして申し訳ありません。<br>
+      しばらくお待ちください。
+    </p>
+    <div class="status">まもなく復旧予定</div>
+  </div>
+</body>
+</html>
