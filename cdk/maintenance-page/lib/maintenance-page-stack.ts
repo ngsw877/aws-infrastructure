@@ -44,6 +44,7 @@ export class MaintenancePageStack extends cdk.Stack {
       domainNames: [domainName],
       certificate: certificate,
       defaultRootObject: 'index.html',
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
       errorResponses: [
         {
           httpStatus: 404,
