@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slack-metrics-deployment
+spec:
+  selector:
+    matchLabels:
+      app: slack-metrics
+  template:
+    metadata:
+      labels:
+        app: slack-metrics
+    spec:
+      containers:
+        - name: slack-metrics
+          image: app-image
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: slack-metrics-config
+          env:
+            - name: MODE
+              value: "api"
+            - name: POSTGRES_MAIN_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: host
+            - name: POSTGRES_MAIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: user
+            - name: POSTGRES_MAIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          livenessProbe: # コンテナが生きているかどうかを確認
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe: # リクエストを受け付けるかどうかを確認
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

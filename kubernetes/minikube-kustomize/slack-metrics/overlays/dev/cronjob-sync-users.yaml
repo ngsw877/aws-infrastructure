@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-users-cj
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: slack-metrics
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 100Mi
+                limits:
+                  cpu: 200m
+                  memory: 200Mi

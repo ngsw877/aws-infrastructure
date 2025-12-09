@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - configmap.yaml
+  - hpa.yaml
+
+images:
+  - name: app-image
+    newName: 043309350350.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg
+    newTag: 46b4430
+
+patches:
+  - path: deployment.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: slack-metrics-deployment
+  - path: cronjob-sync-workspaces.yaml
+    target:
+      group: batch
+      version: v1
+      kind: CronJob
+      name: sync-workspaces-cj
+  - path: cronjob-sync-users.yaml
+    target:
+      group: batch
+      version: v1
+      kind: CronJob
+      name: sync-users-cj

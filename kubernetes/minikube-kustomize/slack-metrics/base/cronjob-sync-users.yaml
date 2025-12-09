@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-users-cj
+spec:
+  schedule: "0 16 * * *" # UTC 16時 = JST 1時
+  successfulJobsHistoryLimit: 3 # 成功したジョブの履歴を保存する数
+  failedJobsHistoryLimit: 1 # 失敗したジョブの履歴を保存する数
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600 # ジョブの最大実行時間
+      template:
+        spec:
+          restartPolicy: OnFailure # ジョブが失敗した場合、再実行するかどうか
+          containers:
+            - name: slack-metrics
+              image: app-image
+              envFrom:
+                - configMapRef:
+                    name: slack-metrics-config
+              env:
+                - name: MODE
+                  value: "batch"
+                - name: TYPE
+                  value: "sync-users"
+                - name: POSTGRES_MAIN_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: host
+                - name: POSTGRES_MAIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: user
+                - name: POSTGRES_MAIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
