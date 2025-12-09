@@ -7,13 +7,15 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
+import { SiteParams } from '../types/params';
+
+interface MaintenancePageStackProps extends cdk.StackProps, SiteParams {}
 
 export class MaintenancePageStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: MaintenancePageStackProps) {
     super(scope, id, props);
 
-    const domainName = 'sample-app.click';
-    const hostedZoneId = 'Z05580762DNJR53OQCHM2';
+    const { domainName, hostedZoneId, webpagePath } = props;
 
     // 既存のホストゾーンを参照
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
@@ -59,7 +61,7 @@ export class MaintenancePageStack extends cdk.Stack {
 
     // メンテナンスページをS3にデプロイ
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {
-      sources: [s3deploy.Source.asset('./webpage')],
+      sources: [s3deploy.Source.asset(webpagePath)],
       destinationBucket: bucket,
       distribution: distribution,
       distributionPaths: ['/*'],
