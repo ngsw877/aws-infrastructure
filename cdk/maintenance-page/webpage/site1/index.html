@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>メンテナンス中 | sample-app.click</title>
+  <title>メンテナンス中</title>
   <style>
     * {
       margin: 0;
@@ -58,6 +58,25 @@
       display: inline-block;
       font-size: 0.9rem;
       backdrop-filter: blur(10px);
+    }
+
+    @media (max-width: 480px) {
+      .icon {
+        font-size: 3.5rem;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .message {
+        font-size: 1rem;
+      }
+
+      .status {
+        padding: 0.6rem 1.5rem;
+        font-size: 0.85rem;
+      }
     }
   </style>
 </head>
