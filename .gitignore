@@ -2,3 +2,4 @@
 .DS_Store
 tmp/
 demo-application/backend/laravel_mysql/docker/db/data
+scripts/export-and-import-dynamodb-table/backup.json
