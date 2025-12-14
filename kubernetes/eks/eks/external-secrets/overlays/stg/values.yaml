@@ -1,0 +1,16 @@
+installCRDs: true
+serviceAccount:
+  create: false
+  name: external-secrets-operator-sa
+webhook:
+  enabled: true
+certController:
+  enabled: true
+replicaCount: 1
+resources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+  limits:
+    cpu: 20m
+    memory: 40Mi
