@@ -106,3 +106,24 @@ resource "aws_iam_role_policy_attachment" "cp_slack_metrics_backend" {
   role       = aws_iam_role.cp_slack_metrics_backend.name
   policy_arn = each.value
 }
+
+/************************************************************
+Kubernetes External Secrets Operator
+************************************************************/
+resource "aws_iam_role" "cp_k8s_eso" {
+  name = "cp-k8s-eso-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      local.pod_identity_statement
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_k8s_eso" {
+  for_each = {
+    secrets_manager = aws_iam_policy.secrets_manager_read.arn
+  }
+  role       = aws_iam_role.cp_k8s_eso.name
+  policy_arn = each.value
+}
