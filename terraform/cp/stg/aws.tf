@@ -32,22 +32,22 @@ module "security_group" {
 
 module "ecr" {
   source = "../modules/aws/ecr"
-  env = local.env
+  env    = local.env
 }
 
 module "secrets_manager" {
   source = "../modules/aws/secrets_manager"
-  env = local.env
+  env    = local.env
 }
 
 module "iam_role" {
   source = "../modules/aws/iam_role"
-  env = local.env
+  env    = local.env
 }
 
 module "ec2" {
-  source = "../modules/aws/ec2"
-  env = local.env
+  source           = "../modules/aws/ec2"
+  env              = local.env
   public_subnet_id = module.subnet.public_subnet_1a_id
   bastion = {
     iam_instance_profile = module.iam_role.instance_profile_cp_bastion
@@ -80,12 +80,12 @@ module "acm_sample_app_click_ap_northeast_1" {
 
 module "s3" {
   source = "../modules/aws/s3"
-  env = local.env
+  env    = local.env
 }
 
 module "ecs" {
   source = "../modules/aws/ecs"
-  env = local.env
+  env    = local.env
   // cloud-pratica-backendクラスター
   slack_metrics_api = {
     name                   = "slack-metrics-api-${local.env}"
@@ -99,15 +99,15 @@ module "ecs" {
 }
 
 module "ecs_task_definition" {
-  source                                            = "../modules/aws/ecs_task_definition"
-  env                                               = local.env
-  ecr_url_slack_metrics                             = "${module.ecr.url_slack_metrics}:46b4430"
-  ecr_url_db_migrator                               = "${module.ecr.url_db_migrator}:46b4430"
-  ecs_task_execution_role_arn                       = module.iam_role.role_arn_ecs_task_execution
-  ecs_task_role_arn_slack_metrics                   = module.iam_role.role_arn_cp_slack_metrics_backend
-  ecs_task_role_arn_db_migrator                     = module.iam_role.role_arn_cp_db_migrator
-  secrets_manager_arn_db_main_instance              = module.secrets_manager.arn_db_main_instance
-  arn_cp_config_bucket                              = module.s3.arn_cp_config_bucket
+  source                               = "../modules/aws/ecs_task_definition"
+  env                                  = local.env
+  ecr_url_slack_metrics                = "${module.ecr.url_slack_metrics}:46b4430"
+  ecr_url_db_migrator                  = "${module.ecr.url_db_migrator}:46b4430"
+  ecs_task_execution_role_arn          = module.iam_role.role_arn_ecs_task_execution
+  ecs_task_role_arn_slack_metrics      = module.iam_role.role_arn_cp_slack_metrics_backend
+  ecs_task_role_arn_db_migrator        = module.iam_role.role_arn_cp_db_migrator
+  secrets_manager_arn_db_main_instance = module.secrets_manager.arn_db_main_instance
+  arn_cp_config_bucket                 = module.s3.arn_cp_config_bucket
   ecs_task_specs = {
     slack_metrics_api = {
       cpu    = 256
@@ -138,17 +138,14 @@ module "alb" {
   }
 }
 
-import {
-  to = module.alb.aws_lb.cp
-  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:loadbalancer/app/cp-alb-stg/e89e5d47568289ad"
-}
-
-import {
-  to = module.alb.aws_lb_listener.cp_https
-  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:listener/app/cp-alb-stg/e89e5d47568289ad/97e6a3b914798175"
-}
-
-import {
-  to = module.alb.aws_lb_listener_rule.slack_metrics_api
-  id = "arn:aws:elasticloadbalancing:ap-northeast-1:422752180329:listener-rule/app/cp-alb-stg/e89e5d47568289ad/97e6a3b914798175/f846651028cc2527"
+module "eks_pod_identity" {
+  source       = "../modules/aws/eks_pod_identity_unit"
+  cluster_name = "cp-${local.env}"
+  associations = [
+    {
+      namespace       = "external-secrets"
+      service_account = "external-secrets-operator-sa"
+      role_arn        = module.iam_role.role_arn_cp_k8s_eso
+    },
+  ]
 }

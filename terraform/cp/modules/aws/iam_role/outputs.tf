@@ -13,3 +13,7 @@ output "role_arn_cp_slack_metrics_backend" {
 output "role_arn_cp_db_migrator" {
   value = aws_iam_role.cp_db_migrator.arn
 }
+
+output "role_arn_cp_k8s_eso" {
+  value = aws_iam_role.cp_k8s_eso.arn
+}
