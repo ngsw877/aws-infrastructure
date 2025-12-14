@@ -1,0 +1,10 @@
+resources:
+  requests:
+    cpu: 10m
+    memory: 128Mi
+  limits:
+    cpu: 20m
+    memory: 256Mi
+serviceAccount:
+  name: kubernetes-dashboard-sa
+  namespace: kubernetes-dashboard
