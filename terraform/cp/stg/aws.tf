@@ -28,6 +28,7 @@ module "security_group" {
   source = "../modules/aws/security_group"
   env    = local.env
   vpc_id = module.vpc.id_cp
+  security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
 }
 
 module "ecr" {
@@ -153,4 +154,9 @@ module "eks_pod_identity" {
       role_arn        = module.iam_role.role_arn_cp_k8s_eso
     },
   ]
+}
+
+module "eks" {
+  source = "../modules/aws/eks"
+  env = local.env
 }

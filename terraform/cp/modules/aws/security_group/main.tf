@@ -74,6 +74,7 @@ resource "aws_security_group" "db" {
         aws_security_group.bastion.id,
         aws_security_group.slack_metrics_backend.id,
         aws_security_group.db_migrator.id,
+        var.security_group_id_cp_k8s_cluster
       ]
       self = false
     }
