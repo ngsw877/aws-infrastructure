@@ -13,6 +13,8 @@ resource "aws_iam_role" "cp_db_migrator" {
           Service = "ecs-tasks.amazonaws.com"
         }
       },
+      // EKSのPod Identityを使うためのStatement
+      local.pod_identity_statement
     ]
   })
 }
@@ -115,6 +117,7 @@ resource "aws_iam_role" "cp_k8s_eso" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      // EKSのPod Identityを使うためのStatement
       local.pod_identity_statement
     ]
   })

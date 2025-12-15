@@ -143,6 +143,11 @@ module "eks_pod_identity" {
   cluster_name = "cp-${local.env}"
   associations = [
     {
+      namespace       = "app"
+      service_account = "db-migrator-sa"
+      role_arn        = module.iam_role.role_arn_cp_db_migrator
+    },
+    {
       namespace       = "external-secrets"
       service_account = "external-secrets-operator-sa"
       role_arn        = module.iam_role.role_arn_cp_k8s_eso
