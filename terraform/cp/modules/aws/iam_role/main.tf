@@ -96,6 +96,8 @@ resource "aws_iam_role" "cp_slack_metrics_backend" {
           Service = "ecs-tasks.amazonaws.com"
         }
       },
+      // EKSのPod Identityを使うためのStatement
+      local.pod_identity_statement
     ]
   })
 }

@@ -149,6 +149,11 @@ module "eks_pod_identity" {
       role_arn        = module.iam_role.role_arn_cp_db_migrator
     },
     {
+      namespace       = "app"
+      service_account = "slack-metrics-sa"
+      role_arn        = module.iam_role.role_arn_cp_slack_metrics_backend
+    },
+    {
       namespace       = "external-secrets"
       service_account = "external-secrets-operator-sa"
       role_arn        = module.iam_role.role_arn_cp_k8s_eso
