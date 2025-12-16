@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrator-job
+  namespace: app
+spec:
+  ttlSecondsAfterFinished: 300 # 実行後に自動削除
+  template:
+    metadata:
+      labels:
+        app: db-migrator
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: db-migrator-sa
+      containers:
+        - name: db-migrator
+          image: app-image
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+          envFrom:
+            - configMapRef:
+                name: db-migrator-config
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-migrator-secret
+                  key: db_host
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-migrator-secret
+                  key: db_user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-migrator-secret
+                  key: db_password
+      restartPolicy: Never
+  backoffLimit: 1
