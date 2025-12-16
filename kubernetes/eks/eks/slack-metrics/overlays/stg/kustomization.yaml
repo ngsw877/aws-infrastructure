@@ -12,6 +12,12 @@ images:
   newTag: 46b4430
 
 patches:
+  - path: deployment.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: slack-metrics-deployment
   - path: cronjob-sync-workspaces.yaml
     target:
       group: batch

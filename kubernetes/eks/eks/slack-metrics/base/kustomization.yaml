@@ -3,5 +3,7 @@ kind: Kustomization
 namespace: app
 resources:
 - service-account.yaml
+- deployment.yaml
 - cronjob-sync-user.yaml
 - cronjob-sync-workspaces.yaml
+- service.yaml
