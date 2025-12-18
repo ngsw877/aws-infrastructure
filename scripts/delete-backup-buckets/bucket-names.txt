@@ -1,0 +1,6 @@
+# 削除対象S3バケット名リスト
+# 1行に1つのバケット名を記載
+
+backup-bucket-001
+backup-bucket-002
+backup-bucket-003
