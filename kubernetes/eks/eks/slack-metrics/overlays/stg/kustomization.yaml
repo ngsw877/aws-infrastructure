@@ -4,6 +4,7 @@ namespace: app
 resources:
 - ../../base
 - configmap.yaml
+- hpa.yaml
 - external-secret.yaml
 
 images:
