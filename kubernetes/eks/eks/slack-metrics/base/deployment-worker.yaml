@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slack-metrics-worker-deployment
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: slack-metrics-worker
+  template:
+    metadata:
+      labels:
+        app: slack-metrics-worker
+    spec:
+      serviceAccountName: slack-metrics-sa
+      containers:
+        - name: slack-metrics-worker
+          image: app-image
+          envFrom:
+            - configMapRef:
+                name: slack-metrics-config
+          env:
+            - name: MODE
+              value: "sqs"
+            - name: POSTGRES_MAIN_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: slack-metrics-secret
+                  key: db_host
+            - name: POSTGRES_MAIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: slack-metrics-secret
+                  key: db_user
+            - name: POSTGRES_MAIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: slack-metrics-secret
+                  key: db_password
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "ps aux | grep main | grep -v grep || exit 1"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

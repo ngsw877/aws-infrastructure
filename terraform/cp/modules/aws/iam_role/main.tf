@@ -106,6 +106,9 @@ resource "aws_iam_role_policy_attachment" "cp_slack_metrics_backend" {
   for_each = {
     cloudwatch = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
     ssm_core   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    sqs        = aws_iam_policy.sqs_read_write.arn
+    ses        = aws_iam_policy.ses_send_email.arn
+    s3         = aws_iam_policy.s3_read.arn
   }
   role       = aws_iam_role.cp_slack_metrics_backend.name
   policy_arn = each.value
