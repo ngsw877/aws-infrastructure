@@ -17,3 +17,7 @@ output "role_arn_cp_db_migrator" {
 output "role_arn_cp_k8s_eso" {
   value = aws_iam_role.cp_k8s_eso.arn
 }
+
+output "role_arn_cp_k8s_alb_controller" {
+  value = aws_iam_role.cp_k8s_alb_controller.arn
+}

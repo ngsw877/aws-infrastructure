@@ -1,0 +1,16 @@
+clusterName: "cp-stg"
+region: ap-northeast-1
+vpcId: vpc-04c1cd4cf30a84b56 # cp-stg
+serviceAccount:
+  create: false
+  name: alb-controller-sa
+replicaCount: 1
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 100m
+    memory: 200Mi
+crds:
+  install: true

@@ -135,3 +135,21 @@ resource "aws_iam_role_policy_attachment" "cp_k8s_eso" {
   role       = aws_iam_role.cp_k8s_eso.name
   policy_arn = each.value
 }
+
+/************************************************************
+EKS ALB Controller
+************************************************************/
+resource "aws_iam_role" "cp_k8s_alb_controller" {
+  name = "cp-k8s-alb-controller-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      local.pod_identity_statement
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_k8s_alb_controller" {
+  role       = aws_iam_role.cp_k8s_alb_controller.name
+  policy_arn = aws_iam_policy.cp_k8s_alb_controller.arn
+}

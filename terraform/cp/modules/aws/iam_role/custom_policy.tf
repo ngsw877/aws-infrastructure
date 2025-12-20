@@ -78,3 +78,14 @@ resource "aws_iam_policy" "s3_read" {
     ]
   })
 }
+
+/************************************************************
+CP ALB Controller
+jsonファイルは公式Doc記載の以下のコマンドでダウンロード
+curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.11.0/docs/install/iam_policy.json
+************************************************************/
+resource "aws_iam_policy" "cp_k8s_alb_controller" {
+  name        = "cp-k8s-alb-controller-${var.env}"
+  description = "Policy for ALB Controller"
+  policy      = file("${path.module}/files/alb_controller_policy.json")
+}

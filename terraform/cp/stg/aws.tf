@@ -158,6 +158,11 @@ module "eks_pod_identity" {
       service_account = "external-secrets-operator-sa"
       role_arn        = module.iam_role.role_arn_cp_k8s_eso
     },
+    {
+      namespace       = "kube-system"
+      service_account = "alb-controller-sa"
+      role_arn        = module.iam_role.role_arn_cp_k8s_alb_controller
+    },
   ]
 }
 
