@@ -11,7 +11,7 @@ spec:
   minReplicas: 2
   maxReplicas: 5
   metrics:
-    - type: Resource\
+    - type: Resource
       resource:
         name: memory
         target:
