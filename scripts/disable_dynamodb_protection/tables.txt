@@ -1,0 +1,4 @@
+# 削除保護を無効化するDynamoDBテーブル名を1行ずつ記載
+# 例:
+my-table-1
+my-table-2
