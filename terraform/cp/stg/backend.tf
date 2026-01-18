@@ -3,6 +3,6 @@ terraform {
     bucket  = "cp-terraform-ngsw-stg"
     key     = "main.tfstate"
     region  = "ap-northeast-1"
-    profile = "study"
+    profile = "cp-terraform-stg"
   }
 }

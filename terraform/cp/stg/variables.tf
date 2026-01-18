@@ -1,6 +1,6 @@
 locals {
   env        = "stg"
-  account_id = "422752180329"
+  account_id = "374146079343"
   region     = "ap-northeast-1"
   base_host = "stg.sample-app.click"
   slack_metrics_host     = "sm.${local.base_host}"

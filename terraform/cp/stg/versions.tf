@@ -11,23 +11,23 @@ terraform {
 
 provider "aws" {
   region  = "ap-northeast-1"
-  profile = "study"
+  profile = "cp-terraform-stg"
 
   default_tags {
     tags = {
-      Environment = "stg"
+      Env = "stg"
     }
   }
 }
 
 provider "aws" {
   region  = "us-east-1"
-  profile = "study"
+  profile = "cp-terraform-stg"
   alias   = "us_east_1"
 
   default_tags {
     tags = {
-      Environment = "stg"
+      Env = "stg"
     }
   }
 }
