@@ -22,7 +22,7 @@ resource "aws_ecs_service" "slack_metrics_api" {
   cluster                            = aws_ecs_cluster.cp_backend.arn
   name                               = var.slack_metrics_api.name
   task_definition                    = var.slack_metrics_api.task_definition
-  desired_count                      = 1
+  desired_count                      = 0
   enable_execute_command             = var.slack_metrics_api.enable_execute_command
   enable_ecs_managed_tags            = true
   health_check_grace_period_seconds  = 0
@@ -67,7 +67,7 @@ resource "aws_appautoscaling_target" "slack_metrics_api" {
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.cp_backend.name}/${var.slack_metrics_api.name}"
   scalable_dimension = "ecs:service:DesiredCount"
-  min_capacity       = 1
+  min_capacity       = 0
   max_capacity       = 2
   depends_on         = [aws_ecs_service.slack_metrics_api]
 }
