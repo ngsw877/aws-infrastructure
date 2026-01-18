@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 1.11.0" // 1.11.0 以上 1.12.0 未満 を許容
+  required_version = "~> 1.14.1" // 1.14.1 以上 1.15.0 未満 を許容
 
   required_providers {
     aws = {
