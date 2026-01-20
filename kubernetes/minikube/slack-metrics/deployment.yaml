@@ -20,7 +20,7 @@ spec:
             limits:
               cpu: 200m
               memory: 200Mi
-          image: 043309350350.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg:46b4430
+          image: 043309350350.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg:53aae3e
           ports:
             - containerPort: 8080
               name: http

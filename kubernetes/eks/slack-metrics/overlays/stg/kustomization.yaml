@@ -10,7 +10,7 @@ resources:
 images:
 - name: app-image
   newName: 422752180329.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg
-  newTag: 46b4430
+  newTag: 53aae3e
 
 patches:
   - path: deployment.yaml
