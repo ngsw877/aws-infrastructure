@@ -1,25 +1,4 @@
 /************************************************************
-ECSタスク db-migrator
-************************************************************/
-resource "aws_iam_role" "cp_db_migrator" {
-  name = "cp-db-migrator-${var.env}"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      },
-      // EKSのPod Identityを使うためのStatement
-      local.pod_identity_statement
-    ]
-  })
-}
-
-/************************************************************
 EC2 bastion
 ************************************************************/
 resource "aws_iam_role" "cp_bastion" {
@@ -144,6 +123,28 @@ resource "aws_iam_role_policy_attachment" "cp_slack_metrics_backend" {
   }
   role       = aws_iam_role.cp_slack_metrics_backend.name
   policy_arn = each.value
+}
+
+
+/************************************************************
+ECSタスク db-migrator
+************************************************************/
+resource "aws_iam_role" "cp_db_migrator" {
+  name = "cp-db-migrator-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      },
+      // EKSのPod Identityを使うためのStatement
+      local.pod_identity_statement
+    ]
+  })
 }
 
 /************************************************************
