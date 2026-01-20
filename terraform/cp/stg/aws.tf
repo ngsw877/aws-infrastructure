@@ -42,18 +42,18 @@ module "secrets_manager" {
 }
 
 import {
-  to = module.rds_cp.aws_db_instance.main
-  id = "cp-stg"
+  to = module.iam_role.aws_iam_role.cp_nat
+  id = "cp-nat-stg"
 }
 
 import {
-  to = module.rds_cp.aws_db_subnet_group.subnet_group
-  id = "cp-db-subnet-group-stg"
+  to = module.iam_role.aws_iam_role_policy_attachment.cp_nat["ssm_core"]
+  id = "cp-nat-stg/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 import {
-  to = module.rds_cp.aws_db_parameter_group.parameter_group
-  id = "cp-db-parameter-group-stg"
+  to = module.iam_role.aws_iam_instance_profile.cp_nat_profile
+  id = "cp-nat-stg"
 }
 
 module "iam_role" {
