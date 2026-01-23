@@ -14,3 +14,12 @@ variable "bastion" {
     volume_size          = optional(number, 8)
   })
 }
+
+variable "nat_1a" {
+  type = object({
+    # デフォルト値は、Amazon Linux 2023 の AMI ID
+    ami_id               = optional(string, "ami-03d1820163e6b9f5d")
+    iam_instance_profile = string
+    security_group_id    = string
+  })
+}

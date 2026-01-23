@@ -13,3 +13,7 @@ output "id_slack_metrics_backend" {
 output "id_alb_cp" {
   value = aws_security_group.alb_cp.id
 }
+
+output "id_nat" {
+  value = aws_security_group.nat.id
+}

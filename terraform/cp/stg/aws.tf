@@ -32,26 +32,6 @@ module "security_group" {
   # security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
 }
 
-import {
-  to = module.security_group.aws_security_group.nat
-  id = "sg-0693245671c6dfc1a"
-}
-
-import {
-  to = module.security_group.aws_vpc_security_group_ingress_rule.nat["10.0.128.0/18"]
-  id = "sgr-0f8b3a95663f20d88"
-}
-
-import {
-  to = module.security_group.aws_vpc_security_group_ingress_rule.nat["10.0.192.0/18"]
-  id = "sgr-0bd02e2386a46c2ba"
-}
-
-import {
-  to = module.security_group.aws_vpc_security_group_egress_rule.nat
-  id = "sgr-003ab6e6108898434"
-}
-
 module "ecr" {
   source = "../modules/aws/ecr"
   env    = local.env
@@ -76,6 +56,16 @@ module "ec2" {
     security_group_id    = module.security_group.id_bastion
     volume_size          = 8
   }
+  nat_1a = {
+    iam_instance_profile = module.iam_role.instance_profile_cp_nat
+    security_group_id    = module.security_group.id_nat
+    volume_size          = 8
+  }
+}
+
+import {
+  to = module.ec2.aws_instance.nat_1a
+  id = "i-093efd40835eef701"
 }
 
 module "rds_cp" {

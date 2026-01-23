@@ -2,6 +2,10 @@ output "instance_profile_cp_bastion" {
   value = aws_iam_instance_profile.cp_bastion_profile.name
 }
 
+output "instance_profile_cp_nat" {
+  value = aws_iam_instance_profile.cp_nat_profile.name
+}
+
 output "role_arn_ecs_task_execution" {
   value = aws_iam_role.ecs_task_execution.arn
 }
