@@ -80,3 +80,26 @@ resource "aws_security_group" "db" {
     }
   ]
 }
+
+resource "aws_security_group" "nat" {
+  name = "cp-nat-${var.env}"
+  tags = {
+    "Name" = "cp-nat-${var.env}"
+  }
+  vpc_id = var.vpc_id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "nat" {
+  for_each = toset(var.private_subnet_cidr_blocks)
+
+  security_group_id = aws_security_group.nat.id
+  description       = "Allow traffic from private subnets"
+  cidr_ipv4         = each.value
+  ip_protocol       = "-1"
+}
+
+resource "aws_vpc_security_group_egress_rule" "nat" {
+  security_group_id = aws_security_group.nat.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}

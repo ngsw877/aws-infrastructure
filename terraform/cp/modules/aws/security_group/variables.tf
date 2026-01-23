@@ -6,6 +6,8 @@ variable "vpc_id" {
   type = string
 }
 
+variable "private_subnet_cidr_blocks" {}
+
 variable "security_group_id_cp_k8s_cluster" {
   type    = string
   default = null

@@ -28,7 +28,28 @@ module "security_group" {
   source = "../modules/aws/security_group"
   env    = local.env
   vpc_id = module.vpc.id_cp
+  private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
   # security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
+}
+
+import {
+  to = module.security_group.aws_security_group.nat
+  id = "sg-0693245671c6dfc1a"
+}
+
+import {
+  to = module.security_group.aws_vpc_security_group_ingress_rule.nat["10.0.128.0/18"]
+  id = "sgr-0f8b3a95663f20d88"
+}
+
+import {
+  to = module.security_group.aws_vpc_security_group_ingress_rule.nat["10.0.192.0/18"]
+  id = "sgr-0bd02e2386a46c2ba"
+}
+
+import {
+  to = module.security_group.aws_vpc_security_group_egress_rule.nat
+  id = "sgr-003ab6e6108898434"
 }
 
 module "ecr" {
@@ -39,21 +60,6 @@ module "ecr" {
 module "secrets_manager" {
   source = "../modules/aws/secrets_manager"
   env    = local.env
-}
-
-import {
-  to = module.iam_role.aws_iam_role.cp_nat
-  id = "cp-nat-stg"
-}
-
-import {
-  to = module.iam_role.aws_iam_role_policy_attachment.cp_nat["ssm_core"]
-  id = "cp-nat-stg/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-import {
-  to = module.iam_role.aws_iam_instance_profile.cp_nat_profile
-  id = "cp-nat-stg"
 }
 
 module "iam_role" {
