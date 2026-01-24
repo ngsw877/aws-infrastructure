@@ -1,3 +1,14 @@
+module "route53_ngsw_app_click" {
+  source    = "../modules/aws/route53_unit"
+  zone_name = local.base_host
+  records = []
+}
+
+import {
+  to = module.route53_ngsw_app_click.aws_route53_zone.zone
+  id = "Z01861951HBKW5N9CDYG4"
+}
+
 module "vpc" {
   source = "../modules/aws/vpc"
   env    = local.env
