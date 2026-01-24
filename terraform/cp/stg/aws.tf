@@ -1,3 +1,32 @@
+module "route53_ngsw_app_click" {
+  source    = "../modules/aws/route53_unit"
+  zone_name = local.base_host
+  records = [
+    // Slack Metrics API
+    {
+      name = local.slack_metrics_api_host
+      type = "A"
+      alias = {
+        zone_id                = module.alb.zone_id_ap_northeast_1
+        name                   = "dualstack.${module.alb.dns_name_cp}"
+        evaluate_target_health = true
+      }
+    },
+    // ACMの検証用
+    {
+      name   = module.acm_ngsw_app_click_ap_northeast_1.validation_record_name
+      values = [module.acm_ngsw_app_click_ap_northeast_1.validation_record_value]
+      type   = "CNAME"
+      ttl    = "300"
+    },
+  ]
+}
+
+import {
+  to = module.route53_ngsw_app_click.aws_route53_zone.zone
+  id = "Z07198773KPDUER7543R7"
+}
+
 module "vpc" {
   source = "../modules/aws/vpc"
   env    = local.env
@@ -22,21 +51,6 @@ module "route_table" {
   nat_network_interface_id = module.ec2.network_interface_id_nat_1a
   public_subnets      = local.public_subnet_ids
   private_subnets     = local.private_subnet_ids
-}
-
-import {
-  to = module.route_table.aws_route_table.private
-  id = "rtb-0e85c38615eff9096"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.private[0]
-  id = "subnet-026f9d4f08fa30f1c/rtb-0e85c38615eff9096"
-}
-
-import {
-  to = module.route_table.aws_route_table_association.private[1]
-  id = "subnet-0326fdac80b776a6d/rtb-0e85c38615eff9096"
 }
 
 module "security_group" {
