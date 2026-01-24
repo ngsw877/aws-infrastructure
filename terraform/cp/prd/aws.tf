@@ -42,3 +42,8 @@ module "security_group" {
   vpc_id = module.vpc.id_cp
   private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
 }
+
+module "iam_role" {
+  source = "../modules/aws/iam_role"
+  env    = local.env
+}
