@@ -39,7 +39,7 @@ module "route_table" {
   env                 = local.env
   vpc_id              = module.vpc.id_cp
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
-  nat_network_interface_id = null
+  nat_network_interface_id = module.ec2.network_interface_id_nat_1a
   public_subnets      = local.public_subnet_ids
   private_subnets     = local.private_subnet_ids
 }
@@ -76,5 +76,21 @@ module "acm_ngsw_app_click_ap_northeast_1" {
   domain_name = "*.${local.base_host}"
   providers = {
     aws = aws
+  }
+}
+
+module "ec2" {
+  source           = "../modules/aws/ec2"
+  env              = local.env
+  public_subnet_id = module.subnet.id_public_1a
+  bastion = {
+    iam_instance_profile = module.iam_role.instance_profile_cp_bastion
+    security_group_id    = module.security_group.id_bastion
+    volume_size          = 8
+  }
+  nat_1a = {
+    iam_instance_profile = module.iam_role.instance_profile_cp_nat
+    security_group_id    = module.security_group.id_nat
+    volume_size          = 8
   }
 }

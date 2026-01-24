@@ -13,6 +13,7 @@ resource "aws_instance" "bastion" {
     volume_size           = var.bastion.volume_size
     volume_type           = "gp3"
   }
+  user_data = file("${path.module}/user_data/bastion.sh")
 }
 
 resource "aws_instance" "nat_1a" {
@@ -30,4 +31,5 @@ resource "aws_instance" "nat_1a" {
     volume_size           = 8
     volume_type           = "gp3"
   }
+  user_data = file("${path.module}/user_data/nat.sh")
 }
