@@ -1,7 +1,15 @@
 module "route53_ngsw_app_click" {
   source    = "../modules/aws/route53_unit"
   zone_name = local.base_host
-  records = []
+  records = [
+    // ACMの検証用
+    {
+      name   = module.acm_ngsw_app_click_ap_northeast_1.validation_record_name
+      values = [module.acm_ngsw_app_click_ap_northeast_1.validation_record_value]
+      type   = "CNAME"
+      ttl    = "300"
+    },
+  ]
 }
 
 import {
@@ -56,4 +64,17 @@ module "s3" {
 module "ecr" {
   source = "../modules/aws/ecr"
   env    = local.env
+}
+
+module "secrets_manager" {
+  source = "../modules/aws/secrets_manager"
+  env    = local.env
+}
+
+module "acm_ngsw_app_click_ap_northeast_1" {
+  source      = "../modules/aws/acm_unit"
+  domain_name = "*.${local.base_host}"
+  providers = {
+    aws = aws
+  }
 }
