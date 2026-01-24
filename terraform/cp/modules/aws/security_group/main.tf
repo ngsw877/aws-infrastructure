@@ -1,6 +1,9 @@
 resource "aws_security_group" "alb_cp" {
   name        = "cp-alb-${var.env}"
   description = "cp-alb-${var.env}"
+  tags = {
+    "Name" = "cp-slack-metrics-backend-${var.env}"
+  }
   vpc_id      = var.vpc_id
   egress = local.default_egress
   ingress = [
@@ -21,6 +24,9 @@ resource "aws_security_group" "alb_cp" {
 resource "aws_security_group" "bastion" {
   name        = "cp-bastion-${var.env}"
   description = "cp-bastion-${var.env}"
+  tags = {
+    "Name" = "cp-bastion-${var.env}"
+  }
   vpc_id      = var.vpc_id
   egress = local.default_egress
   ingress = []
@@ -29,6 +35,9 @@ resource "aws_security_group" "bastion" {
 resource "aws_security_group" "slack_metrics_backend" {
   name        = "slack-metrics-backend-${var.env}"
   description = "slack-metrics-backend-${var.env}"
+  tags = {
+    "Name" = "slack-metrics-backend-${var.env}"
+  }
   vpc_id      = var.vpc_id
   egress = local.default_egress
   ingress = [
@@ -51,6 +60,9 @@ resource "aws_security_group" "slack_metrics_backend" {
 resource "aws_security_group" "db_migrator" {
   name        = "cp-db-migrator-${var.env}"
   description = "cp-db-migrator-${var.env}"
+  tags = {
+    "Name" = "cp-db-migrator-${var.env}"
+  }
   vpc_id      = var.vpc_id
   egress = local.default_egress
   ingress = []
@@ -59,6 +71,9 @@ resource "aws_security_group" "db_migrator" {
 resource "aws_security_group" "db" {
   name        = "cp-db-${var.env}"
   description = "cp-db-${var.env}"
+  tags = {
+    "Name" = "cp-db-${var.env}"
+  }
   vpc_id      = var.vpc_id
   egress = local.default_egress
   ingress = [

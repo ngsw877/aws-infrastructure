@@ -24,3 +24,10 @@ module "route_table" {
   public_subnets      = local.public_subnet_ids
   private_subnets     = local.private_subnet_ids
 }
+
+module "security_group" {
+  source = "../modules/aws/security_group"
+  env    = local.env
+  vpc_id = module.vpc.id_cp
+  private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
+}
