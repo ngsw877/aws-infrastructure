@@ -10,9 +10,10 @@ variable "internet_gateway_id" {
   type = string
 }
 
-# variable "nat_gateway_id" {
-#   type = string
-# }
+variable "nat_network_interface_id" {
+  type    = string
+  default = null
+}
 
 variable "public_subnets" {
   description = "Map of public subnet IDs (key: subnet name, value: subnet ID)"

@@ -19,9 +19,24 @@ module "route_table" {
   env                 = local.env
   vpc_id              = module.vpc.id_cp
   internet_gateway_id = module.internet_gateway.cp_internet_gateway_id
-  # nat_gateway_id      = "nat-0a439f47f1dda676e"
+  nat_network_interface_id = module.ec2.network_interface_id_nat_1a
   public_subnets      = local.public_subnet_ids
   private_subnets     = local.private_subnet_ids
+}
+
+import {
+  to = module.route_table.aws_route_table.private
+  id = "rtb-0e85c38615eff9096"
+}
+
+import {
+  to = module.route_table.aws_route_table_association.private[0]
+  id = "subnet-026f9d4f08fa30f1c/rtb-0e85c38615eff9096"
+}
+
+import {
+  to = module.route_table.aws_route_table_association.private[1]
+  id = "subnet-0326fdac80b776a6d/rtb-0e85c38615eff9096"
 }
 
 module "security_group" {
@@ -61,11 +76,6 @@ module "ec2" {
     security_group_id    = module.security_group.id_nat
     volume_size          = 8
   }
-}
-
-import {
-  to = module.ec2.aws_instance.nat_1a
-  id = "i-093efd40835eef701"
 }
 
 module "rds_cp" {
