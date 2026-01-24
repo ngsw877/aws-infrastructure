@@ -122,7 +122,7 @@ module "s3" {
 module "ecs" {
   source = "../modules/aws/ecs"
   env    = local.env
-  // cloud-pratica-backendクラスター
+  // cp-backendクラスター
   slack_metrics_api = {
     name                   = "slack-metrics-api-${local.env}"
     task_definition        = module.ecs_task_definition.arn_slack_metrics_api

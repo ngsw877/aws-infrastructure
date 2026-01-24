@@ -47,3 +47,13 @@ module "iam_role" {
   source = "../modules/aws/iam_role"
   env    = local.env
 }
+
+module "s3" {
+  source = "../modules/aws/s3"
+  env    = local.env
+}
+
+module "ecr" {
+  source = "../modules/aws/ecr"
+  env    = local.env
+}
