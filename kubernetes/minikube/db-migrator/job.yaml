@@ -14,7 +14,7 @@ spec:
             limits:
               cpu: 200m
               memory: 200Mi
-          image: 043309350350.dkr.ecr.ap-northeast-1.amazonaws.com/db-migrator-stg:b9b12c6
+          image: 374146079343.dkr.ecr.ap-northeast-1.amazonaws.com/db-migrator-stg:53aae3e
           env:
             - name: DB_HOST
               valueFrom:
