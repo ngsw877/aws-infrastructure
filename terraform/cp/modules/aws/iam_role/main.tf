@@ -186,3 +186,30 @@ resource "aws_iam_role_policy_attachment" "cp_k8s_alb_controller" {
   role       = aws_iam_role.cp_k8s_alb_controller.name
   policy_arn = aws_iam_policy.cp_k8s_alb_controller.arn
 }
+
+/************************************************************
+Datadogコースで使用する cost-api用のロール
+************************************************************/
+resource "aws_iam_role" "cost_api" {
+  name = "cost-api-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cost_api" {
+  for_each = {
+    cost_and_usage = aws_iam_policy.read_cost_and_usage.arn
+  }
+  role       = aws_iam_role.cost_api.name
+  policy_arn = each.value
+}

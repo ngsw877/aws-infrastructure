@@ -89,3 +89,19 @@ resource "aws_iam_policy" "cp_k8s_alb_controller" {
   description = "Policy for ALB Controller"
   policy      = file("${path.module}/files/alb_controller_policy.json")
 }
+
+resource "aws_iam_policy" "read_cost_and_usage" {
+  name = "read-cost-and-usage-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ce:GetCostAndUsage"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
