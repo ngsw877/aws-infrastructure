@@ -118,3 +118,31 @@ resource "aws_vpc_security_group_egress_rule" "nat" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
+
+/************************************************************
+Datadog コース
+************************************************************/
+
+resource "aws_security_group" "cost_api" {
+  name = "cp-cost-api-${var.env}"
+  tags = {
+    "Name" = "cp-cost-api-${var.env}"
+  }
+  vpc_id = var.vpc_id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "cost_api" {
+  for_each = toset([aws_security_group.alb_cp.id])
+
+  security_group_id            = aws_security_group.cost_api.id
+  referenced_security_group_id = each.value
+  from_port                    = 8080
+  to_port                      = 8080
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "cost_api" {
+  security_group_id = aws_security_group.cost_api.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
