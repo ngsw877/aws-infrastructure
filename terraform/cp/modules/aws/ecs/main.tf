@@ -109,3 +109,53 @@ resource "aws_appautoscaling_policy" "slack_metrics_api_memory" {
     }
   }
 }
+
+/************************************************************
+Datadogコースで使用 cost-api用のECS Service
+************************************************************/
+
+resource "aws_ecs_service" "cost_api" {
+  count                              = var.cost_api != null ? 1 : 0
+  cluster                            = aws_ecs_cluster.cp_backend.arn
+  name                               = "cost-api-${var.env}"
+  task_definition                    = var.cost_api.task_definition
+  desired_count                      = 1
+  enable_execute_command             = false
+  enable_ecs_managed_tags            = true
+  health_check_grace_period_seconds  = 0
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+  capacity_provider_strategy {
+    base              = 0
+    capacity_provider = var.cost_api.capacity_provider
+    weight            = 1
+  }
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+  deployment_controller {
+    type = "ECS"
+  }
+  dynamic "load_balancer" {
+    for_each = var.cost_api.target_group_arn != null ? [1] : []
+    content {
+      container_name   = "cost-aggregator"
+      container_port   = 8080
+      target_group_arn = var.cost_api.target_group_arn
+    }
+  }
+  network_configuration {
+    assign_public_ip = false
+    security_groups  = var.cost_api.security_group_ids
+    subnets          = var.cost_api.subnet_ids
+  }
+  lifecycle {
+    ignore_changes = [
+      # MEMO: コスト削減で落とすタイミングがあるため
+      desired_count,
+      # MEMO: マネジメントコンソールからタスク定義のリビジョンを更新するため
+      task_definition,
+    ]
+  }
+}

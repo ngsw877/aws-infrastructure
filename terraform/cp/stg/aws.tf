@@ -132,6 +132,15 @@ module "ecs" {
     security_group_ids     = [module.security_group.id_slack_metrics_backend]
     subnet_ids             = local.private_subnet_ids
   }
+  // MEMO: Datadogコースで使用
+  cost_api = {
+    task_definition    = "arn:aws:ecs:ap-northeast-1:374146079343:task-definition/cost-api-stg:1"
+    # task_definition    = module.ecs_task_definition.arn_cost_api
+    capacity_provider  = "FARGATE_SPOT"
+    # target_group_arn   = module.target_group.arn_cost_api
+    security_group_ids = [module.security_group.id_cost_api]
+    subnet_ids         = local.private_subnet_ids
+  }
 }
 
 module "ecs_task_definition" {

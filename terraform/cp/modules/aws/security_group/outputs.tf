@@ -17,3 +17,7 @@ output "id_alb_cp" {
 output "id_nat" {
   value = aws_security_group.nat.id
 }
+
+output "id_cost_api" {
+  value = aws_security_group.cost_api.id
+}

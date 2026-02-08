@@ -13,3 +13,14 @@ variable "slack_metrics_api" {
     subnet_ids             = list(string)
   })
 }
+
+variable "cost_api" {
+  type = object({
+    task_definition    = string
+    capacity_provider  = string
+    target_group_arn   = optional(string)
+    security_group_ids = list(string)
+    subnet_ids         = list(string)
+  })
+  default = null
+}
