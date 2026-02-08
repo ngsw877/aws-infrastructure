@@ -19,13 +19,19 @@ module "route53_ngsw_app_click" {
       type   = "CNAME"
       ttl    = "300"
     },
+    // Datadogコースで使用
+    {
+      name = local.cost_api_host
+      type = "A"
+      alias = {
+        zone_id                = module.alb.zone_id_ap_northeast_1
+        name                   = "dualstack.${module.alb.dns_name_cp}"
+        evaluate_target_health = true
+      }
+    }
   ]
 }
 
-import {
-  to = module.route53_ngsw_app_click.aws_route53_zone.zone
-  id = "Z07198773KPDUER7543R7"
-}
 
 module "vpc" {
   source = "../modules/aws/vpc"
