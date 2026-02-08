@@ -47,3 +47,27 @@ resource "aws_lb_listener_rule" "slack_metrics_api" {
     Name = "slack-metrics-api"
   }
 }
+
+/************************************************************
+Datadogコースで使用
+************************************************************/
+resource "aws_lb_listener_rule" "cost_api" {
+  count        = var.cp.target_group_arn_cost_api != null ? 1 : 0
+  listener_arn = aws_lb_listener.cp_https.arn
+
+  action {
+    type             = "forward"
+    order            = 1
+    target_group_arn = var.cp.target_group_arn_cost_api
+  }
+
+  condition {
+    host_header {
+      values = [var.cp.cost_api_host]
+    }
+  }
+
+  tags = {
+    Name = "cost-api"
+  }
+}

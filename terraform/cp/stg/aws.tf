@@ -180,6 +180,9 @@ module "alb" {
     certificate_arn                    = module.acm_ngsw_app_click_ap_northeast_1.arn
     target_group_arn_slack_metrics_api = module.target_group.arn_slack_metrics_api
     slack_metrics_api_host             = local.slack_metrics_api_host
+    // MEMO: Datadogコースで使用
+    target_group_arn_cost_api = module.target_group.arn_cost_api
+    cost_api_host             = local.cost_api_host
   }
 }
 

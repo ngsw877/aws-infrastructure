@@ -5,6 +5,7 @@ locals {
   base_host              = "stg.ngsw-app.click"
   slack_metrics_host     = "sm.${local.base_host}"
   slack_metrics_api_host = "sm-api.${local.base_host}"
+  cost_api_host          = "cost-api.${local.base_host}"
   public_subnet_ids = [
     module.subnet.id_public_1a,
     module.subnet.id_public_1c
