@@ -15,3 +15,8 @@ locals {
     ]
   }
 }
+
+variable "datadog_aws_integration_external_id" {
+  type    = string
+  default = null
+}

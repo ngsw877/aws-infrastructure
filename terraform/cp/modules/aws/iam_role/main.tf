@@ -188,6 +188,46 @@ resource "aws_iam_role_policy_attachment" "cp_k8s_alb_controller" {
 }
 
 /************************************************************
+Datadog AWS Integration
+************************************************************/
+data "aws_iam_policy_document" "datadog_aws_integration_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "AWS"
+      # Datadog社のAWSアカウントID(JP)
+      identifiers = ["arn:aws:iam::417141415827:root"]
+    }
+    dynamic "condition" {
+      for_each = var.datadog_aws_integration_external_id != null ? [1] : []
+      content {
+        test     = "StringEquals"
+        variable = "sts:ExternalId"
+        values = [
+          var.datadog_aws_integration_external_id
+        ]
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "datadog_aws_integration" {
+  name               = "DatadogIntegrationRole"
+  description        = "Role for Datadog AWS Integration"
+  assume_role_policy = data.aws_iam_policy_document.datadog_aws_integration_assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "datadog_aws_integration" {
+  // MEMO: セキュリティを高めるため、external_idがnullの場合はポリシーの紐付けを解除（ロールは作成される）
+  for_each = var.datadog_aws_integration_external_id != null ? {
+    custom         = aws_iam_policy.datadog_aws_integration.arn
+    security_audit = "arn:aws:iam::aws:policy/SecurityAudit"
+  } : {}
+  role       = aws_iam_role.datadog_aws_integration.name
+  policy_arn = each.value
+}
+
+/************************************************************
 Datadogコースで使用する cost-api用のロール
 ************************************************************/
 resource "aws_iam_role" "cost_api" {

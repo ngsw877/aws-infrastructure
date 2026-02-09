@@ -1,20 +1,3 @@
-data "aws_iam_policy_document" "datadog_aws_integration_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::417141415827:root"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "sts:ExternalId"
-      values = [
-        "${datadog_integration_aws_account.datadog_integration.auth_config.aws_auth_config_role.external_id}"
-      ]
-    }
-  }
-}
-
 data "datadog_integration_aws_iam_permissions" "datadog_permissions" {}
 
 locals {
@@ -43,37 +26,6 @@ locals {
       perm if local.chunk_assignments[i] == chunk_num
     ]
   ]
-}
-
-data "aws_iam_policy_document" "datadog_aws_integration" {
-  count = length(local.permission_chunks)
-
-  statement {
-    actions   = local.permission_chunks[count.index]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_policy" "datadog_aws_integration" {
-  count = length(local.permission_chunks)
-
-  name   = "DatadogAWSIntegrationPolicy-${count.index + 1}"
-  policy = data.aws_iam_policy_document.datadog_aws_integration[count.index].json
-}
-resource "aws_iam_role" "datadog_aws_integration" {
-  name               = "DatadogIntegrationRole"
-  description        = "Role for Datadog AWS Integration"
-  assume_role_policy = data.aws_iam_policy_document.datadog_aws_integration_assume_role.json
-}
-resource "aws_iam_role_policy_attachment" "datadog_aws_integration" {
-  count = length(local.permission_chunks)
-
-  role       = aws_iam_role.datadog_aws_integration.name
-  policy_arn = aws_iam_policy.datadog_aws_integration[count.index].arn
-}
-resource "aws_iam_role_policy_attachment" "datadog_aws_integration_security_audit" {
-  role       = aws_iam_role.datadog_aws_integration.name
-  policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
 }
 
 resource "datadog_integration_aws_account" "datadog_integration" {
