@@ -18,4 +18,13 @@ locals {
     module.subnet.cidr_block_private_1a,
     module.subnet.cidr_block_private_1c,
   ]
+
+  // retrieve from secret manager
+  datadog_keys = jsondecode(
+    data.aws_secretsmanager_secret_version.datadog_keys.secret_string
+  )
+}
+
+data "aws_secretsmanager_secret_version" "datadog_keys" {
+  secret_id = "datadog-keys-${local.env}"
 }

@@ -1,9 +1,3 @@
-provider "datadog" {
-  api_key = "xxxxxxxxxxxxxxxxxxxx"
-  app_key = "xxxxxxxxxxxxxxxxxxxx"
-  api_url = "https://ap1.datadoghq.com"
-}
-
 data "aws_iam_policy_document" "datadog_aws_integration_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
