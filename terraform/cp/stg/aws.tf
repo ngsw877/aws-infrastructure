@@ -80,6 +80,7 @@ module "secrets_manager" {
 module "iam_role" {
   source = "../modules/aws/iam_role"
   env    = local.env
+  datadog_aws_integration_external_id = module.datadog_aws_integration.external_id
 }
 
 module "ec2" {
