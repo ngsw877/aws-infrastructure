@@ -123,6 +123,7 @@ resource "aws_ecs_task_definition" "db_migrator" {
 cost-api (Datadogコースで使用)
 ************************************************************/
 resource "aws_ecs_task_definition" "cost_api" {
+  count                    = var.secrets_manager_arn_datadog_keys != null ? 1 : 0
   family                   = "cost-api-${var.env}"
   cpu                      = var.ecs_task_specs.cost_api.cpu
   memory                   = var.ecs_task_specs.cost_api.memory

@@ -20,15 +20,15 @@ module "route53_ngsw_app_click" {
       ttl    = "300"
     },
     // Datadogコースで使用
-    {
-      name = local.cost_api_host
-      type = "A"
-      alias = {
-        zone_id                = module.alb.zone_id_ap_northeast_1
-        name                   = "dualstack.${module.alb.dns_name_cp}"
-        evaluate_target_health = true
-      }
-    }
+    # {
+    #   name = local.cost_api_host
+    #   type = "A"
+    #   alias = {
+    #     zone_id                = module.alb.zone_id_ap_northeast_1
+    #     name                   = "dualstack.${module.alb.dns_name_cp}"
+    #     evaluate_target_health = true
+    #   }
+    # }
   ]
 }
 
@@ -75,12 +75,7 @@ module "ecr" {
 module "secrets_manager" {
   source = "../modules/aws/secrets_manager"
   env    = local.env
-  enable_datadog_keys              = true
-}
-
-import {
-  to = module.secrets_manager.aws_secretsmanager_secret.datadog_keys[0]
-  id = "arn:aws:secretsmanager:ap-northeast-1:374146079343:secret:datadog-keys-stg-XoO4dp"
+  enable_datadog_keys              = false
 }
 
 
@@ -145,14 +140,14 @@ module "ecs" {
     subnet_ids             = local.private_subnet_ids
   }
   // MEMO: Datadogコースで使用
-  cost_api = {
-    task_definition    = "arn:aws:ecs:ap-northeast-1:374146079343:task-definition/cost-api-stg:1"
-    # task_definition    = module.ecs_task_definition.arn_cost_api
-    capacity_provider  = "FARGATE_SPOT"
-    target_group_arn   = module.target_group.arn_cost_api
-    security_group_ids = [module.security_group.id_cost_api]
-    subnet_ids         = local.private_subnet_ids
-  }
+  # cost_api = {
+  #   task_definition    = "arn:aws:ecs:ap-northeast-1:374146079343:task-definition/cost-api-stg:1"
+  #   # task_definition    = module.ecs_task_definition.arn_cost_api
+  #   capacity_provider  = "FARGATE_SPOT"
+  #   target_group_arn   = module.target_group.arn_cost_api
+  #   security_group_ids = [module.security_group.id_cost_api]
+  #   subnet_ids         = local.private_subnet_ids
+  # }
 }
 
 module "ecs_task_definition" {
@@ -185,11 +180,6 @@ module "ecs_task_definition" {
   }
 }
 
-import {
-  to = module.ecs_task_definition.aws_ecs_task_definition.cost_api
-  id = "arn:aws:ecs:ap-northeast-1:374146079343:task-definition/cost-api-stg:11"
-}
-
 module "target_group" {
   source = "../modules/aws/target_group"
   env    = local.env
@@ -206,8 +196,8 @@ module "alb" {
     target_group_arn_slack_metrics_api = module.target_group.arn_slack_metrics_api
     slack_metrics_api_host             = local.slack_metrics_api_host
     // MEMO: Datadogコースで使用
-    target_group_arn_cost_api = module.target_group.arn_cost_api
-    cost_api_host             = local.cost_api_host
+    # target_group_arn_cost_api = module.target_group.arn_cost_api
+    # cost_api_host             = local.cost_api_host
   }
 }
 

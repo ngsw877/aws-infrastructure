@@ -113,7 +113,6 @@ resource "aws_appautoscaling_policy" "slack_metrics_api_memory" {
 /************************************************************
 Datadogコースで使用 cost-api用のECS Service
 ************************************************************/
-
 resource "aws_ecs_service" "cost_api" {
   count                              = var.cost_api != null ? 1 : 0
   cluster                            = aws_ecs_cluster.cp_backend.arn
