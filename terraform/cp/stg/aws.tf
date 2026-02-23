@@ -75,7 +75,14 @@ module "ecr" {
 module "secrets_manager" {
   source = "../modules/aws/secrets_manager"
   env    = local.env
+  enable_datadog_keys              = true
 }
+
+import {
+  to = module.secrets_manager.aws_secretsmanager_secret.datadog_keys[0]
+  id = "arn:aws:secretsmanager:ap-northeast-1:374146079343:secret:datadog-keys-stg-XoO4dp"
+}
+
 
 module "iam_role" {
   source = "../modules/aws/iam_role"
@@ -117,9 +124,6 @@ module "rds_cp" {
 module "acm_ngsw_app_click_ap_northeast_1" {
   source      = "../modules/aws/acm_unit"
   domain_name = "*.${local.base_host}"
-  providers = {
-    aws = aws
-  }
 }
 
 module "s3" {
@@ -156,10 +160,14 @@ module "ecs_task_definition" {
   env                                  = local.env
   ecr_url_slack_metrics                = "${module.ecr.url_slack_metrics}:53aae3e"
   ecr_url_db_migrator                  = "${module.ecr.url_db_migrator}:53aae3e"
+  ecr_url_cost_aggregator              = "${module.ecr.url_cost_aggregator}:6226dd8"
+  ecr_url_cost_provider                = "${module.ecr.url_cost_provider}:6226dd8"
   ecs_task_execution_role_arn          = module.iam_role.role_arn_ecs_task_execution
   ecs_task_role_arn_slack_metrics      = module.iam_role.role_arn_cp_slack_metrics_backend
   ecs_task_role_arn_db_migrator        = module.iam_role.role_arn_cp_db_migrator
+  ecs_task_role_arn_cost_api           = module.iam_role.role_arn_cost_api
   secrets_manager_arn_db_main_instance = module.secrets_manager.arn_db_main_instance
+  secrets_manager_arn_datadog_keys     = module.secrets_manager.arn_datadog_keys
   arn_cp_config_bucket                 = module.s3.arn_cp_config_bucket
   ecs_task_specs = {
     slack_metrics_api = {
@@ -170,7 +178,16 @@ module "ecs_task_definition" {
       cpu    = 256
       memory = 512
     }
+    cost_api = {
+      cpu    = 512
+      memory = 1024
+    }
   }
+}
+
+import {
+  to = module.ecs_task_definition.aws_ecs_task_definition.cost_api
+  id = "arn:aws:ecs:ap-northeast-1:374146079343:task-definition/cost-api-stg:11"
 }
 
 module "target_group" {

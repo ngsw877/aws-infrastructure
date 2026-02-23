@@ -25,3 +25,8 @@ output "role_arn_cp_k8s_eso" {
 output "role_arn_cp_k8s_alb_controller" {
   value = aws_iam_role.cp_k8s_alb_controller.arn
 }
+
+output "role_arn_cost_api" {
+  value = aws_iam_role.cost_api.arn
+}
+

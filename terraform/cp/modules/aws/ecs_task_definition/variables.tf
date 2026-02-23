@@ -4,6 +4,7 @@ Common
 variable "env" {}
 variable "ecs_task_execution_role_arn" {}
 variable "secrets_manager_arn_db_main_instance" {}
+variable "secrets_manager_arn_datadog_keys" {}
 variable "arn_cp_config_bucket" {}
 variable "ecs_task_specs" {
   type = object({
@@ -15,6 +16,10 @@ variable "ecs_task_specs" {
       cpu    = number
       memory = number
     })
+    cost_api = object({
+      cpu    = number
+      memory = number
+    })
   })
 }
 
@@ -23,9 +28,12 @@ ECR (imageタグを含むURL)
 ************************************************************/
 variable "ecr_url_slack_metrics" {}
 variable "ecr_url_db_migrator" {}
+variable "ecr_url_cost_aggregator" {}
+variable "ecr_url_cost_provider" {}
 
 /************************************************************
 ECS Task Role
 ************************************************************/
 variable "ecs_task_role_arn_slack_metrics" {}
 variable "ecs_task_role_arn_db_migrator" {}
+variable "ecs_task_role_arn_cost_api" {}
