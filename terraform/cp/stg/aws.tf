@@ -116,6 +116,13 @@ module "rds_cp" {
   iam_database_authentication_enabled = true
 }
 
+module "event_bridge" {
+  source = "../modules/aws/event_bridge"
+
+  name_prefix             = "cp-${local.env}"
+  target_rds_instance_arn = module.rds_cp.db_instance_arn
+}
+
 module "acm_ngsw_app_click_ap_northeast_1" {
   source      = "../modules/aws/acm_unit"
   domain_name = "*.${local.base_host}"
