@@ -1,0 +1,18 @@
+config:
+  sessionTTL: null
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 128Mi
+  limits:
+    cpu: 20m
+    memory: 256Mi
+
+serviceAccount:
+  create: false
+  name: headlamp-sa
+
+clusterRoleBinding:
+  create: false
+  clusterRoleName: cluster-admin
