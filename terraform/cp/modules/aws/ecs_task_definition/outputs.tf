@@ -8,5 +8,5 @@ output "arn_slack_metrics_api" {
 }
 
 output "arn_cost_api" {
-  value = aws_ecs_task_definition.cost_api.arn
+  value = aws_ecs_task_definition.cost_api[*].arn
 }
