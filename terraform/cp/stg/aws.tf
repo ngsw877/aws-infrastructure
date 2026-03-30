@@ -64,7 +64,7 @@ module "security_group" {
   env    = local.env
   vpc_id = module.vpc.id_cp
   private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
-  # security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
+  security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
 }
 
 module "ecr" {
@@ -201,34 +201,34 @@ module "alb" {
   }
 }
 
-# module "eks_pod_identity" {
-#   source       = "../modules/aws/eks_pod_identity_unit"
-#   cluster_name = "cp-${local.env}"
-#   associations = [
-#     {
-#       namespace       = "app"
-#       service_account = "db-migrator-sa"
-#       role_arn        = module.iam_role.role_arn_cp_db_migrator
-#     },
-#     {
-#       namespace       = "app"
-#       service_account = "slack-metrics-sa"
-#       role_arn        = module.iam_role.role_arn_cp_slack_metrics_backend
-#     },
-#     {
-#       namespace       = "external-secrets"
-#       service_account = "external-secrets-operator-sa"
-#       role_arn        = module.iam_role.role_arn_cp_k8s_eso
-#     },
-#     {
-#       namespace       = "kube-system"
-#       service_account = "alb-controller-sa"
-#       role_arn        = module.iam_role.role_arn_cp_k8s_alb_controller
-#     },
-#   ]
-# }
+module "eks_pod_identity" {
+  source       = "../modules/aws/eks_pod_identity_unit"
+  cluster_name = "cp-${local.env}"
+  associations = [
+    {
+      namespace       = "app"
+      service_account = "db-migrator-sa"
+      role_arn        = module.iam_role.role_arn_cp_db_migrator
+    },
+    {
+      namespace       = "app"
+      service_account = "slack-metrics-sa"
+      role_arn        = module.iam_role.role_arn_cp_slack_metrics_backend
+    },
+    {
+      namespace       = "external-secrets"
+      service_account = "external-secrets-operator-sa"
+      role_arn        = module.iam_role.role_arn_cp_k8s_eso
+    },
+    {
+      namespace       = "kube-system"
+      service_account = "alb-controller-sa"
+      role_arn        = module.iam_role.role_arn_cp_k8s_alb_controller
+    },
+  ]
+}
 
-# module "eks" {
-#   source = "../modules/aws/eks"
-#   env = local.env
-# }
+module "eks" {
+  source = "../modules/aws/eks"
+  env = local.env
+}
