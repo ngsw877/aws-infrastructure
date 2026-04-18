@@ -5,10 +5,10 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/load-balancer-name: cp-k8s-stg
     # *.stg.sample-app.click のhttps証明書
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:374146079343:certificate/fe5a6a72-117a-4da5-af05-2c66301c1be2
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:374146079343:certificate/660c426f-0c58-4745-8e4d-79c491c45b73
 spec:
   rules:
-    - host: sm-api-v2.stg.sample-app.click
+    - host: sm-api-v2.stg.ngsw-app.click
       http:
         paths:
           - path: /

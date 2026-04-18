@@ -1,6 +1,6 @@
 clusterName: "cp-stg"
 region: ap-northeast-1
-vpcId: vpc-04c1cd4cf30a84b56 # cp-stg
+vpcId: vpc-0ef4b7382896136fa # cp-stg
 serviceAccount:
   create: false
   name: alb-controller-sa
