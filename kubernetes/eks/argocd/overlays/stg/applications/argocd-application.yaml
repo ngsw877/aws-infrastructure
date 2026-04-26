@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-application
+  namespace: argocd
+spec:
+  source:
+    repoURL: git@github.com:ngsw877/aws-infrastructure.git
+    path: kubernetes/eks/argocd/overlays/stg
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

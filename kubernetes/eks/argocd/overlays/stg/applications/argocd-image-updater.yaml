@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-image-updater
+  namespace: argocd
+spec:
+  source:
+    repoURL: git@github.com:cloud-pratica/cloud-pratica-backend
+    path: ops/kubernetes/eks/argocd-image-updater/overlays/stg
+    targetRevision: develop
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

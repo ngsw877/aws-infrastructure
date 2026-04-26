@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+- ingress.yaml
+- applications/slack-metrics.yaml
+- applications/argocd-application.yaml
+- applications/alb-controller.yaml
+- applications/external-secrets.yaml
+- applications/kubernetes-dashboard.yaml
+# - applications/argocd-image-updater.yaml
+# - applications/log-transfer.yaml
+# - applications/prometheus.yaml
+# - applications/grafana.yaml
+# - applications/istio.yaml
+
+patches:
+- path: external-secret-repo.yaml
+  target:
+    kind: ExternalSecret
+    name: argocd-repository-external-secret
+# - path: external-secret-oidc.yaml
+#   target:
+#     kind: ExternalSecret
+#     name: argocd-oidc-external-secret
+
+helmCharts:
+  - name: argo-cd
+    repo: https://argoproj.github.io/argo-helm
+    version: 8.0.5
+    releaseName: argocd
+    namespace: argocd
+    valuesFile: values.yaml

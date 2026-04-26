@@ -1,0 +1,21 @@
+configs:
+  cm:
+    kustomize.buildOptions: "--enable-helm"
+    # url: https://argocd.stg.ngsw-app.click
+    # dex.config: |
+    #   connectors:
+    #     - type: github
+    #       id: github
+    #       name: GitHub
+    #       config:
+    #         clientID: $argocd-oidc-secret:client_id
+    #         clientSecret: $argocd-oidc-secret:client_secret
+    #         orgs:
+    #           - name: cloud-pratica
+  params:
+    server.insecure: true
+  # rbac:
+  #   policy.csv: |
+  #     g, u606601k@gmail.com, role:admin
+  #   policy.default: role:readonly
+  #   scopes: '[email]'

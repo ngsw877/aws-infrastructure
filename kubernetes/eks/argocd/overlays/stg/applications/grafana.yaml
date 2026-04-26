@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+spec:
+  source:
+    repoURL: git@github.com:cloud-pratica/cloud-pratica-backend
+    path: ops/kubernetes/eks/grafana/overlays/stg
+    targetRevision: develop
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

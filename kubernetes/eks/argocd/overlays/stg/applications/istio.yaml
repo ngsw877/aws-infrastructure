@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio
+  namespace: argocd
+spec:
+  source:
+    repoURL: git@github.com:cloud-pratica/cloud-pratica-backend
+    path: ops/kubernetes/eks/istio/overlays/stg
+    targetRevision: develop
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - RespectIgnoreDifferences=true
+  # istiodが起動し、Webhookのエンドポイントが正常になったタイミングで自動的にFailに書き換えられ、
+  # OutOfSyncの状態になってしまうため
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].failurePolicy

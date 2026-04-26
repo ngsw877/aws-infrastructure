@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: slack-metrics
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/write-back-target: "kustomization:/kubernetes/eks/slack-metrics/overlays/stg"
+    argocd-image-updater.argoproj.io/image-list: "app-image=374146079343.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg"
+    argocd-image-updater.argoproj.io/app-image.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/app-image.kustomize.image-name: app-image # エイリアス名を明示的に指定
+spec:
+  source:
+    repoURL: git@github.com:ngsw877/aws-infrastructure.git
+    path: kubernetes/eks/slack-metrics/overlays/stg
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

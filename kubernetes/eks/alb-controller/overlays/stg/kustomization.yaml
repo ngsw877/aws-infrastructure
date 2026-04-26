@@ -11,10 +11,10 @@ patches:
       kind: Ingress
       name: cp-ingress
 
-#helmCharts:
-#  - name: aws-load-balancer-controller
-#    repo: https://aws.github.io/eks-charts
-#    version: 1.13.1
-#    releaseName: aws-load-balancer-controller
-#    namespace: kube-system
-#    valuesFile: values.yaml
+helmCharts:
+  - name: aws-load-balancer-controller
+    repo: https://aws.github.io/eks-charts
+    version: 1.13.1
+    releaseName: aws-load-balancer-controller
+    namespace: kube-system
+    valuesFile: values.yaml
