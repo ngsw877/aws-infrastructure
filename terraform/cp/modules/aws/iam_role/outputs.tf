@@ -30,3 +30,6 @@ output "role_arn_cost_api" {
   value = aws_iam_role.cost_api.arn
 }
 
+output "role_arn_cp_argocd_image_updater" {
+  value = aws_iam_role.cp_argocd_image_updater.arn
+}

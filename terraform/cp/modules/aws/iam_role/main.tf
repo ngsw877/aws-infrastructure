@@ -188,6 +188,27 @@ resource "aws_iam_role_policy_attachment" "cp_k8s_alb_controller" {
 }
 
 /************************************************************
+ArgoCD Image Updater
+************************************************************/
+resource "aws_iam_role" "cp_argocd_image_updater" {
+  name = "cp-argocd-image-updater-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      local.pod_identity_statement
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_argocd_image_updater" {
+  for_each = {
+    ecr = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  }
+  role       = aws_iam_role.cp_argocd_image_updater.name
+  policy_arn = each.value
+}
+
+/************************************************************
 Datadog AWS Integration
 ************************************************************/
 data "aws_iam_policy_document" "datadog_aws_integration_assume_role" {

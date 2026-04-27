@@ -8,7 +8,7 @@ resources:
 - applications/alb-controller.yaml
 - applications/external-secrets.yaml
 - applications/kubernetes-dashboard.yaml
-# - applications/argocd-image-updater.yaml
+- applications/argocd-image-updater.yaml
 # - applications/log-transfer.yaml
 # - applications/prometheus.yaml
 # - applications/grafana.yaml
