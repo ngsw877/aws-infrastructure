@@ -1,0 +1,15 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cloud-pratica-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway # IstioデフォルトのGatewayコントローラを使用
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"

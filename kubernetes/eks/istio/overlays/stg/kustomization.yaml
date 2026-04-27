@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: istio-system
+
+resources:
+  - ../../base
+  # - ingress.yaml
+
+helmCharts:
+  - name: base
+    repo: https://istio-release.storage.googleapis.com/charts
+    releaseName: istio-base
+    namespace: istio-system
+    version: 1.26.0
+  - name: istiod
+    repo: https://istio-release.storage.googleapis.com/charts
+    releaseName: istiod
+    namespace: istio-system
+    version: 1.26.0
+  - name: gateway
+    repo: https://istio-release.storage.googleapis.com/charts
+    releaseName: istio-ingressgateway
+    namespace: istio-system
+    version: 1.26.0
+    valuesInline:
+      service:
+        type: ClusterIP
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 5
