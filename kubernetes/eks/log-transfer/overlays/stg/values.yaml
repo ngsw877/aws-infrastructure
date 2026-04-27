@@ -1,0 +1,42 @@
+image:
+  repository: public.ecr.aws/aws-observability/aws-for-fluent-bit
+  tag: 2.32.5.20250327 # Pod Identity 対応イメージ
+
+serviceAccount:
+  create: false
+  name: log-transfer-sa
+
+additionalFilters: |
+    # ログ出力を namespace: app に絞る
+    [FILTER]
+        Name    grep
+        Match   kube.*
+        Regex   $kubernetes['namespace_name'] ^app$
+    # kubernetes フィールドを一階層上に移動
+    [FILTER]
+        Name          nest
+        Match         *
+        Operation     lift
+        Nested_under  kubernetes
+    # 不要なフィールドを削除(kubernetes フィールドを一階層上に移動したため)
+    [FILTER]
+        Name    modify
+        Match   *
+        Remove  stream
+        Remove  _p
+        Remove  time
+        Remove  log
+        Remove  host
+        Remove  docker_id
+        Remove  container_hash
+        Remove  pod_id
+        Remove  container_image
+
+cloudWatchLogs:
+  enabled: true
+  region: "ap-northeast-1"
+  match: "*"
+  logGroupTemplate: /eks/cp-stg/$labels['app']
+  logGroupName: /eks/cp-stg
+  logStreamPrefix: app-
+  autoCreateGroup: true

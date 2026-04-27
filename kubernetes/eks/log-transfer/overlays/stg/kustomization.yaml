@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+helmCharts:
+  - name: aws-for-fluent-bit
+    repo: https://aws.github.io/eks-charts
+    version: 0.1.35
+    releaseName: fluent-bit
+    namespace: monitoring
+    valuesFile: values.yaml

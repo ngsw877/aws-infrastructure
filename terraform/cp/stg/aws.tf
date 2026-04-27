@@ -230,6 +230,11 @@ module "eks_pod_identity" {
       service_account = "argocd-image-updater-sa"
       role_arn        = module.iam_role.role_arn_cp_argocd_image_updater
     },
+    {
+      namespace       = "monitoring"
+      service_account = "log-transfer-sa"
+      role_arn        = module.iam_role.role_arn_cp_k8s_log_transfer
+    },
   ]
 }
 

@@ -59,6 +59,27 @@ resource "aws_iam_policy" "ses_send_email" {
 }
 
 /************************************************************
+CloudWatch Logs Write
+************************************************************/
+resource "aws_iam_policy" "cloud_watch_logs_write" {
+  name = "cloud-watch-logs-write-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+/************************************************************
 S3 Read
 ************************************************************/
 resource "aws_iam_policy" "s3_read" {
