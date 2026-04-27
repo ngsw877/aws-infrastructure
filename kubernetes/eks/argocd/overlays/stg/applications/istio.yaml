@@ -5,9 +5,9 @@ metadata:
   namespace: argocd
 spec:
   source:
-    repoURL: git@github.com:cloud-pratica/cloud-pratica-backend
-    path: ops/kubernetes/eks/istio/overlays/stg
-    targetRevision: develop
+    repoURL: git@github.com:ngsw877/aws-infrastructure.git
+    path: kubernetes/eks/istio/overlays/stg
+    targetRevision: main
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system

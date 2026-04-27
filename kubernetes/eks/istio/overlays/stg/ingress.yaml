@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: istio-ingress
+  namespace: istio-system
+  annotations:
+    alb.ingress.kubernetes.io/group.name: cloud-pratica
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz/ready
+    alb.ingress.kubernetes.io/healthcheck-port: "15021"
+    alb.ingress.kubernetes.io/success-codes: '200'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:043309350350:certificate/301320ee-5423-4489-b817-f455cb642e72
+spec:
+  ingressClassName: alb
+  rules:
+    # MEMO: 本来なら"*"としたいが、コストを考慮して他のカリキュラムとALBを共有しているため、具体的なドメインを指定している
+    - host: "sm-api-v3.stg.cloud-pratica.com"
+      http:
+        paths:
+          - path:
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: istio-ingressgateway
+                port:
+                  number: 80

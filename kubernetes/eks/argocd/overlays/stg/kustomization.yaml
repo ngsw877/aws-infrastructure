@@ -12,7 +12,7 @@ resources:
 - applications/log-transfer.yaml
 # - applications/prometheus.yaml
 # - applications/grafana.yaml
-# - applications/istio.yaml
+- applications/istio.yaml
 
 patches:
 - path: external-secret-repo.yaml
