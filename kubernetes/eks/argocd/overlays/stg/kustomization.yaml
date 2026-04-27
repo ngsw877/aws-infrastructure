@@ -19,10 +19,10 @@ patches:
   target:
     kind: ExternalSecret
     name: argocd-repository-external-secret
-# - path: external-secret-oidc.yaml
-#   target:
-#     kind: ExternalSecret
-#     name: argocd-oidc-external-secret
+- path: external-secret-oidc.yaml
+  target:
+    kind: ExternalSecret
+    name: argocd-oidc-external-secret
 
 helmCharts:
   - name: argo-cd

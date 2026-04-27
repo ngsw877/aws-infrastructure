@@ -5,4 +5,4 @@ resources:
 - namespace.yaml
 - secret.yaml
 - external-secret-repo.yaml
-# - external-secret-oidc.yaml
+- external-secret-oidc.yaml
