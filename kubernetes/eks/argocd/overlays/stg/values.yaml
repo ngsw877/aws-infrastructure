@@ -18,23 +18,3 @@ configs:
       g, otsda1055@yahoo.co.jp, role:admin
     policy.default: role:readonly
     scopes: '[email]'
-
-repoServer:
-  # copyutilを明示的に指定して、壊れたコマンドを上書きするよ！
-  initContainers:
-    - name: copyutil
-      image: quay.io/argoproj/argocd:v3.0.2
-      command: ["/bin/sh", "-c"]
-      args: ["cp -n /usr/local/bin/argocd /var/run/argocd/argocd && ln -sf /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server"]
-      volumeMounts:
-        - mountPath: /var/run/argocd
-          name: var-files
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: true
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
