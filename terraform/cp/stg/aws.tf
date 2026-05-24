@@ -239,6 +239,25 @@ module "eks_pod_identity" {
 }
 
 module "eks" {
-  source = "../modules/aws/eks"
-  env = local.env
+  source             = "../modules/aws/eks"
+  env                = local.env
+  private_subnet_ids = local.private_subnet_ids
+  cp = {
+    cluster_role_arn        = module.iam_role.role_arn_cp_k8s_cluster
+    node_role_arn           = module.iam_role.role_arn_cp_k8s_node
+    node_instance_type      = "t3.large"
+    node_capacity_type      = "SPOT"
+    node_desired_count      = 1
+    ebs_csi_driver_role_arn = module.iam_role.role_arn_cp_k8s_ebs_csi_driver
+  }
+}
+
+import {
+  to = module.eks.aws_eks_cluster.cp
+  id = "cp-stg"
+}
+
+import {
+  to = module.eks.aws_eks_node_group.cp
+  id = "cp-stg:cp-app-stg"
 }

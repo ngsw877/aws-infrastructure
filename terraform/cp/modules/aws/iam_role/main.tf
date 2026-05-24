@@ -148,6 +148,62 @@ resource "aws_iam_role" "cp_db_migrator" {
 }
 
 /************************************************************
+Kubernetesクラスターロール
+************************************************************/
+resource "aws_iam_role" "cp_k8s_cluster" {
+  name = "cp-k8s-cluster-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_k8s_cluster" {
+  for_each = {
+    eks_cluster = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  }
+  role       = aws_iam_role.cp_k8s_cluster.name
+  policy_arn = each.value
+}
+
+/************************************************************
+Kubernetesノードロール
+************************************************************/
+resource "aws_iam_role" "cp_k8s_node" {
+  name = "cp-k8s-node-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_k8s_node" {
+  for_each = {
+    eks_node = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+    eks_cni  = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+    ecr      = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  }
+  role       = aws_iam_role.cp_k8s_node.name
+  policy_arn = each.value
+}
+
+/************************************************************
 Kubernetes External Secrets Operator
 ************************************************************/
 resource "aws_iam_role" "cp_k8s_eso" {
@@ -226,6 +282,27 @@ resource "aws_iam_role_policy_attachment" "cp_k8s_log_transfer" {
     cloudwatch = aws_iam_policy.cloud_watch_logs_write.arn
   }
   role       = aws_iam_role.cp_k8s_log_transfer.name
+  policy_arn = each.value
+}
+
+/************************************************************
+EKS EBS CSI Driver
+************************************************************/
+resource "aws_iam_role" "cp_k8s_ebs_csi_driver" {
+  name = "cp-k8s-ebs-csi-driver-${var.env}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      local.pod_identity_statement
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cp_k8s_ebs_csi_driver" {
+  for_each = {
+    ebs_csi_driver = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  }
+  role       = aws_iam_role.cp_k8s_ebs_csi_driver.name
   policy_arn = each.value
 }
 

@@ -18,12 +18,23 @@ output "role_arn_cp_db_migrator" {
   value = aws_iam_role.cp_db_migrator.arn
 }
 
+output "role_arn_cp_k8s_cluster" {
+  value = aws_iam_role.cp_k8s_cluster.arn
+}
+output "role_arn_cp_k8s_node" {
+  value = aws_iam_role.cp_k8s_node.arn
+}
+
 output "role_arn_cp_k8s_eso" {
   value = aws_iam_role.cp_k8s_eso.arn
 }
 
 output "role_arn_cp_k8s_alb_controller" {
   value = aws_iam_role.cp_k8s_alb_controller.arn
+}
+
+output "role_arn_cp_k8s_ebs_csi_driver" {
+  value = aws_iam_role.cp_k8s_ebs_csi_driver.arn
 }
 
 output "role_arn_cost_api" {
