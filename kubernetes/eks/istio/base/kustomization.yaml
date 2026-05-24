@@ -4,4 +4,4 @@ namespace: istio-system
 
 resources:
   - namespace.yaml
-  # - gateway.yaml
+  - gateway.yaml
