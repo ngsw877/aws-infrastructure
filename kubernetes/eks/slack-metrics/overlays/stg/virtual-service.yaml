@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: slack-metrics-virtual-service
+  namespace: app
+spec:
+  hosts:
+    - sm-api-v3.stg.ngsw-app.click
+  gateways:
+    - istio-system/cloud-pratica-gateway
+  http:
+    - route:
+        - destination:
+            host: slack-metrics-service.app.svc.cluster.local
+            port:
+              number: 80

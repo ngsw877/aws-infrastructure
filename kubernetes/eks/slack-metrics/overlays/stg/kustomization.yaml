@@ -6,6 +6,7 @@ resources:
 - configmap.yaml
 - hpa.yaml
 - external-secret.yaml
+- virtual-service.yaml
 images:
 - name: app-image
   newName: 374146079343.dkr.ecr.ap-northeast-1.amazonaws.com/slack-metrics-stg
