@@ -7,7 +7,7 @@ spec:
   hosts:
     - sm-api-v3.stg.ngsw-app.click
   gateways:
-    - istio-system/cloud-pratica-gateway
+    - istio-system/cp-gateway
   http:
     - route:
         - destination:
