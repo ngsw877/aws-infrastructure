@@ -64,7 +64,7 @@ module "security_group" {
   env    = local.env
   vpc_id = module.vpc.id_cp
   private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
-  security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
+  # security_group_id_cp_k8s_cluster = module.eks.cp_cluster_security_group_id
 }
 
 module "ecr" {
@@ -201,63 +201,55 @@ module "alb" {
   }
 }
 
-module "eks_pod_identity" {
-  source       = "../modules/aws/eks_pod_identity_unit"
-  cluster_name = "cp-${local.env}"
-  associations = [
-    {
-      namespace       = "app"
-      service_account = "db-migrator-sa"
-      role_arn        = module.iam_role.role_arn_cp_db_migrator
-    },
-    {
-      namespace       = "app"
-      service_account = "slack-metrics-sa"
-      role_arn        = module.iam_role.role_arn_cp_slack_metrics_backend
-    },
-    {
-      namespace       = "external-secrets"
-      service_account = "external-secrets-operator-sa"
-      role_arn        = module.iam_role.role_arn_cp_k8s_eso
-    },
-    {
-      namespace       = "kube-system"
-      service_account = "alb-controller-sa"
-      role_arn        = module.iam_role.role_arn_cp_k8s_alb_controller
-    },
-    {
-      namespace       = "argocd"
-      service_account = "argocd-image-updater-sa"
-      role_arn        = module.iam_role.role_arn_cp_argocd_image_updater
-    },
-    {
-      namespace       = "monitoring"
-      service_account = "log-transfer-sa"
-      role_arn        = module.iam_role.role_arn_cp_k8s_log_transfer
-    },
-  ]
-}
+# MEMO: コスト削減のため
+# module "eks_pod_identity" {
+#   source       = "../modules/aws/eks_pod_identity_unit"
+#   cluster_name = "cp-${local.env}"
+#   associations = [
+#     {
+#       namespace       = "app"
+#       service_account = "db-migrator-sa"
+#       role_arn        = module.iam_role.role_arn_cp_db_migrator
+#     },
+#     {
+#       namespace       = "app"
+#       service_account = "slack-metrics-sa"
+#       role_arn        = module.iam_role.role_arn_cp_slack_metrics_backend
+#     },
+#     {
+#       namespace       = "external-secrets"
+#       service_account = "external-secrets-operator-sa"
+#       role_arn        = module.iam_role.role_arn_cp_k8s_eso
+#     },
+#     {
+#       namespace       = "kube-system"
+#       service_account = "alb-controller-sa"
+#       role_arn        = module.iam_role.role_arn_cp_k8s_alb_controller
+#     },
+#     {
+#       namespace       = "argocd"
+#       service_account = "argocd-image-updater-sa"
+#       role_arn        = module.iam_role.role_arn_cp_argocd_image_updater
+#     },
+#     {
+#       namespace       = "monitoring"
+#       service_account = "log-transfer-sa"
+#       role_arn        = module.iam_role.role_arn_cp_k8s_log_transfer
+#     },
+#   ]
+# }
 
-module "eks" {
-  source             = "../modules/aws/eks"
-  env                = local.env
-  private_subnet_ids = local.private_subnet_ids
-  cp = {
-    cluster_role_arn        = module.iam_role.role_arn_cp_k8s_cluster
-    node_role_arn           = module.iam_role.role_arn_cp_k8s_node
-    node_instance_type      = "t3.large"
-    node_capacity_type      = "SPOT"
-    node_desired_count      = 1
-    ebs_csi_driver_role_arn = module.iam_role.role_arn_cp_k8s_ebs_csi_driver
-  }
-}
-
-import {
-  to = module.eks.aws_eks_cluster.cp
-  id = "cp-stg"
-}
-
-import {
-  to = module.eks.aws_eks_node_group.cp
-  id = "cp-stg:cp-app-stg"
-}
+# MEMO: コスト削減のため
+# module "eks" {
+#   source             = "../modules/aws/eks"
+#   env                = local.env
+#   private_subnet_ids = local.private_subnet_ids
+#   cp = {
+#     cluster_role_arn        = module.iam_role.role_arn_cp_k8s_cluster
+#     node_role_arn           = module.iam_role.role_arn_cp_k8s_node
+#     node_instance_type      = "t3.large"
+#     node_capacity_type      = "SPOT"
+#     node_desired_count      = 1
+#     ebs_csi_driver_role_arn = module.iam_role.role_arn_cp_k8s_ebs_csi_driver
+#   }
+# }
