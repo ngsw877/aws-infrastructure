@@ -1,36 +1,36 @@
-module "route53_ngsw_app_click" {
-  source    = "../modules/aws/route53_unit"
-  zone_name = local.base_host
-  records = [
-    // Slack Metrics API
-    {
-      name = local.slack_metrics_api_host
-      type = "A"
-      alias = {
-        zone_id                = module.alb.zone_id_ap_northeast_1
-        name                   = "dualstack.${module.alb.dns_name_cp}"
-        evaluate_target_health = true
-      }
-    },
-    // ACMの検証用
-    {
-      name   = module.acm_ngsw_app_click_ap_northeast_1.validation_record_name
-      values = [module.acm_ngsw_app_click_ap_northeast_1.validation_record_value]
-      type   = "CNAME"
-      ttl    = "300"
-    },
-    // Datadogコースで使用
-    # {
-    #   name = local.cost_api_host
-    #   type = "A"
-    #   alias = {
-    #     zone_id                = module.alb.zone_id_ap_northeast_1
-    #     name                   = "dualstack.${module.alb.dns_name_cp}"
-    #     evaluate_target_health = true
-    #   }
-    # }
-  ]
-}
+# module "route53_ngsw_app_click" {
+#   source    = "../modules/aws/route53_unit"
+#   zone_name = local.base_host
+#   records = [
+#     // Slack Metrics API
+#     {
+#       name = local.slack_metrics_api_host
+#       type = "A"
+#       alias = {
+#         zone_id                = module.alb.zone_id_ap_northeast_1
+#         name                   = "dualstack.${module.alb.dns_name_cp}"
+#         evaluate_target_health = true
+#       }
+#     },
+#     // ACMの検証用
+#     {
+#       name   = module.acm_ngsw_app_click_ap_northeast_1.validation_record_name
+#       values = [module.acm_ngsw_app_click_ap_northeast_1.validation_record_value]
+#       type   = "CNAME"
+#       ttl    = "300"
+#     },
+#     // Datadogコースで使用
+#     # {
+#     #   name = local.cost_api_host
+#     #   type = "A"
+#     #   alias = {
+#     #     zone_id                = module.alb.zone_id_ap_northeast_1
+#     #     name                   = "dualstack.${module.alb.dns_name_cp}"
+#     #     evaluate_target_health = true
+#     #   }
+#     # }
+#   ]
+# }
 
 
 module "vpc" {
@@ -186,20 +186,20 @@ module "target_group" {
   vpc_id = module.vpc.id_cp
 }
 
-module "alb" {
-  source = "../modules/aws/alb"
-  env    = local.env
-  cp = {
-    security_group_ids                 = [module.security_group.id_alb_cp]
-    subnet_ids                         = local.public_subnet_ids
-    certificate_arn                    = module.acm_ngsw_app_click_ap_northeast_1.arn
-    target_group_arn_slack_metrics_api = module.target_group.arn_slack_metrics_api
-    slack_metrics_api_host             = local.slack_metrics_api_host
-    // MEMO: Datadogコースで使用
-    # target_group_arn_cost_api = module.target_group.arn_cost_api
-    # cost_api_host             = local.cost_api_host
-  }
-}
+# module "alb" {
+#   source = "../modules/aws/alb"
+#   env    = local.env
+#   cp = {
+#     security_group_ids                 = [module.security_group.id_alb_cp]
+#     subnet_ids                         = local.public_subnet_ids
+#     certificate_arn                    = module.acm_ngsw_app_click_ap_northeast_1.arn
+#     target_group_arn_slack_metrics_api = module.target_group.arn_slack_metrics_api
+#     slack_metrics_api_host             = local.slack_metrics_api_host
+#     // MEMO: Datadogコースで使用
+#     # target_group_arn_cost_api = module.target_group.arn_cost_api
+#     # cost_api_host             = local.cost_api_host
+#   }
+# }
 
 # MEMO: コスト削減のため
 # module "eks_pod_identity" {
